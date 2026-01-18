@@ -1,5 +1,7 @@
 # ibge-br-mcp
 
+[![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
+
 Servidor MCP para APIs do IBGE (Instituto Brasileiro de Geografia e Estatística).
 
 Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) para fornecer acesso às APIs públicas do IBGE, permitindo que assistentes de IA consultem dados geográficos, demográficos e estatísticos do Brasil.
