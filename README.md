@@ -1,9 +1,13 @@
 # ibge-br-mcp
 
+[![npm version](https://img.shields.io/npm/v/ibge-br-mcp.svg)](https://www.npmjs.com/package/ibge-br-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/ibge-br-mcp.svg)](https://www.npmjs.com/package/ibge-br-mcp)
+[![Tests](https://img.shields.io/badge/tests-227%20passed-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
+[![Coverage](https://img.shields.io/badge/coverage-core%2097%25-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
 
 MCP Server for IBGE (Brazilian Institute of Geography and Statistics) APIs.
-
 🇧🇷 [Leia em Português](README.pt-BR.md)
 
 This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to provide access to IBGE's public APIs, enabling AI assistants to query geographic, demographic, and statistical data from Brazil.
@@ -11,6 +15,7 @@ This server implements the [Model Context Protocol (MCP)](https://modelcontextpr
 ## Features
 
 - **23 specialized tools** covering all major IBGE data domains
+- **227 automated tests** with 97%+ core coverage
 - **Automatic caching** with configurable TTL for optimal performance
 - **Retry mechanism** with exponential backoff for network resilience
 - **Comprehensive validation** for all input parameters
@@ -483,6 +488,29 @@ The project includes a comprehensive test suite with 227 tests covering:
 
 ```bash
 npm test
+```
+
+## Quality Assurance
+
+This project maintains high code quality standards:
+
+- **227 automated tests** covering validation, caching, retry logic, formatting, and integrations
+- **97%+ test coverage** on core modules (cache, validation, errors, types)
+- **ESLint** for code linting with zero warnings
+- **Prettier** for consistent code formatting
+- **TypeScript strict mode** for type safety
+- **Automated CI/CD** via GitHub Actions
+
+Run tests locally:
+```bash
+# Run all tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run linter
+npm run lint
 ```
 
 ## License

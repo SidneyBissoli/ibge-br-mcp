@@ -1,5 +1,10 @@
 # ibge-br-mcp
 
+[![npm version](https://img.shields.io/npm/v/ibge-br-mcp.svg)](https://www.npmjs.com/package/ibge-br-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/ibge-br-mcp.svg)](https://www.npmjs.com/package/ibge-br-mcp)
+[![Tests](https://img.shields.io/badge/tests-227%20passed-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
+[![Coverage](https://img.shields.io/badge/coverage-core%2097%25-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
 
 Servidor MCP para APIs do IBGE (Instituto Brasileiro de Geografia e Estatística).
@@ -8,10 +13,11 @@ Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextpr
 
 🇺🇸 [Read in English](README.md)
 
-## Funcionalidades
+## Recursos
 
 - **23 ferramentas especializadas** cobrindo todos os principais domínios de dados do IBGE
-- **Cache automático** com TTL configurável para desempenho otimizado
+- **227 testes automatizados** com 97%+ de cobertura no core
+- **Cache automático** com TTL configurável para performance otimizada
 - **Mecanismo de retry** com backoff exponencial para resiliência de rede
 - **Validação abrangente** para todos os parâmetros de entrada
 - **Tratamento de erros padronizado** com sugestões úteis
@@ -486,6 +492,29 @@ O projeto inclui uma suíte de testes abrangente com 227 testes cobrindo:
 
 ```bash
 npm test
+```
+
+## Garantia de Qualidade
+
+Este projeto mantém altos padrões de qualidade de código:
+
+- **227 testes automatizados** cobrindo validação, cache, retry, formatação e integrações
+- **97%+ de cobertura de testes** nos módulos core (cache, validation, errors, types)
+- **ESLint** para linting de código sem warnings
+- **Prettier** para formatação consistente
+- **TypeScript modo strict** para segurança de tipos
+- **CI/CD automatizado** via GitHub Actions
+
+Execute os testes localmente:
+```bash
+# Rodar todos os testes
+npm test
+
+# Rodar testes com cobertura
+npm run test:coverage
+
+# Rodar linter
+npm run lint
 ```
 
 ## Licença
