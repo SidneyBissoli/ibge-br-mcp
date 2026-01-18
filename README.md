@@ -1,5 +1,7 @@
 # ibge-br-mcp
 
+[![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
+
 MCP Server for IBGE (Brazilian Institute of Geography and Statistics) APIs.
 
 🇧🇷 [Leia em Português](README.pt-BR.md)
