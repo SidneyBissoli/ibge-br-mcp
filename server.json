@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.SidneyBissoli/ibge-br-mcp",
+  "description": "MCP Server for IBGE (Instituto Brasileiro de Geografia e Estatística) APIs - Localidades, SIDRA, Nomes, Notícias, Malhas e Pesquisas",
+  "repository": {
+    "url": "https://github.com/SidneyBissoli/ibge-br-mcp",
+    "source": "github"
+  },
+  "version": "1.9.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "ibge-br-mcp",
+      "version": "1.9.1",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 {
   "name": "ibge-br-mcp",
-  "version": "1.9.0",
+  "version": "1.9.1",
+  "mcpName": "io.github.SidneyBissoli/ibge-br-mcp"
   "description": "MCP Server for IBGE (Instituto Brasileiro de Geografia e Estatística) APIs - Localidades, SIDRA, Nomes, Notícias, Malhas e Pesquisas",
   "type": "module",
   "main": "dist/index.js",

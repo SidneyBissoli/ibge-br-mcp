@@ -27,3 +27,6 @@ coverage/
 # Package manager locks (optional - you may want to keep one)
 # package-lock.json
 # yarn.lock
+
+# MCP Registry
+.mcpregistry_github_token
