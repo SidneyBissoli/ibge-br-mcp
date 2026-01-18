@@ -1,0 +1,502 @@
+# ibge-br-mcp
+
+Servidor MCP para APIs do IBGE (Instituto Brasileiro de Geografia e Estatística).
+
+Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) para fornecer acesso às APIs públicas do IBGE, permitindo que assistentes de IA consultem dados geográficos, demográficos e estatísticos do Brasil.
+
+🇺🇸 [Read in English](README.md)
+
+## Funcionalidades
+
+- **23 ferramentas especializadas** cobrindo todos os principais domínios de dados do IBGE
+- **Cache automático** com TTL configurável para desempenho otimizado
+- **Mecanismo de retry** com backoff exponencial para resiliência de rede
+- **Validação abrangente** para todos os parâmetros de entrada
+- **Tratamento de erros padronizado** com sugestões úteis
+- **Suporte completo a TypeScript** com tipagem estrita
+
+## Ferramentas Disponíveis
+
+### Localidades e Geografia
+| Ferramenta | Descrição |
+|:-----------|:----------|
+| `ibge_estados` | Lista estados brasileiros com filtro por região |
+| `ibge_municipios` | Lista municípios por estado ou busca por nome |
+| `ibge_localidade` | Obtém detalhes de uma localidade pelo código IBGE |
+| `ibge_geocodigo` | Decodifica códigos IBGE ou busca códigos por nome |
+| `ibge_vizinhos` | Encontra municípios vizinhos |
+
+### Dados Estatísticos (SIDRA)
+| Ferramenta | Descrição |
+|:-----------|:----------|
+| `ibge_sidra` | Consulta tabelas SIDRA (Censo, PNAD, PIB, etc.) |
+| `ibge_sidra_tabelas` | Lista e busca tabelas SIDRA disponíveis |
+| `ibge_sidra_metadados` | Obtém metadados de tabelas (variáveis, períodos, níveis) |
+| `ibge_pesquisas` | Lista pesquisas do IBGE e suas tabelas |
+
+### Indicadores Econômicos e Sociais
+| Ferramenta | Descrição |
+|:-----------|:----------|
+| `ibge_indicadores` | Indicadores econômicos e sociais (PIB, IPCA, desemprego) |
+| `ibge_censo` | Dados censitários (1970-2022) com 16 temas |
+| `ibge_comparar` | Compara indicadores entre localidades com rankings |
+
+### Dados Municipais (Cidades@)
+| Ferramenta | Descrição |
+|:-----------|:----------|
+| `ibge_cidades` | Indicadores municipais (população, IDH, PIB per capita, etc.) |
+
+### Dados Internacionais
+| Ferramenta | Descrição |
+|:-----------|:----------|
+| `ibge_paises` | Dados de países seguindo metodologia ONU M49 |
+
+### Demografia
+| Ferramenta | Descrição |
+|:-----------|:----------|
+| `ibge_populacao` | Projeção populacional brasileira em tempo real |
+| `ibge_nomes` | Frequência e rankings de nomes no Brasil |
+
+### Classificações
+| Ferramenta | Descrição |
+|:-----------|:----------|
+| `ibge_cnae` | CNAE (Classificação Nacional de Atividades Econômicas) |
+
+### Mapas e Malhas Geográficas
+| Ferramenta | Descrição |
+|:-----------|:----------|
+| `ibge_malhas` | Malhas geográficas (GeoJSON, TopoJSON, SVG) |
+| `ibge_malhas_tema` | Malhas temáticas (biomas, Amazônia Legal, semiárido) |
+
+### Dados Externos (BCB e Saúde)
+| Ferramenta | Descrição |
+|:-----------|:----------|
+| `bcb` | Dados do Banco Central (SELIC, IPCA, câmbio) |
+| `datasaude` | Indicadores de saúde via IBGE/DataSUS |
+
+### Notícias e Calendário
+| Ferramenta | Descrição |
+|:-----------|:----------|
+| `ibge_noticias` | Notícias e releases do IBGE |
+| `ibge_calendario` | Calendário de divulgações e coletas do IBGE |
+
+## Instalação
+
+### Pré-requisitos
+
+- Node.js 18.x ou superior
+- npm ou yarn
+
+### Via npm (recomendado)
+
+```bash
+npm install -g ibge-br-mcp
+```
+
+### A partir do código-fonte
+
+```bash
+# Clone o repositório
+git clone https://github.com/SidneyBissoli/ibge-br-mcp.git
+cd ibge-br-mcp
+
+# Instale as dependências
+npm install
+
+# Compile o projeto
+npm run build
+```
+
+## Configuração
+
+### Claude Desktop
+
+Adicione ao seu arquivo de configuração do Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "ibge-br-mcp": {
+      "command": "npx",
+      "args": ["ibge-br-mcp"]
+    }
+  }
+}
+```
+
+Ou se instalado a partir do código-fonte:
+
+```json
+{
+  "mcpServers": {
+    "ibge-br-mcp": {
+      "command": "node",
+      "args": ["/caminho/para/ibge-br-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+### Claude Code
+
+```json
+{
+  "mcpServers": {
+    "ibge-br-mcp": {
+      "command": "npx",
+      "args": ["ibge-br-mcp"]
+    }
+  }
+}
+```
+
+## Exemplos de Uso das Ferramentas
+
+### ibge_estados
+
+Lista todos os estados brasileiros.
+
+```
+# Listar todos os estados
+ibge_estados
+
+# Estados da região Nordeste
+ibge_estados(regiao="NE")
+
+# Estados ordenados por sigla
+ibge_estados(ordenar="sigla")
+```
+
+### ibge_municipios
+
+Lista municípios brasileiros.
+
+```
+# Municípios do estado de São Paulo
+ibge_municipios(uf="SP")
+
+# Buscar municípios por nome
+ibge_municipios(busca="Campinas")
+
+# Municípios de MG contendo "Belo"
+ibge_municipios(uf="MG", busca="Belo")
+```
+
+### ibge_cidades
+
+Consulta indicadores municipais (similar ao portal Cidades@).
+
+```
+# Panorama de São Paulo
+ibge_cidades(tipo="panorama", municipio="3550308")
+
+# Histórico populacional
+ibge_cidades(tipo="historico", municipio="3550308", indicador="populacao")
+
+# Listar pesquisas disponíveis
+ibge_cidades(tipo="pesquisas")
+```
+
+**Indicadores disponíveis:** populacao, area, densidade, pib_per_capita, idh, escolarizacao, mortalidade, salario_medio, receitas, despesas
+
+### ibge_paises
+
+Consulta dados internacionais de países.
+
+```
+# Listar todos os países
+ibge_paises(tipo="listar")
+
+# Detalhes do Brasil
+ibge_paises(tipo="detalhes", pais="BR")
+
+# Buscar países
+ibge_paises(tipo="buscar", busca="Argentina")
+
+# Países das Américas
+ibge_paises(tipo="listar", regiao="americas")
+```
+
+**Regiões:** americas, europa, africa, asia, oceania
+
+### ibge_sidra
+
+Consulta tabelas SIDRA (Sistema IBGE de Recuperação Automática).
+
+```
+# População do Brasil em 2023
+ibge_sidra(tabela="6579", periodos="2023")
+
+# População por estado
+ibge_sidra(tabela="6579", nivel_territorial="3", periodos="2023")
+
+# Censo 2022 para o município de São Paulo
+ibge_sidra(tabela="9514", nivel_territorial="6", localidades="3550308")
+```
+
+**Tabelas comuns:**
+| Código | Descrição |
+|-------:|:----------|
+| 6579 | Estimativas populacionais (anual) |
+| 9514 | População Censo 2022 |
+| 4714 | Taxa de desemprego (PNAD) |
+| 6706 | PIB a preços correntes |
+
+**Níveis territoriais:**
+| Código | Nível |
+|-------:|:------|
+| 1 | Brasil |
+| 2 | Região (Norte, Nordeste, etc.) |
+| 3 | Estado (UF) |
+| 6 | Município |
+| 7 | Região Metropolitana |
+| 106 | Região de Saúde |
+| 127 | Amazônia Legal |
+| 128 | Semiárido |
+
+### ibge_censo
+
+Consulta dados censitários (1970-2022).
+
+```
+# População Censo 2022
+ibge_censo(ano="2022", tema="populacao")
+
+# Série histórica de população
+ibge_censo(ano="todos", tema="populacao")
+
+# Alfabetização por estado em 2010
+ibge_censo(ano="2010", tema="alfabetizacao", nivel_territorial="3")
+```
+
+**Temas disponíveis:** populacao, alfabetizacao, domicilios, idade_sexo, religiao, cor_raca, rendimento, migracao, educacao, trabalho
+
+### ibge_indicadores
+
+Consulta indicadores econômicos e sociais.
+
+```
+# PIB
+ibge_indicadores(indicador="pib")
+
+# IPCA últimos 12 meses
+ibge_indicadores(indicador="ipca", periodos="last 12")
+
+# Desemprego por estado
+ibge_indicadores(indicador="desemprego", nivel_territorial="3")
+
+# Listar todos os indicadores
+ibge_indicadores(indicador="listar")
+```
+
+**Indicadores disponíveis:**
+| Categoria | Indicadores |
+|:----------|:------------|
+| Econômicos | pib, pib_variacao, pib_per_capita, industria, comercio, servicos |
+| Preços | ipca, ipca_acumulado, inpc |
+| Trabalho | desemprego, ocupacao, rendimento, informalidade |
+| População | populacao, densidade |
+| Agropecuária | agricultura, pecuaria |
+
+### ibge_nomes
+
+Consulta frequência e rankings de nomes.
+
+```
+# Frequência de "Maria"
+ibge_nomes(tipo="frequencia", nomes="Maria")
+
+# Comparar nomes
+ibge_nomes(tipo="frequencia", nomes="João,José,Pedro")
+
+# Ranking de nomes nos anos 2000
+ibge_nomes(tipo="ranking", decada=2000)
+
+# Ranking de nomes femininos
+ibge_nomes(tipo="ranking", sexo="F")
+```
+
+### ibge_malhas
+
+Obtém malhas geográficas (mapas).
+
+```
+# Brasil com estados
+ibge_malhas(localidade="BR", resolucao="2")
+
+# São Paulo com municípios
+ibge_malhas(localidade="SP", resolucao="5")
+
+# Município específico
+ibge_malhas(localidade="3550308")
+
+# Formato SVG
+ibge_malhas(localidade="BR", formato="svg")
+```
+
+**Níveis de resolução:**
+| Valor | Divisões Internas |
+|:-----:|:------------------|
+| 0 | Sem divisões (apenas contorno) |
+| 2 | Estados |
+| 5 | Municípios |
+
+### bcb
+
+Consulta dados do Banco Central do Brasil.
+
+```
+# SELIC últimos 12 meses
+bcb(indicador="selic", ultimos=12)
+
+# IPCA de 2023
+bcb(indicador="ipca", dataInicio="01/01/2023", dataFim="31/12/2023")
+
+# Cotação do dólar últimos 30 dias
+bcb(indicador="dolar_venda", ultimos=30)
+```
+
+**Indicadores disponíveis:** selic, cdi, tr, ipca, ipca_acum, igpm, inpc, dolar_compra, dolar_venda, euro, desemprego
+
+### datasaude
+
+Consulta indicadores de saúde via IBGE/DataSUS.
+
+```
+# Mortalidade infantil no Brasil
+datasaude(indicador="mortalidade_infantil")
+
+# Expectativa de vida por estado
+datasaude(indicador="esperanca_vida", nivel_territorial="3")
+
+# Listar indicadores
+datasaude(indicador="listar")
+```
+
+**Indicadores disponíveis:** mortalidade_infantil, esperanca_vida, nascidos_vivos, obitos, fecundidade, saneamento_agua, saneamento_esgoto, plano_saude
+
+## APIs Utilizadas
+
+### APIs do IBGE
+
+- **Localidades**: `servicodados.ibge.gov.br/api/v1/localidades`
+- **Nomes**: `servicodados.ibge.gov.br/api/v2/censos/nomes`
+- **Agregados/SIDRA**: `servicodados.ibge.gov.br/api/v3/agregados`
+- **API SIDRA**: `apisidra.ibge.gov.br/values`
+- **Malhas**: `servicodados.ibge.gov.br/api/v3/malhas`
+- **Notícias**: `servicodados.ibge.gov.br/api/v3/noticias`
+- **População**: `servicodados.ibge.gov.br/api/v1/projecoes/populacao`
+- **CNAE**: `servicodados.ibge.gov.br/api/v2/cnae`
+- **Calendário**: `servicodados.ibge.gov.br/api/v3/calendario`
+- **Países**: `servicodados.ibge.gov.br/api/v1/paises`
+- **Pesquisas**: `servicodados.ibge.gov.br/api/v1/pesquisas`
+
+### APIs Externas
+
+- **Banco Central (BCB)**: `api.bcb.gov.br/dados/serie/bcdata.sgs` - Taxas de juros, câmbio, inflação
+
+## Desenvolvimento
+
+```bash
+# Compilar
+npm run build
+
+# Modo watch
+npm run watch
+
+# Executar testes
+npm test
+
+# Executar testes em modo watch
+npm run test:watch
+
+# Executar testes com cobertura
+npm run test:coverage
+
+# Linter
+npm run lint
+
+# Formatar código
+npm run format
+
+# Testar com MCP inspector
+npm run inspector
+```
+
+## Estrutura do Projeto
+
+```
+ibge-br-mcp/
+├── src/
+│   ├── index.ts              # Servidor MCP principal
+│   ├── types.ts              # Tipos TypeScript
+│   ├── config.ts             # Configuração e constantes
+│   ├── cache.ts              # Sistema de cache de requisições
+│   ├── retry.ts              # Retry com backoff exponencial
+│   ├── errors.ts             # Tratamento de erros padronizado
+│   ├── validation.ts         # Helpers de validação de entrada
+│   ├── metrics.ts            # Métricas e logging
+│   ├── utils/
+│   │   └── formatters.ts     # Utilitários de formatação
+│   └── tools/
+│       ├── index.ts          # Exports das ferramentas
+│       ├── estados.ts        # ibge_estados
+│       ├── municipios.ts     # ibge_municipios
+│       ├── localidade.ts     # ibge_localidade
+│       ├── geocodigo.ts      # ibge_geocodigo
+│       ├── censo.ts          # ibge_censo
+│       ├── populacao.ts      # ibge_populacao
+│       ├── sidra.ts          # ibge_sidra
+│       ├── sidra-tabelas.ts  # ibge_sidra_tabelas
+│       ├── sidra-metadados.ts# ibge_sidra_metadados
+│       ├── indicadores.ts    # ibge_indicadores
+│       ├── cnae.ts           # ibge_cnae
+│       ├── calendario.ts     # ibge_calendario
+│       ├── comparar.ts       # ibge_comparar
+│       ├── malhas.ts         # ibge_malhas
+│       ├── malhas-tema.ts    # ibge_malhas_tema
+│       ├── vizinhos.ts       # ibge_vizinhos
+│       ├── bcb.ts            # bcb
+│       ├── datasaude.ts      # datasaude
+│       ├── pesquisas.ts      # ibge_pesquisas
+│       ├── nomes.ts          # ibge_nomes
+│       ├── noticias.ts       # ibge_noticias
+│       ├── paises.ts         # ibge_paises
+│       └── cidades.ts        # ibge_cidades
+├── tests/                    # Arquivos de teste
+├── dist/                     # Arquivos compilados
+├── package.json
+├── tsconfig.json
+├── vitest.config.ts
+└── README.md
+```
+
+## Testes
+
+O projeto inclui uma suíte de testes abrangente com 227 testes cobrindo:
+
+- Funções de validação
+- Mecanismo de retry
+- Utilitários de formatação
+- Tratamento de erros
+- Operações de cache
+- Testes de integração com mocks
+
+```bash
+npm test
+```
+
+## Licença
+
+MIT
+
+## Autor
+
+Sidney Bissoli
+
+## Referências
+
+- [IBGE - Serviço de Dados](https://servicodados.ibge.gov.br/api/docs/)
+- [SIDRA - Sistema IBGE de Recuperação Automática](https://sidra.ibge.gov.br/)
+- [Model Context Protocol](https://modelcontextprotocol.io/)
+- [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)

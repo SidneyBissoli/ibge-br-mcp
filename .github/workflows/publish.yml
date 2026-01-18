@@ -1,0 +1,118 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Dry run (do not publish)"
+        required: false
+        default: "false"
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+      - name: Check package version
+        id: version
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          echo "version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $PACKAGE_VERSION"
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry-run == 'false')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create publish summary
+        run: |
+          echo "## 📦 Package Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** ibge-br-mcp" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** $(node -p "require('./package.json').version")" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** https://www.npmjs.com/package/ibge-br-mcp" >> $GITHUB_STEP_SUMMARY
+
+  dry-run:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry-run == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Dry run publish
+        run: |
+          echo "## 🧪 Dry Run - Package would be published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** ibge-br-mcp" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** $(node -p "require('./package.json').version")" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Package Contents:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          npm pack --dry-run 2>&1 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

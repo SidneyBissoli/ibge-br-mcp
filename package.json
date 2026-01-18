@@ -1,0 +1,72 @@
+{
+  "name": "ibge-br-mcp",
+  "version": "1.9.0",
+  "description": "MCP Server for IBGE (Instituto Brasileiro de Geografia e Estatística) APIs - Localidades, SIDRA, Nomes, Notícias, Malhas e Pesquisas",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "ibge-br-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "start": "node dist/index.js",
+    "dev": "tsc && node dist/index.js",
+    "inspector": "npx @modelcontextprotocol/inspector dist/index.js",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ibge",
+    "brasil",
+    "brazil",
+    "localidades",
+    "sidra",
+    "nomes",
+    "estados",
+    "municipios",
+    "censo",
+    "populacao",
+    "malhas",
+    "geojson",
+    "pnad",
+    "pib",
+    "pesquisas"
+  ],
+  "author": "Sidney Bissoli",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^4.0.17",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "^3.8.0",
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.53.0",
+    "vitest": "^4.0.17"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SidneyBissoli/ibge-br-mcp"
+  },
+  "homepage": "https://github.com/SidneyBissoli/ibge-br-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/SidneyBissoli/ibge-br-mcp/issues"
+  }
+}
