@@ -22,6 +22,10 @@ This server implements the [Model Context Protocol (MCP)](https://modelcontextpr
 - **Standardized error handling** with helpful suggestions
 - **Full TypeScript support** with strict typing
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/sidneybissoli-ibge-br-mcp).
+
 ## Available Tools
 
 ### Localities & Geography
