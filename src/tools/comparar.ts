@@ -400,31 +400,3 @@ function formatCompararError(
   );
 }
 
-// Tool definition for MCP
-export const compararTool = {
-  name: "ibge_comparar",
-  description: `Compara dados entre localidades (municípios ou UFs).
-
-Indicadores disponíveis:
-- populacao: Estimativa populacional atual
-- populacao_censo: População do Censo 2022
-- pib: PIB per capita
-- area: Área territorial (km²)
-- densidade: Densidade demográfica (hab/km²)
-- alfabetizacao: Taxa de alfabetização
-- domicilios: Número de domicílios
-
-Funcionalidades:
-- Compara até 10 localidades
-- Calcula estatísticas (maior, menor, média)
-- Gera ranking ordenado
-- Aceita municípios ou UFs
-
-Exemplos:
-- Comparar capitais: localidades="3550308,3304557", indicador="populacao"
-- Comparar estados: localidades="35,33,41", indicador="pib"
-- Ranking por área: localidades="3550308,3304557", formato="ranking"
-- Listar indicadores: indicador="listar"`,
-  inputSchema: compararSchema,
-  handler: ibgeComparar,
-};

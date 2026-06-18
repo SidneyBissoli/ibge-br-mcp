@@ -334,28 +334,3 @@ function formatResponse(
   return output;
 }
 
-// Tool definition
-export const bcbTool = {
-  name: "bcb",
-  description: `Consulta dados do Banco Central do Brasil (BCB) - taxas de juros, câmbio, inflação.
-
-Indicadores disponíveis:
-- selic: Taxa SELIC
-- ipca/ipca_acum: Inflação IPCA
-- igpm/inpc: Outros índices de preços
-- dolar_compra/dolar_venda: Câmbio dólar
-- euro: Câmbio euro
-- desemprego: Taxa de desemprego
-- divida_pib: Dívida pública/PIB
-- cdi/tr: Outras taxas
-- listar: Lista todos os indicadores
-
-Também aceita códigos numéricos do Sistema SGS do BCB.
-
-Exemplos:
-- SELIC últimos 12 meses: indicador="selic", ultimos=12
-- IPCA de 2023: indicador="ipca", dataInicio="01/01/2023", dataFim="31/12/2023"
-- Dólar recente: indicador="dolar_venda", ultimos=30`,
-  inputSchema: bcbSchema,
-  handler: ibgeBcb,
-};

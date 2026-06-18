@@ -139,26 +139,3 @@ function formatNoticia(noticia: Noticia): string {
   return output;
 }
 
-// Tool definition for MCP
-export const noticiasTool = {
-  name: "ibge_noticias",
-  description: `Busca notícias e releases do IBGE.
-
-Funcionalidades:
-- Lista as últimas notícias e releases do IBGE
-- Busca por termo específico
-- Filtra por período (data inicial e final)
-- Filtra por tipo (release ou notícia)
-- Filtra notícias em destaque
-- Suporta paginação
-
-Exemplos de uso:
-- Últimas 10 notícias: (sem parâmetros)
-- Buscar sobre censo: busca="censo"
-- Notícias de 2024: de="01-01-2024", ate="12-31-2024"
-- Apenas releases: tipo="release"
-- Apenas destaques: destaque=true
-- Segunda página: pagina=2`,
-  inputSchema: noticiasSchema,
-  handler: ibgeNoticias,
-};

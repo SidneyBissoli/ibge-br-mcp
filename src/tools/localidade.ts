@@ -196,21 +196,3 @@ function formatDistrito(distrito: Distrito): string {
   return output;
 }
 
-// Tool definition for MCP
-export const localidadeTool = {
-  name: "ibge_localidade",
-  description: `Retorna detalhes de uma localidade específica pelo código IBGE.
-
-Funcionalidades:
-- Busca informações de estados (código de 2 dígitos)
-- Busca informações de municípios (código de 7 dígitos)
-- Busca informações de distritos (código de 9 dígitos)
-- Retorna hierarquia completa (região, mesorregião, microrregião)
-
-Exemplo de uso:
-- Detalhes de São Paulo (estado): codigo=35
-- Detalhes de São Paulo (município): codigo=3550308
-- Detalhes de um distrito: codigo=355030805`,
-  inputSchema: localidadeSchema,
-  handler: ibgeLocalidade,
-};

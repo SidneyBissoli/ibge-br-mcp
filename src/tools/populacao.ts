@@ -109,22 +109,3 @@ function formatSeconds(seconds: number): string {
   return `${hours}h ${remainingMinutes}min`;
 }
 
-// Tool definition for MCP
-export const populacaoTool = {
-  name: "ibge_populacao",
-  description: `Retorna a projeção da população brasileira em tempo real.
-
-Funcionalidades:
-- Estimativa da população atual do Brasil
-- Taxa de nascimentos (tempo médio entre nascimentos)
-- Taxa de óbitos (tempo médio entre óbitos)
-- Incremento populacional diário
-
-Fonte: IBGE - Projeção da População do Brasil
-
-Nota: Para dados históricos ou por município, use a ferramenta ibge_sidra com as tabelas:
-- 6579: Estimativas de população
-- 9514: População do Censo 2022`,
-  inputSchema: populacaoSchema,
-  handler: ibgePopulacao,
-};

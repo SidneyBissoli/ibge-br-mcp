@@ -43,14 +43,14 @@ Node >= 18 (uses the global `fetch`). Tests mock `global.fetch` — they never h
 - `utils/formatters.ts` (re-exported via `utils/index.js`) — `createMarkdownTable`, `createKeyValueTable`, `formatNumber`, etc. Output formatting goes through these.
 - `types.ts` — IBGE API response interfaces plus the `IBGE_API` / `BCB_API` endpoint aliases.
 
-**Tools live in `src/tools/`, one file per tool.** Each file exports three things by a consistent convention: a zod schema `xxxSchema`, the async impl `ibgeXxx`, and a `xxxTool` definition object. The canonical small example is `estados.ts`.
+**Tools live in `src/tools/`, one file per tool.** Each file exports a zod schema `xxxSchema` and the async impl `ibgeXxx`. The canonical small example is `estados.ts`.
 
 ## Adding or changing a tool
 
-A single tool's metadata is currently duplicated in **three** places — keep them in sync:
-1. The tool file in `src/tools/` (schema + `ibgeXxx` + `xxxTool`).
-2. `src/tools/index.ts` — re-export the three symbols **and** add an entry to the `tools` array.
-3. `src/index.ts` — a `server.tool(...)` registration block (this is the description the MCP client actually sees, written in **English**; the descriptions inside the tool files are in Portuguese).
+Three edits, but the tool's user-facing description lives in exactly ONE place:
+1. The tool file in `src/tools/` — the Zod schema (`xxxSchema`), the input type, and the async impl (`ibgeXxx`).
+2. `src/tools/index.ts` — re-export the schema and the function.
+3. `src/index.ts` — a `server.tool(...)` registration block. This **English** description is the ONLY description the MCP client sees; put tool-selection / disambiguation guidance here.
 
 Note `SERVER_VERSION` in `src/index.ts` is hardcoded and must be bumped to match `version` in `package.json` (and `server.json`) on release — they drift easily.
 

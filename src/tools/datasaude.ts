@@ -342,28 +342,3 @@ function formatResponse(
   return output;
 }
 
-// Tool definition
-export const datasaudeTool = {
-  name: "datasaude",
-  description: `Consulta indicadores de saúde do Brasil via IBGE/DataSUS.
-
-Indicadores disponíveis:
-- mortalidade_infantil: Taxa de mortalidade infantil
-- esperanca_vida: Esperança de vida ao nascer
-- nascidos_vivos: Nascidos vivos
-- obitos: Óbitos por local
-- obitos_causas: Óbitos por causas (CID-10)
-- fecundidade: Taxa de fecundidade
-- saneamento_agua/saneamento_esgoto: Saneamento básico
-- plano_saude: Cobertura de plano de saúde
-- listar: Lista todos os indicadores
-
-Níveis territoriais: 1=Brasil, 2=Região, 3=UF, 6=Município
-
-Exemplos:
-- Mortalidade infantil: indicador="mortalidade_infantil"
-- Esperança de vida por UF: indicador="esperanca_vida", nivel_territorial="3"
-- Óbitos em SP: indicador="obitos", nivel_territorial="3", localidade="35"`,
-  inputSchema: datasaudeSchema,
-  handler: ibgeDatasaude,
-};

@@ -119,21 +119,3 @@ export async function ibgeMunicipios(input: MunicipiosInput): Promise<string> {
   });
 }
 
-// Tool definition for MCP
-export const municipiosTool = {
-  name: "ibge_municipios",
-  description: `Lista municípios brasileiros do IBGE.
-
-Funcionalidades:
-- Lista municípios de um estado específico (usando a sigla da UF)
-- Lista todos os municípios do Brasil (5.570 municípios)
-- Busca por nome do município
-- Retorna código IBGE de 7 dígitos
-
-Exemplo de uso:
-- Listar municípios de São Paulo: uf="SP"
-- Buscar município por nome: busca="Campinas"
-- Listar municípios de MG que contenham "Belo": uf="MG", busca="Belo"`,
-  inputSchema: municipiosSchema,
-  handler: ibgeMunicipios,
-};

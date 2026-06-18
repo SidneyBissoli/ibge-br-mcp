@@ -98,20 +98,3 @@ function getRegiaoNome(sigla: string): string {
   return nomes[sigla] || sigla;
 }
 
-// Tool definition for MCP
-export const estadosTool = {
-  name: "ibge_estados",
-  description: `Lista todos os estados brasileiros do IBGE.
-
-Funcionalidades:
-- Lista todos os 27 estados (26 estados + DF)
-- Filtra por região (Norte, Nordeste, Sudeste, Sul, Centro-Oeste)
-- Ordena por ID, nome ou sigla
-
-Exemplo de uso:
-- Listar todos os estados
-- Listar estados do Nordeste
-- Listar estados ordenados por sigla`,
-  inputSchema: estadosSchema,
-  handler: ibgeEstados,
-};

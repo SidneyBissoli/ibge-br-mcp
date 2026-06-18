@@ -330,32 +330,3 @@ function formatCnaeDetail(
   return output;
 }
 
-// Tool definition for MCP
-export const cnaeTool = {
-  name: "ibge_cnae",
-  description: `Consulta a CNAE (Classificação Nacional de Atividades Econômicas) do IBGE.
-
-A CNAE é a classificação oficial para identificar atividades econômicas no Brasil.
-
-Estrutura hierárquica:
-- Seção (letra A-U): 21 categorias principais
-- Divisão (2 dígitos): 87 divisões
-- Grupo (3 dígitos): 285 grupos
-- Classe (4-5 dígitos): 673 classes
-- Subclasse (7 dígitos): 1.332 subclasses
-
-Funcionalidades:
-- Busca por código CNAE
-- Busca por descrição da atividade
-- Listagem por nível hierárquico
-- Mostra hierarquia completa
-
-Exemplos:
-- Buscar software: busca="software"
-- Código específico: codigo="6201-5/01"
-- Ver seção: codigo="J"
-- Listar divisões: nivel="divisoes"
-- Ver estrutura: (sem parâmetros)`,
-  inputSchema: cnaeSchema,
-  handler: ibgeCnae,
-};

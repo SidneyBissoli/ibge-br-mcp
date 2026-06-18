@@ -407,32 +407,3 @@ function listAvailableTables(ano?: string): string {
   return output;
 }
 
-// Tool definition for MCP
-export const censoTool = {
-  name: "ibge_censo",
-  description: `Consulta dados dos Censos Demográficos do IBGE (1970-2022).
-
-Ferramenta simplificada para acessar dados censitários sem precisar saber os códigos das tabelas SIDRA.
-
-Anos disponíveis: 1970, 1980, 1991, 2000, 2010, 2022
-
-Temas disponíveis:
-- populacao: População residente por sexo e situação
-- alfabetizacao: Taxa de alfabetização
-- domicilios: Características dos domicílios
-- idade_sexo: Pirâmide etária / grupos de idade
-- religiao: Distribuição por religião
-- cor_raca: Cor ou raça
-- rendimento: Rendimento mensal
-- migracao: Migração
-- educacao: Nível de instrução
-- trabalho: Ocupação e trabalho
-
-Exemplos de uso:
-- População 2022: ano="2022", tema="populacao"
-- Série histórica: ano="todos", tema="populacao"
-- Alfabetização 2010 por UF: ano="2010", tema="alfabetizacao", nivel_territorial="3"
-- Listar tabelas: tema="listar"`,
-  inputSchema: censoSchema,
-  handler: ibgeCenso,
-};

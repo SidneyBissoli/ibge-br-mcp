@@ -269,26 +269,3 @@ async function listarIndicadores(): Promise<string> {
   return output;
 }
 
-// Tool definition for MCP
-export const paisesTool = {
-  name: "ibge_paises",
-  description: `Consulta dados de países e territórios internacionais via IBGE.
-
-Funcionalidades:
-- Lista todos os países (seguindo metodologia M49 da ONU)
-- Detalhes de um país específico (área, línguas, moeda, localização)
-- Busca países por nome
-- Filtra por região/continente
-
-Regiões disponíveis: americas, europa, africa, asia, oceania
-
-Códigos de países: Use ISO-ALPHA-2 (ex: BR, US, AR, PT, JP)
-
-Exemplos:
-- Listar todos: tipo="listar"
-- Detalhes do Brasil: tipo="detalhes", pais="BR"
-- Buscar: tipo="buscar", busca="Argentina"
-- Países da América: tipo="listar", regiao="americas"`,
-  inputSchema: paisesSchema,
-  handler: ibgePaises,
-};

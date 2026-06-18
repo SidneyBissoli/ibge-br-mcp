@@ -242,29 +242,3 @@ export async function ibgeNomes(input: NomesInput): Promise<string> {
   }
 }
 
-// Tool definition for MCP
-export const nomesTool = {
-  name: "ibge_nomes",
-  description: `Consulta frequência e ranking de nomes no Brasil (IBGE).
-
-Funcionalidades:
-1. **Frequência de nomes** (tipo='frequencia'):
-   - Busca a frequência de nascimentos por década
-   - Aceita múltiplos nomes separados por vírgula
-   - Filtra por sexo e localidade
-
-2. **Ranking de nomes** (tipo='ranking'):
-   - Lista os nomes mais populares
-   - Filtra por década, sexo e localidade
-
-Décadas disponíveis: 1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010
-
-Exemplos de uso:
-- Frequência de "Maria": tipo="frequencia", nomes="Maria"
-- Comparar nomes: tipo="frequencia", nomes="João,José,Pedro"
-- Ranking anos 2000: tipo="ranking", decada=2000
-- Nomes femininos mais populares: tipo="ranking", sexo="F"
-- Nomes populares em SP: tipo="ranking", localidade="35"`,
-  inputSchema: nomesSchema,
-  handler: ibgeNomes,
-};

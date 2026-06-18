@@ -155,30 +155,3 @@ function formatTabelasResponse(
   return output;
 }
 
-// Tool definition for MCP
-export const sidraTabelasTool = {
-  name: "ibge_sidra_tabelas",
-  description: `Lista e busca tabelas disponíveis no SIDRA (Sistema IBGE de Recuperação Automática).
-
-Funcionalidades:
-- Lista todas as tabelas (agregados) do SIDRA
-- Busca por termo no nome da tabela
-- Filtra por pesquisa (Censo, PNAD, PIB, etc.)
-- Mostra o código e nome de cada tabela
-
-O SIDRA contém dados de diversas pesquisas:
-- Censo Demográfico
-- PNAD Contínua (emprego, renda)
-- Contas Nacionais (PIB)
-- Pesquisa Industrial
-- Pesquisa Agrícola
-- E muitas outras
-
-Exemplos de uso:
-- Listar tabelas: (sem parâmetros)
-- Buscar tabelas de população: busca="população"
-- Tabelas do Censo: pesquisa="censo"
-- Tabelas de emprego: busca="desocupação"`,
-  inputSchema: sidraTabelasSchema,
-  handler: ibgeSidraTabelas,
-};

@@ -184,30 +184,3 @@ function categorizarPesquisas(pesquisas: PesquisaCompleta[]): Record<string, Pes
   return categorias;
 }
 
-// Tool definition for MCP
-export const pesquisasTool = {
-  name: "ibge_pesquisas",
-  description: `Lista as pesquisas disponíveis no IBGE e suas tabelas.
-
-Funcionalidades:
-- Lista todas as pesquisas do IBGE (Censos, PNAD, PIB, etc.)
-- Busca por nome ou código da pesquisa
-- Mostra detalhes e tabelas de uma pesquisa específica
-- Categoriza pesquisas por tema
-
-Principais pesquisas:
-- **Censos**: Demográfico, Agropecuário, MUNIC
-- **PNAD Contínua**: Trabalho, renda, educação
-- **Contas Nacionais**: PIB, investimentos
-- **Pesquisas Econômicas**: Indústria, Comércio, Serviços
-- **Pesquisas Agropecuárias**: Produção, safras, abate
-- **Índices de Preços**: IPCA, INPC, custos
-
-Exemplos de uso:
-- Listar todas as pesquisas: (sem parâmetros)
-- Buscar pesquisas de população: busca="população"
-- Detalhes da PNAD: detalhes="pnad"
-- Detalhes do Censo: detalhes="CD"`,
-  inputSchema: pesquisasSchema,
-  handler: ibgePesquisas,
-};

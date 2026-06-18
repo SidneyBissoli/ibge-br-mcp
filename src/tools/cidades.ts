@@ -394,25 +394,3 @@ function listarIndicadoresDisponiveis(): string {
   return output;
 }
 
-// Tool definition for MCP
-export const cidadesTool = {
-  name: "ibge_cidades",
-  description: `Consulta indicadores municipais do IBGE (similar ao portal Cidades@).
-
-Funcionalidades:
-- Panorama geral de um município (população, IDH, PIB, etc.)
-- Consulta indicadores específicos
-- Histórico de indicadores ao longo dos anos
-- Lista pesquisas e indicadores disponíveis
-
-Indicadores disponíveis: populacao, area, densidade, pib_per_capita, idh,
-escolarizacao, mortalidade, salario_medio, receitas, despesas
-
-Exemplos:
-- Panorama de São Paulo: tipo="panorama", municipio="3550308"
-- Histórico de população: tipo="historico", municipio="3550308", indicador="populacao"
-- Ver pesquisas: tipo="pesquisas"
-- Detalhes de pesquisa: tipo="pesquisas", pesquisa="33"`,
-  inputSchema: cidadesSchema,
-  handler: ibgeCidades,
-};

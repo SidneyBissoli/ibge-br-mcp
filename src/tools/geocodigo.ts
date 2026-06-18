@@ -415,28 +415,3 @@ ibge_geocodigo(nome="Sudeste")
   return output;
 }
 
-// Tool definition for MCP
-export const geocodigoTool = {
-  name: "ibge_geocodigo",
-  description: `Decodifica códigos IBGE ou busca códigos pelo nome da localidade.
-
-Funcionalidades:
-- Decodifica códigos de região, UF, município ou distrito
-- Busca código IBGE pelo nome
-- Mostra hierarquia geográfica completa
-- Retorna códigos relacionados
-
-Estrutura dos códigos:
-- 1 dígito: Região (1-5)
-- 2 dígitos: UF (11-53)
-- 7 dígitos: Município
-- 9 dígitos: Distrito
-
-Exemplos:
-- Decodificar município: codigo="3550308"
-- Decodificar UF: codigo="35"
-- Buscar por nome: nome="São Paulo"
-- Buscar município em UF: nome="Campinas", uf="SP"`,
-  inputSchema: geocodigoSchema,
-  handler: ibgeGeocodigo,
-};

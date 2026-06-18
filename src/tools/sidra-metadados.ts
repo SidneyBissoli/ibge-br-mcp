@@ -260,26 +260,3 @@ function formatMetadadosResponse(
   return output;
 }
 
-// Tool definition for MCP
-export const sidraMetadadosTool = {
-  name: "ibge_sidra_metadados",
-  description: `Retorna os metadados de uma tabela SIDRA específica.
-
-Funcionalidades:
-- Informações gerais (nome, pesquisa, assunto, periodicidade)
-- Níveis territoriais disponíveis (Brasil, UF, município, etc.)
-- Lista de variáveis com unidades
-- Classificações e categorias de cada variável
-- Períodos disponíveis
-
-Use esta ferramenta para entender a estrutura de uma tabela
-ANTES de consultar os dados com ibge_sidra.
-
-Exemplos de uso:
-- Metadados da tabela de população: tabela="6579"
-- Metadados do Censo 2022: tabela="9514"
-- Metadados da PNAD (desocupação): tabela="4714"
-- Sem períodos: tabela="6579", incluir_periodos=false`,
-  inputSchema: sidraMetadadosSchema,
-  handler: ibgeSidraMetadados,
-};

@@ -201,26 +201,3 @@ function formatCalendarioError(message: string, input: CalendarioInput): string 
   return output;
 }
 
-// Tool definition for MCP
-export const calendarioTool = {
-  name: "ibge_calendario",
-  description: `Consulta o calendário de divulgações e coletas do IBGE.
-
-Funcionalidades:
-- Lista próximas divulgações de pesquisas
-- Filtra por produto (IPCA, PNAD, PIB, etc.)
-- Filtra por período
-- Diferencia divulgações e coletas de campo
-
-Tipos de eventos:
-- **Divulgação**: Publicação de resultados de pesquisas
-- **Coleta**: Período de pesquisa de campo
-
-Exemplos:
-- Próximas divulgações: (sem parâmetros)
-- Divulgações do IPCA: produto="IPCA"
-- Calendário 2024: de="01-01-2024", ate="12-31-2024"
-- Coletas de campo: tipo="coleta"`,
-  inputSchema: calendarioSchema,
-  handler: ibgeCalendario,
-};

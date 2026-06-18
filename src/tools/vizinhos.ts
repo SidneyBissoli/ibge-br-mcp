@@ -312,23 +312,3 @@ function formatNoNeighborsFound(municipioNome: string, municipioId: string): str
   return output;
 }
 
-// Tool definition
-export const vizinhosTool = {
-  name: "ibge_vizinhos",
-  description: `Busca municípios próximos/vizinhos de um município.
-
-Parâmetros:
-- municipio: Código IBGE (7 dígitos) ou nome do município
-- uf: Sigla do estado (obrigatório se usar nome)
-- incluir_dados: Se true, inclui população dos vizinhos
-
-Nota: A busca retorna municípios da mesma mesorregião como aproximação de vizinhança.
-Para vizinhança espacial exata seria necessário processamento de malhas geográficas.
-
-Exemplos:
-- Por código: municipio="3550308"
-- Por nome: municipio="Campinas", uf="SP"
-- Com dados: municipio="3550308", incluir_dados=true`,
-  inputSchema: vizinhosSchema,
-  handler: ibgeVizinhos,
-};

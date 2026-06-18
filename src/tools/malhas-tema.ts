@@ -316,26 +316,3 @@ interface GeoJSONFeatureCollection {
 
 type GeoJSONData = GeoJSONFeature | GeoJSONFeatureCollection;
 
-// Tool definition
-export const malhasTemaTool = {
-  name: "ibge_malhas_tema",
-  description: `Obtém malhas geográficas temáticas do IBGE.
-
-Temas disponíveis:
-- biomas: Biomas brasileiros (Amazônia, Cerrado, Mata Atlântica, Caatinga, Pampa, Pantanal)
-- amazonia_legal: Área da Amazônia Legal
-- semiarido: Região do semiárido brasileiro
-- costeiro: Zona costeira
-- fronteira: Faixa de fronteira
-- metropolitana: Regiões metropolitanas
-- ride: Regiões Integradas de Desenvolvimento
-
-Exemplos:
-- Todos os biomas: tema="biomas"
-- Bioma Amazônia: tema="biomas", codigo="1"
-- Amazônia Legal: tema="amazonia_legal"
-- Regiões metropolitanas: tema="metropolitana"
-- Listar temas: tema="listar"`,
-  inputSchema: malhasTemaSchema,
-  handler: ibgeMalhasTema,
-};
