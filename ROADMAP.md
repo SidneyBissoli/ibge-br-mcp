@@ -50,6 +50,14 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 - [ ] Normalizar entrada de localidade (sigla, nome ou código intercambiáveis)
 - [ ] Padronizar nomenclatura de níveis territoriais
 
+> Notas de descoberta (do trabalho do 1.1):
+> - **Datas divergem hoje:** `bcb` usa `dd/mm/yyyy`; `ibge_noticias` e
+>   `ibge_calendario` usam `dd-mm-yyyy` (verificar também o exemplo do README
+>   que parecia `mm-dd-yyyy`). Escolher um formato canônico e aceitar os demais.
+> - **Localidade:** já existe `normalizeUf` em `src/validation.ts`, mas a
+>   intercambialidade sigla/nome/código não é uniforme entre as tools — partir
+>   daí para um helper único de resolução de localidade.
+
 ### 1.4 Erros que ensinam
 - [ ] Mensagens de erro que sugerem a correção e a tool correta
 - [ ] Mensagens claras para "combinação sem dado" (vs. falha real)
