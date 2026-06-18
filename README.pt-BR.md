@@ -88,6 +88,49 @@ Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextpr
 | `ibge_noticias` | Notícias e releases do IBGE |
 | `ibge_calendario` | Calendário de divulgações e coletas do IBGE |
 
+## Qual ferramenta usar?
+
+Com 23 ferramentas, várias podem tocar no mesmo assunto. Guia rápido para as sobreposições comuns:
+
+### População e demografia
+
+| Você quer… | Use |
+|:-----------|:----|
+| População do Brasil agora (tempo real) | `ibge_populacao` |
+| Painel de um único município/UF (população, IDH, PIB…) | `ibge_cidades` |
+| Dados censitários ou série histórica (1970–2022) | `ibge_censo` |
+| Ranquear/comparar 2–10 localidades num indicador | `ibge_comparar` |
+| Série temporal de indicador macro (PIB, IPCA, desemprego…) | `ibge_indicadores` |
+| Uma tabela SIDRA específica / controle fino | `ibge_sidra` |
+
+### Indicadores econômicos
+
+| Você quer… | Use |
+|:-----------|:----|
+| IPCA, INPC, PIB, desemprego (IBGE, fonte primária) | `ibge_indicadores` |
+| SELIC, CDI, TR, câmbio dólar/euro | `bcb` |
+
+### Localidades e códigos
+
+| Você quer… | Use |
+|:-----------|:----|
+| Listar/buscar municípios | `ibge_municipios` |
+| Listar estados | `ibge_estados` |
+| Resolver nome→código em qualquer nível, ou decodificar a estrutura de um código | `ibge_geocodigo` |
+| Ficha completa de uma localidade da qual você já tem o código | `ibge_localidade` |
+| Municípios vizinhos | `ibge_vizinhos` |
+
+### Fluxo SIDRA
+
+Descobrir → inspecionar → consultar: `ibge_pesquisas` / `ibge_sidra_tabelas` (achar a tabela) → `ibge_sidra_metadados` (sua estrutura) → `ibge_sidra` (consultar). Para dados comuns, os atalhos acima (`ibge_censo`, `ibge_indicadores`, `ibge_comparar`, `ibge_cidades`) costumam ser mais fáceis.
+
+### Mapas (malhas)
+
+| Você quer… | Use |
+|:-----------|:----|
+| Contornos administrativos (Brasil/região/UF/município) | `ibge_malhas` |
+| Áreas temáticas (biomas, Amazônia Legal, semiárido, regiões metropolitanas) | `ibge_malhas_tema` |
+
 ## Instalação
 
 ### Pré-requisitos

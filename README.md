@@ -87,6 +87,49 @@ This server implements the [Model Context Protocol (MCP)](https://modelcontextpr
 | `ibge_noticias` | IBGE news and press releases |
 | `ibge_calendario` | IBGE release and collection calendar |
 
+## Which tool should I use?
+
+With 23 tools, several can touch the same topic. Quick guide for the common overlaps:
+
+### Population & demographics
+
+| You want… | Use |
+|:----------|:----|
+| Brazil's population right now (real-time) | `ibge_populacao` |
+| A single municipality/state panel (population, HDI, GDP…) | `ibge_cidades` |
+| Census data or historical series (1970–2022) | `ibge_censo` |
+| Rank/compare 2–10 localities on one indicator | `ibge_comparar` |
+| A macro indicator time series (GDP, IPCA, unemployment…) | `ibge_indicadores` |
+| A specific SIDRA table / fine control | `ibge_sidra` |
+
+### Economic indicators
+
+| You want… | Use |
+|:----------|:----|
+| IPCA, INPC, GDP, unemployment (IBGE, primary source) | `ibge_indicadores` |
+| SELIC, CDI, TR, dollar/euro exchange rates | `bcb` |
+
+### Localities & codes
+
+| You want… | Use |
+|:----------|:----|
+| List/search municipalities | `ibge_municipios` |
+| List states | `ibge_estados` |
+| Resolve a name→code at any level, or decode a code's structure | `ibge_geocodigo` |
+| Full record of one locality you already have the code for | `ibge_localidade` |
+| Neighboring municipalities | `ibge_vizinhos` |
+
+### SIDRA workflow
+
+Discover → inspect → query: `ibge_pesquisas` / `ibge_sidra_tabelas` (find a table) → `ibge_sidra_metadados` (its structure) → `ibge_sidra` (query). For common data, the wrappers above (`ibge_censo`, `ibge_indicadores`, `ibge_comparar`, `ibge_cidades`) are usually easier.
+
+### Maps (meshes)
+
+| You want… | Use |
+|:----------|:----|
+| Administrative outlines (Brazil/region/state/municipality) | `ibge_malhas` |
+| Thematic areas (biomes, Legal Amazon, semi-arid, metro regions) | `ibge_malhas_tema` |
+
 ## Installation
 
 ### Prerequisites

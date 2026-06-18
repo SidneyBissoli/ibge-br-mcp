@@ -90,7 +90,11 @@ Features:
 Examples:
 - List all states: (no parameters)
 - Northeast states: regiao="NE"
-- Sorted by abbreviation: ordenar="sigla"`,
+- Sorted by abbreviation: ordenar="sigla"
+
+Use a different tool when:
+- Municipalities of a state → ibge_municipios
+- Details/hierarchy of one locality by code → ibge_localidade`,
     estadosSchema.shape,
     async (args) => {
       const result = await ibgeEstados(args);
@@ -112,7 +116,12 @@ Features:
 Examples:
 - São Paulo municipalities: uf="SP"
 - Search by name: busca="Campinas"
-- MG municipalities containing "Belo": uf="MG", busca="Belo"`,
+- MG municipalities containing "Belo": uf="MG", busca="Belo"
+
+Use a different tool when:
+- Resolve/decode a code at any level (region, state, district), not just municipalities → ibge_geocodigo
+- Full details/hierarchy of one locality by code → ibge_localidade
+- Neighboring municipalities → ibge_vizinhos`,
     municipiosSchema.shape,
     async (args) => {
       const result = await ibgeMunicipios(args);
@@ -134,7 +143,12 @@ Features:
 Examples:
 - São Paulo state: codigo=35
 - São Paulo city: codigo=3550308
-- District: codigo=355030805`,
+- District: codigo=355030805
+
+This tool returns the full record of ONE locality you already have the code for.
+Use a different tool when:
+- You have a name and need the code → ibge_municipios (municipalities) or ibge_geocodigo (any level)
+- You want to decompose/understand a code's structure → ibge_geocodigo`,
     localidadeSchema.shape,
     async (args) => {
       const result = await ibgeLocalidade(args);
@@ -155,9 +169,14 @@ Features:
 
 Source: IBGE - Brazilian Population Projection
 
-Note: For historical data or by municipality, use ibge_sidra with tables:
-- 6579: Population estimates
-- 9514: Census 2022 population`,
+This tool ONLY returns Brazil's real-time national projection.
+
+Use a different tool when:
+- Population of a specific municipality/state → ibge_cidades (panorama)
+- Census or historical population → ibge_censo
+- Comparing/ranking multiple localities → ibge_comparar
+- Population time series → ibge_indicadores
+- An arbitrary SIDRA table → ibge_sidra`,
     populacaoSchema.shape,
     async (args) => {
       const result = await ibgePopulacao(args);
@@ -191,7 +210,14 @@ Territorial levels:
 Examples:
 - Brazil population 2023: tabela="6579", periodos="2023"
 - Population by state: tabela="6579", nivel_territorial="3"
-- Census 2022 by municipality: tabela="9514", nivel_territorial="6", localidades="3550308"`,
+- Census 2022 by municipality: tabela="9514", nivel_territorial="6", localidades="3550308"
+
+ibge_sidra is the low-level engine. Prefer a friendlier wrapper when it fits:
+- Census themes (1970–2022) → ibge_censo
+- Economic/social time series → ibge_indicadores
+- Rank/compare 2–10 localities → ibge_comparar
+- One municipality's panel → ibge_cidades
+Use ibge_sidra_tabelas and ibge_sidra_metadados to find a table code and its structure before querying.`,
     sidraSchema.shape,
     async (args) => {
       const result = await ibgeSidra(args);
@@ -245,7 +271,10 @@ Examples:
 - Latest 10 news: (no parameters)
 - Search census: busca="censo"
 - 2024 news: de="01-01-2024", ate="12-31-2024"
-- Releases only: tipo="release"`,
+- Releases only: tipo="release"
+
+Use a different tool when:
+- Scheduled/upcoming release dates (not published news) → ibge_calendario`,
     noticiasSchema.shape,
     async (args) => {
       const result = await ibgeNoticias(args);
@@ -274,7 +303,10 @@ SIDRA contains data from various surveys:
 Examples:
 - List tables: (no parameters)
 - Search population tables: busca="população"
-- Census tables: pesquisa="censo"`,
+- Census tables: pesquisa="censo"
+
+This is step 1 of the SIDRA workflow: find a table code → ibge_sidra_metadados (structure) → ibge_sidra (query).
+For common data, a wrapper is usually easier: ibge_censo, ibge_indicadores, ibge_comparar, ibge_cidades.`,
     sidraTabelasSchema.shape,
     async (args) => {
       const result = await ibgeSidraTabelas(args);
@@ -299,7 +331,9 @@ Use this tool to understand table structure BEFORE querying data with ibge_sidra
 Examples:
 - Population table metadata: tabela="6579"
 - Census 2022 metadata: tabela="9514"
-- PNAD unemployment: tabela="4714"`,
+- PNAD unemployment: tabela="4714"
+
+Use this after finding a table code (ibge_sidra_tabelas) and before querying with ibge_sidra.`,
     sidraMetadadosSchema.shape,
     async (args) => {
       const result = await ibgeSidraMetadados(args);
@@ -332,7 +366,10 @@ Resolution (internal divisions):
 Examples:
 - Brazil with states: localidade="BR", resolucao="2"
 - São Paulo with municipalities: localidade="SP", resolucao="5"
-- SVG format: localidade="BR", formato="svg"`,
+- SVG format: localidade="BR", formato="svg"
+
+Use a different tool when:
+- Thematic meshes (biomes, Legal Amazon, semi-arid, metropolitan regions) → ibge_malhas_tema`,
     malhasSchema.shape,
     async (args) => {
       const result = await ibgeMalhas(args);
@@ -361,7 +398,9 @@ Main surveys:
 Examples:
 - List all: (no parameters)
 - Search population: busca="população"
-- PNAD details: detalhes="pnad"`,
+- PNAD details: detalhes="pnad"
+
+This lists surveys, not data. To find table codes use ibge_sidra_tabelas; to query data use ibge_sidra (or a wrapper: ibge_censo, ibge_indicadores, ibge_comparar, ibge_cidades).`,
     pesquisasSchema.shape,
     async (args) => {
       const result = await ibgePesquisas(args);
@@ -393,7 +432,13 @@ Examples:
 - Population 2022: ano="2022", tema="populacao"
 - Historical series: ano="todos", tema="populacao"
 - Literacy 2010 by state: ano="2010", tema="alfabetizacao", nivel_territorial="3"
-- List tables: tema="listar"`,
+- List tables: tema="listar"
+
+Use a different tool when:
+- Current real-time Brazil population → ibge_populacao
+- One municipality's current panel (estimate, HDI, GDP) → ibge_cidades
+- Comparing/ranking localities → ibge_comparar
+- An arbitrary SIDRA table → ibge_sidra`,
     censoSchema.shape,
     async (args) => {
       const result = await ibgeCenso(args);
@@ -435,7 +480,14 @@ Examples:
 - GDP: indicador="pib"
 - IPCA last 12 months: indicador="ipca", periodos="last 12"
 - Unemployment by state: indicador="desemprego", nivel_territorial="3"
-- List indicators: indicador="listar"`,
+- List indicators: indicador="listar"
+
+Use a different tool when:
+- Interest/exchange rates (SELIC, dollar, euro, CDI, TR) → bcb
+- Comparing/ranking localities → ibge_comparar
+- Census themes → ibge_censo
+- One municipality's panel → ibge_cidades
+Note: IPCA/INPC here come from IBGE (primary source); bcb also exposes them via the Central Bank's SGS.`,
     indicadoresSchema.shape,
     async (args) => {
       const result = await ibgeIndicadores(args);
@@ -496,7 +548,12 @@ Examples:
 - Decode municipality: codigo="3550308"
 - Decode state: codigo="35"
 - Search by name: nome="São Paulo"
-- Municipality in state: nome="Campinas", uf="SP"`,
+- Municipality in state: nome="Campinas", uf="SP"
+
+This tool decodes a code's structure and resolves name→code at any level.
+Use a different tool when:
+- You only need to list/search municipalities → ibge_municipios
+- You want the full detailed record of one locality → ibge_localidade`,
     geocodigoSchema.shape,
     async (args) => {
       const result = await ibgeGeocodigo(args);
@@ -523,7 +580,10 @@ Examples:
 - Upcoming releases: (no parameters)
 - IPCA releases: produto="IPCA"
 - 2024 calendar: de="01-01-2024", ate="12-31-2024"
-- Field collections: tipo="coleta"`,
+- Field collections: tipo="coleta"
+
+Use a different tool when:
+- Already-published news and releases → ibge_noticias`,
     calendarioSchema.shape,
     async (args) => {
       const result = await ibgeCalendario(args);
@@ -555,7 +615,10 @@ Examples:
 - Compare capitals: localidades="3550308,3304557,4106902", indicador="populacao"
 - Compare states: localidades="35,33,41", indicador="pib"
 - Area ranking: localidades="3550308,3304557", formato="ranking"
-- List indicators: indicador="listar"`,
+- List indicators: indicador="listar"
+
+Use this tool ONLY to rank/compare 2–10 localities on one indicator.
+For a single locality, use ibge_cidades (municipal panel), ibge_censo, or ibge_sidra.`,
     compararSchema.shape,
     async (args) => {
       const result = await ibgeComparar(args);
@@ -591,7 +654,10 @@ Examples:
 - Legal Amazon: tema="amazonia_legal"
 - Metropolitan regions: tema="metropolitana"
 - With municipalities: tema="biomas", resolucao="5"
-- List themes: tema="listar"`,
+- List themes: tema="listar"
+
+Use a different tool when:
+- Administrative meshes (Brazil/region/state/municipality outlines) → ibge_malhas`,
     malhasTemaSchema.shape,
     async (args) => {
       const result = await ibgeMalhasTema(args);
@@ -615,7 +681,10 @@ For exact spatial neighborhood, mesh processing would be required.
 Examples:
 - By code: municipio="3550308"
 - By name: municipio="Campinas", uf="SP"
-- With population: municipio="3550308", incluir_dados=true`,
+- With population: municipio="3550308", incluir_dados=true
+
+Note: proximity is approximated by shared mesoregion (not exact spatial adjacency).
+For listing/searching municipalities, use ibge_municipios.`,
     vizinhosSchema.shape,
     async (args) => {
       const result = await ibgeVizinhos(args);
@@ -654,7 +723,12 @@ Examples:
 - SELIC last 12 months: indicador="selic", ultimos=12
 - IPCA for 2023: indicador="ipca", dataInicio="01/01/2023", dataFim="31/12/2023"
 - Recent dollar: indicador="dolar_venda", ultimos=30
-- List indicators: indicador="listar"`,
+- List indicators: indicador="listar"
+
+Use a different tool when:
+- IPCA/INPC from the primary source (IBGE) → ibge_indicadores
+- Locality-level economic/social indicators → ibge_indicadores or ibge_comparar
+bcb is the right tool for interest rates (SELIC, CDI, TR) and exchange rates (dollar, euro), which IBGE does not provide.`,
     bcbSchema.shape,
     async (args) => {
       const result = await ibgeBcb(args);
@@ -691,7 +765,11 @@ Examples:
 - Infant mortality: indicador="mortalidade_infantil"
 - Life expectancy by state: indicador="esperanca_vida", nivel_territorial="3"
 - Deaths in SP: indicador="obitos", nivel_territorial="3", localidade="35"
-- List indicators: indicador="listar"`,
+- List indicators: indicador="listar"
+
+Use a different tool when:
+- A single municipality's general panel (which also includes infant mortality) → ibge_cidades
+- Population/demographic counts (not health-specific) → ibge_censo or ibge_sidra`,
     datasaudeSchema.shape,
     async (args) => {
       const result = await ibgeDatasaude(args);
@@ -745,7 +823,14 @@ Examples:
 - São Paulo overview: tipo="panorama", municipio="3550308"
 - Population history: tipo="historico", municipio="3550308", indicador="populacao"
 - View surveys: tipo="pesquisas"
-- Available indicators: tipo="indicador"`,
+- Available indicators: tipo="indicador"
+
+This tool is the panel for a SINGLE municipality (Cidades@).
+Use a different tool when:
+- Real-time Brazil population → ibge_populacao
+- Census themes / historical series → ibge_censo
+- Comparing multiple municipalities → ibge_comparar
+- A macro indicator time series → ibge_indicadores`,
     cidadesSchema.shape,
     async (args) => {
       const result = await ibgeCidades(args);
