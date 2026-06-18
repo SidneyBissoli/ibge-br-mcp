@@ -29,12 +29,16 @@ manchete aproximada.
 O objetivo é que um agente acerte a tool certa, com os parâmetros certos, e
 receba uma resposta que ele consiga usar sem desperdiçar contexto.
 
-### 1.1 Desambiguação e consolidação de tools
-- [ ] Mapear sobreposições (ex.: população é atendida por 6 tools) e definir,
+### 1.1 Desambiguação e consolidação de tools ✅
+- [x] Mapear sobreposições (população é atendida por 6 tools) e definir,
       para cada intenção, a tool canônica
-- [ ] Reescrever descrições para deixar claro *quando NÃO usar* cada tool e
-      apontar a alternativa correta
-- [ ] Avaliar fundir/aposentar tools redundantes ou de baixo diferencial
+- [x] Reescrever descrições com bloco "use a different tool when" nos clusters
+      população, econômico, localidades, fluxo SIDRA e malhas
+- [x] Avaliar fundir/aposentar tools — decisão: **desambiguar sem fundir**
+      (reversível, não quebra a superfície publicada)
+- [x] Mapa canônico publicado no README ("Qual ferramenta usar?" / EN+PT)
+- [x] Bônus: removida a duplicação morta de descrições (array `tools` +
+      objetos `xxxTool`) → fonte única em `src/index.ts`
 
 ### 1.2 Saída estruturada e compacta
 - [ ] Adicionar `outputSchema` + `structuredContent` (JSON tipado) às tools de dado
