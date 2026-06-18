@@ -58,7 +58,7 @@ import {
 
 // Server metadata
 const SERVER_NAME = "ibge-br-mcp";
-const SERVER_VERSION = "1.9.0";
+const SERVER_VERSION = "1.9.2";
 
 /**
  * IBGE MCP Server
