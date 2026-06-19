@@ -7,7 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-06-19
+
+This release completes **Phase 1 (usability)** of the roadmap: structured
+output, parameter consistency, reliability, errors that teach, and the MCP
+protocol capabilities (resources, prompts, read-only annotations).
+
 ### Added
+- **MCP resources** (roadmap item 1.6): five reference catalogs exposed as
+  readable `ibge://catalogos/*` resources — `ufs`, `regioes`,
+  `niveis-territoriais`, `tabelas-sidra`, `biomas` — returning JSON derived from
+  `config.ts` (single source of truth). Lets an agent read the lookup tables it
+  needs (UF/region codes, SIDRA territorial levels & table codes, biomes)
+  without guessing a code or spending a tool round-trip. Lives in
+  `src/resources.ts`.
+- **MCP prompts** (roadmap item 1.6): three ready-made analysis templates —
+  `comparar-municipios`, `perfil-demografico` and `cruzar-ibge-bcb` — that steer
+  the model through chaining the right tools, with zod-validated arguments.
+  Lives in `src/prompts.ts`.
+- **Read-only tool annotations** (roadmap item 1.6): all 23 tools now declare
+  `readOnlyHint`/`idempotentHint`/`openWorldHint` (and `destructiveHint: false`)
+  via a shared `READ_ONLY` constant, so MCP clients can auto-approve or badge
+  them as safe. Completes roadmap item 1.6.
+- **Configurable request timeout** (roadmap item 1.4): every upstream request is
+  now bounded by an `AbortController` (default 30s), overridable via the
+  `IBGE_MCP_TIMEOUT_MS` environment variable or per call. A timed-out request is
+  retried and, if it keeps failing, surfaces a clear "Tempo de resposta
+  excedido" message instead of hanging indefinitely.
 - **Structured output** (roadmap item 1.2). Data tools now declare an
   `outputSchema` and return a typed `structuredContent` payload alongside the
   Markdown text, so agents can consume data without parsing Markdown. Done for
@@ -31,6 +57,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     JSON (was the raw SIDRA array).
 
 ### Changed
+- **Errors that teach the right alternative** (roadmap item 1.4): every tool's
+  error path now points at the related tool(s) to try next (e.g. `bcb` →
+  `ibge_indicadores`, `ibge_municipios` → `ibge_geocodigo`/`ibge_localidade`,
+  `ibge_malhas` ↔ `ibge_malhas_tema`), following the disambiguation map. Tools
+  with no natural sibling (`ibge_cnae`, `ibge_nomes`, `ibge_paises`) are
+  intentionally left without related-tool noise. The "no data vs real failure"
+  split (empty result → `ValidationErrors.emptyResult`; real error →
+  `parseHttpError`) was verified across all tools. Completes roadmap item 1.4.
+- **Server construction extracted** from `index.ts` into a side-effect-free
+  `createServer()` in `src/server.ts`; `index.ts` is now a thin STDIO entry.
+  This makes the full MCP protocol surface testable end-to-end.
 - **Standardized territorial-level (`nivel_territorial`) nomenclature** across
   `ibge_sidra`, `ibge_censo`, `ibge_datasaude` and `ibge_indicadores`. A single
   `territorialLevelHint`/`territorialLevelList` helper in `config.ts` (backed by
@@ -67,6 +104,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `pesquisas`, `vizinhos`, `cidades`, `sidra-metadados`). `cidades`/`paises`
   previously had schema-only tests and now exercise the tool functions. Suite:
   290 → 436 tests, all green.
+- Added end-to-end protocol tests (`tests/server.test.ts`) that drive the real
+  server over an in-memory transport and client: tool annotations, resource
+  listing/reads, and prompt expansion. Plus request-timeout tests
+  (`retry.test.ts`/`errors.test.ts`) and related-tools error tests
+  (`integration.test.ts`). Suite: 436 → 460 tests.
 
 ### Fixed
 - `ibge_censo`, `ibge_datasaude` and `ibge_indicadores` now **validate**

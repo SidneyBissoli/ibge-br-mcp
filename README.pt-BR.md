@@ -2,10 +2,11 @@
 
 [![npm version](https://img.shields.io/npm/v/ibge-br-mcp.svg)](https://www.npmjs.com/package/ibge-br-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/ibge-br-mcp.svg)](https://www.npmjs.com/package/ibge-br-mcp)
-[![Tests](https://img.shields.io/badge/tests-227%20passed-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
+[![Tests](https://img.shields.io/badge/tests-460%20passed-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
 [![Coverage](https://img.shields.io/badge/coverage-core%2097%25-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
+[![ibge-br-mcp MCP server](https://glama.ai/mcp/servers/SidneyBissoli/ibge-br-mcp/badges/score.svg)](https://glama.ai/mcp/servers/SidneyBissoli/ibge-br-mcp)
 
 Servidor MCP para APIs do IBGE (Instituto Brasileiro de Geografia e Estatística).
 
@@ -16,7 +17,8 @@ Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextpr
 ## Recursos
 
 - **23 ferramentas especializadas** cobrindo todos os principais domínios de dados do IBGE
-- **227 testes automatizados** com 97%+ de cobertura no core
+- **Resources de referência & prompts de análise** (catálogos MCP + templates prontos)
+- **460 testes automatizados** com 97%+ de cobertura no core
 - **Cache automático** com TTL configurável para performance otimizada
 - **Mecanismo de retry** com backoff exponencial para resiliência de rede
 - **Validação abrangente** para todos os parâmetros de entrada

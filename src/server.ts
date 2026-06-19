@@ -68,7 +68,7 @@ import { registerPrompts } from "./prompts.js";
 
 // Server metadata
 export const SERVER_NAME = "ibge-br-mcp";
-export const SERVER_VERSION = "1.9.2";
+export const SERVER_VERSION = "1.10.0";
 
 /**
  * Every tool here is a read-only query against a public REST API: it never
