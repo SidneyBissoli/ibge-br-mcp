@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ibgePopulacao, ibgePopulacaoSidra } from "../src/tools/populacao.js";
+import {
+  ibgePopulacao,
+  ibgePopulacaoSidra,
+  populacaoOutputSchema,
+} from "../src/tools/populacao.js";
 import { cache } from "../src/cache.js";
 import { mockResponse } from "./helpers.js";
 
@@ -38,17 +42,22 @@ describe("ibgePopulacao", () => {
 
     const result = await ibgePopulacao({ localidade: "BR" });
 
-    expect(result).toContain("Projeção da População do Brasil");
-    expect(result).toContain("18/06/2026 10:00:00");
-    expect(result).toContain("População Atual");
-    expect(result).toContain("215.300.000");
-    expect(result).toContain("Incremento populacional");
-    expect(result).toContain("5.000");
+    expect(result.markdown).toContain("Projeção da População do Brasil");
+    expect(result.markdown).toContain("18/06/2026 10:00:00");
+    expect(result.markdown).toContain("População Atual");
+    expect(result.markdown).toContain("215.300.000");
+    expect(result.markdown).toContain("Incremento populacional");
+    expect(result.markdown).toContain("5.000");
     // nascimento 20s -> seconds branch
-    expect(result).toContain("20 segundos");
+    expect(result.markdown).toContain("20 segundos");
     // obito 3700s -> 1h 1min branch
-    expect(result).toContain("1h 1min");
-    expect(result).toContain("Fonte: IBGE");
+    expect(result.markdown).toContain("1h 1min");
+    expect(result.markdown).toContain("Fonte: IBGE");
+    // Structured output (1.2)
+    const s = result.structured as Record<string, unknown>;
+    expect(s.populacao).toBe(215300000);
+    expect((s.periodoMedio as Record<string, number>).nascimento).toBe(20);
+    expect(populacaoOutputSchema.safeParse(result.structured).success).toBe(true);
   });
 
   it("calls the populacao endpoint with the localidade", async () => {
@@ -75,8 +84,8 @@ describe("ibgePopulacao", () => {
 
     const result = await ibgePopulacao({ localidade: "BR" });
 
-    expect(result).toContain("2 minutos");
-    expect(result).toContain("2 min 30 seg");
+    expect(result.markdown).toContain("2 minutos");
+    expect(result.markdown).toContain("2 min 30 seg");
   });
 
   it("surfaces an upstream HTTP error", async () => {
@@ -84,7 +93,8 @@ describe("ibgePopulacao", () => {
 
     const result = await ibgePopulacao({ localidade: "BR" });
 
-    expect(result).toContain("Erro");
+    expect(result.isError).toBe(true);
+    expect(result.markdown).toContain("Erro");
   });
 });
 

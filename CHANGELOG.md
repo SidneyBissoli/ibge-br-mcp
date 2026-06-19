@@ -11,8 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Structured output** (roadmap item 1.2). Data tools now declare an
   `outputSchema` and return a typed `structuredContent` payload alongside the
   Markdown text, so agents can consume data without parsing Markdown. Done for
-  `ibge_sidra`, `ibge_censo`, `ibge_indicadores` and `datasaude` (registered via
-  `server.registerTool`). A reusable pattern lives in `src/structured.ts`
+  all seven data tools — `ibge_sidra`, `ibge_censo`, `ibge_indicadores`,
+  `datasaude`, `ibge_populacao`, `ibge_comparar` and `ibge_cidades` (registered
+  via `server.registerTool`). A reusable pattern lives in `src/structured.ts`
   (`StructuredToolResult` + `toMcpResult`, plus a shared `sidraRecords` helper
   that turns a SIDRA response into typed `colunas`/`registros`); the remaining
   data tools can adopt it the same way.

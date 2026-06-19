@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidIbgeCode, formatValidationError } from "../validation.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for the tool input
 export const cidadesSchema = z.object({
@@ -22,6 +23,27 @@ export const cidadesSchema = z.object({
 });
 
 export type CidadesInput = z.infer<typeof cidadesSchema>;
+
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const cidadesOutputSchema = z.object({
+  tipo: z.string().describe("Tipo de consulta (panorama, indicador, pesquisas, historico)"),
+  municipio: z.string().optional().describe("Código IBGE do município"),
+  nome: z.string().optional().describe("Nome do município/indicador"),
+  indicadores: z
+    .array(
+      z.object({
+        nome: z.string(),
+        valor: z.string(),
+        ano: z.string().optional(),
+      })
+    )
+    .describe("Indicadores retornados (vazio para respostas de catálogo)"),
+});
+
+/** Minimal valid payload for catalog/listing responses. */
+function listingPayload(tipo: string): Record<string, unknown> {
+  return { tipo, indicadores: [] };
+}
 
 // Indicadores principais do panorama (usados em cidades.ibge.gov.br)
 const INDICADORES_PANORAMA: Record<string, { id: number; pesquisa: string; nome: string }> = {
@@ -55,17 +77,20 @@ const PESQUISAS_PRINCIPAIS = [
 /**
  * Consulta indicadores municipais via API de Pesquisas do IBGE
  */
-export async function ibgeCidades(input: CidadesInput): Promise<string> {
+export async function ibgeCidades(input: CidadesInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_cidades", "cidades", async () => {
     try {
       switch (input.tipo) {
         case "panorama":
           if (!input.municipio) {
-            return ValidationErrors.invalidCode(
-              "",
-              "ibge_cidades",
-              "Informe o código IBGE do município (7 dígitos)"
-            );
+            return {
+              markdown: ValidationErrors.invalidCode(
+                "",
+                "ibge_cidades",
+                "Informe o código IBGE do município (7 dígitos)"
+              ),
+              isError: true,
+            };
           }
           return await panoramaMunicipio(input.municipio);
         case "indicador":
@@ -77,37 +102,46 @@ export async function ibgeCidades(input: CidadesInput): Promise<string> {
           return await listarPesquisas(input.pesquisa);
         case "historico":
           if (!input.municipio || !input.indicador) {
-            return formatValidationError(
-              "municipio/indicador",
-              "",
-              "Informe o código do município e o ID do indicador para ver histórico"
-            );
+            return {
+              markdown: formatValidationError(
+                "municipio/indicador",
+                "",
+                "Informe o código do município e o ID do indicador para ver histórico"
+              ),
+              isError: true,
+            };
           }
           return await historicoIndicador(input.municipio, input.indicador);
         default:
-          return await listarIndicadoresDisponiveis();
+          return listarIndicadoresDisponiveis();
       }
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_cidades", {
-          tipo: input.tipo,
-          municipio: input.municipio,
-          indicador: input.indicador,
-        });
+        return {
+          markdown: parseHttpError(error, "ibge_cidades", {
+            tipo: input.tipo,
+            municipio: input.municipio,
+            indicador: input.indicador,
+          }),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_cidades");
+      return { markdown: ValidationErrors.emptyResult("ibge_cidades"), isError: true };
     }
   });
 }
 
-async function panoramaMunicipio(codigoMunicipio: string): Promise<string> {
+async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToolResult> {
   // Validar código do município
   if (!isValidIbgeCode(codigoMunicipio) || codigoMunicipio.length !== 7) {
-    return formatValidationError(
-      "municipio",
-      codigoMunicipio,
-      "Código IBGE de 7 dígitos (ex: 3550308 para São Paulo)"
-    );
+    return {
+      markdown: formatValidationError(
+        "municipio",
+        codigoMunicipio,
+        "Código IBGE de 7 dígitos (ex: 3550308 para São Paulo)"
+      ),
+      isError: true,
+    };
   }
 
   // Buscar nome do município
@@ -197,10 +231,18 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<string> {
   }
 
   if (resultados.length === 0) {
-    return ValidationErrors.emptyResult(
-      "ibge_cidades",
-      `Nenhum indicador encontrado para o município ${codigoMunicipio}`
-    );
+    return {
+      markdown: ValidationErrors.emptyResult(
+        "ibge_cidades",
+        `Nenhum indicador encontrado para o município ${codigoMunicipio}`
+      ),
+      structured: {
+        tipo: "panorama",
+        municipio: codigoMunicipio,
+        nome: nomeMunicipio,
+        indicadores: [],
+      },
+    };
   }
 
   output += "### Indicadores\n\n";
@@ -215,24 +257,35 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<string> {
   output += `- \`ibge_cidades tipo="pesquisas"\` - Ver pesquisas disponíveis\n`;
   output += `- \`ibge_cidades tipo="indicador"\` - Ver indicadores disponíveis\n`;
 
-  return output;
+  return {
+    markdown: output,
+    structured: {
+      tipo: "panorama",
+      municipio: codigoMunicipio,
+      nome: nomeMunicipio,
+      indicadores: resultados,
+    },
+  };
 }
 
 async function consultarIndicador(
   indicador: string,
   municipio?: string,
   _uf?: string
-): Promise<string> {
+): Promise<StructuredToolResult> {
   // Verificar se é um alias conhecido
   const indicadorInfo = INDICADORES_PANORAMA[indicador.toLowerCase()];
 
   if (indicadorInfo) {
     if (!municipio) {
-      return formatValidationError(
-        "municipio",
-        "",
-        "Informe o código do município para consultar o indicador"
-      );
+      return {
+        markdown: formatValidationError(
+          "municipio",
+          "",
+          "Informe o código do município para consultar o indicador"
+        ),
+        isError: true,
+      };
     }
 
     const url = `${IBGE_API.PESQUISAS}/${indicadorInfo.pesquisa}/indicadores/${indicadorInfo.id}/resultados/${municipio}`;
@@ -240,33 +293,46 @@ async function consultarIndicador(
     const data = await cachedFetch<PesquisaResultado[]>(url, key, CACHE_TTL.MEDIUM);
 
     if (!data || data.length === 0) {
-      return ValidationErrors.emptyResult("ibge_cidades");
+      return {
+        markdown: ValidationErrors.emptyResult("ibge_cidades"),
+        structured: { tipo: "indicador", municipio, nome: indicadorInfo.nome, indicadores: [] },
+      };
     }
 
     let output = `## ${indicadorInfo.nome}\n\n`;
     output += `**Município:** ${municipio}\n\n`;
 
+    const indicadores: Array<{ nome: string; valor: string; ano?: string }> = [];
+
     if (data[0].res && data[0].res.length > 0) {
       const resultado = data[0].res[0].res;
-      const rows = Object.entries(resultado)
+      const entries = Object.entries(resultado)
         .filter(([, v]) => v !== null && v !== "-" && v !== "...")
         .sort(([a], [b]) => b.localeCompare(a))
-        .slice(0, 20)
-        .map(([ano, valor]) => [ano, String(valor)]);
+        .slice(0, 20);
 
-      output += createMarkdownTable(["Ano", "Valor"], rows, {
-        alignment: ["center", "right"],
-      });
+      output += createMarkdownTable(
+        ["Ano", "Valor"],
+        entries.map(([ano, valor]) => [ano, String(valor)]),
+        { alignment: ["center", "right"] }
+      );
+
+      for (const [ano, valor] of entries) {
+        indicadores.push({ nome: indicadorInfo.nome, valor: String(valor), ano });
+      }
     }
 
-    return output;
+    return {
+      markdown: output,
+      structured: { tipo: "indicador", municipio, nome: indicadorInfo.nome, indicadores },
+    };
   }
 
   // Se não for alias, mostrar lista de indicadores disponíveis
   return listarIndicadoresDisponiveis();
 }
 
-async function listarPesquisas(pesquisaId?: string): Promise<string> {
+async function listarPesquisas(pesquisaId?: string): Promise<StructuredToolResult> {
   if (pesquisaId) {
     // Buscar detalhes de uma pesquisa específica
     try {
@@ -305,12 +371,15 @@ async function listarPesquisas(pesquisaId?: string): Promise<string> {
         }
       }
 
-      return output;
+      return { markdown: output, structured: listingPayload("pesquisas") };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_cidades", { pesquisa: pesquisaId });
+        return {
+          markdown: parseHttpError(error, "ibge_cidades", { pesquisa: pesquisaId }),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_cidades");
+      return { markdown: ValidationErrors.emptyResult("ibge_cidades"), isError: true };
     }
   }
 
@@ -328,10 +397,13 @@ async function listarPesquisas(pesquisaId?: string): Promise<string> {
   output += 'ibge_cidades tipo="pesquisas" pesquisa="33"\n';
   output += "```\n";
 
-  return output;
+  return { markdown: output, structured: listingPayload("pesquisas") };
 }
 
-async function historicoIndicador(municipio: string, indicador: string): Promise<string> {
+async function historicoIndicador(
+  municipio: string,
+  indicador: string
+): Promise<StructuredToolResult> {
   // Verificar se é um alias
   const indicadorInfo = INDICADORES_PANORAMA[indicador.toLowerCase()];
   const pesquisa = indicadorInfo?.pesquisa || "-";
@@ -344,33 +416,52 @@ async function historicoIndicador(municipio: string, indicador: string): Promise
   const data = await cachedFetch<PesquisaResultado[]>(url, key, CACHE_TTL.MEDIUM);
 
   if (!data || data.length === 0 || !data[0].res || data[0].res.length === 0) {
-    return ValidationErrors.emptyResult(
-      "ibge_cidades",
-      `Nenhum histórico encontrado para o indicador ${indicador}`
-    );
+    return {
+      markdown: ValidationErrors.emptyResult(
+        "ibge_cidades",
+        `Nenhum histórico encontrado para o indicador ${indicador}`
+      ),
+      structured: { tipo: "historico", municipio, nome: indicadorNome, indicadores: [] },
+    };
   }
 
   let output = `## Histórico: ${indicadorNome}\n\n`;
   output += `**Município:** ${municipio}\n\n`;
 
   const resultado = data[0].res[0].res;
-  const rows = Object.entries(resultado)
+  const entries = Object.entries(resultado)
     .filter(([, v]) => v !== null && v !== "-" && v !== "...")
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([ano, valor]) => [ano, String(valor)]);
+    .sort(([a], [b]) => b.localeCompare(a));
 
-  if (rows.length === 0) {
-    return ValidationErrors.emptyResult("ibge_cidades");
+  if (entries.length === 0) {
+    return {
+      markdown: ValidationErrors.emptyResult("ibge_cidades"),
+      structured: { tipo: "historico", municipio, nome: indicadorNome, indicadores: [] },
+    };
   }
 
-  output += createMarkdownTable(["Ano", "Valor"], rows, {
-    alignment: ["center", "right"],
-  });
+  output += createMarkdownTable(
+    ["Ano", "Valor"],
+    entries.map(([ano, valor]) => [ano, String(valor)]),
+    { alignment: ["center", "right"] }
+  );
 
-  return output;
+  return {
+    markdown: output,
+    structured: {
+      tipo: "historico",
+      municipio,
+      nome: indicadorNome,
+      indicadores: entries.map(([ano, valor]) => ({
+        nome: indicadorNome,
+        valor: String(valor),
+        ano,
+      })),
+    },
+  };
 }
 
-function listarIndicadoresDisponiveis(): string {
+function listarIndicadoresDisponiveis(): StructuredToolResult {
   let output = "## Indicadores Disponíveis\n\n";
   output += "Os seguintes indicadores podem ser consultados por município:\n\n";
 
@@ -391,6 +482,6 @@ function listarIndicadoresDisponiveis(): string {
   output += 'ibge_cidades tipo="historico" municipio="3550308" indicador="29171"\n';
   output += "```\n";
 
-  return output;
+  return { markdown: output, structured: listingPayload("indicador") };
 }
 

@@ -13,6 +13,7 @@ import {
   localidadeSchema,
   ibgeLocalidade,
   populacaoSchema,
+  populacaoOutputSchema,
   ibgePopulacao,
   sidraSchema,
   sidraOutputSchema,
@@ -44,6 +45,7 @@ import {
   calendarioSchema,
   ibgeCalendario,
   compararSchema,
+  compararOutputSchema,
   ibgeComparar,
   // Phase 3 tools (v1.6.0)
   malhasTemaSchema,
@@ -59,6 +61,7 @@ import {
   paisesSchema,
   ibgePaises,
   cidadesSchema,
+  cidadesOutputSchema,
   ibgeCidades,
 } from "./tools/index.js";
 
@@ -163,9 +166,10 @@ Use a different tool when:
   );
 
   // Register ibge_populacao tool
-  server.tool(
+  server.registerTool(
     "ibge_populacao",
-    `Returns real-time Brazilian population projection.
+    {
+      description: `Returns real-time Brazilian population projection.
 
 Features:
 - Current population estimate
@@ -183,10 +187,11 @@ Use a different tool when:
 - Comparing/ranking multiple localities → ibge_comparar
 - Population time series → ibge_indicadores
 - An arbitrary SIDRA table → ibge_sidra`,
-    populacaoSchema.shape,
+      inputSchema: populacaoSchema.shape,
+      outputSchema: populacaoOutputSchema.shape,
+    },
     async (args) => {
-      const result = await ibgePopulacao(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgePopulacao(args));
     }
   );
 
@@ -604,9 +609,10 @@ Use a different tool when:
   );
 
   // Register ibge_comparar tool (Phase 2)
-  server.tool(
+  server.registerTool(
     "ibge_comparar",
-    `Compares data between localities (municipalities or states).
+    {
+      description: `Compares data between localities (municipalities or states).
 
 Available indicators:
 - populacao: Current population estimate
@@ -631,10 +637,11 @@ Examples:
 
 Use this tool ONLY to rank/compare 2–10 localities on one indicator.
 For a single locality, use ibge_cidades (municipal panel), ibge_censo, or ibge_sidra.`,
-    compararSchema.shape,
+      inputSchema: compararSchema.shape,
+      outputSchema: compararOutputSchema.shape,
+    },
     async (args) => {
-      const result = await ibgeComparar(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeComparar(args));
     }
   );
 
@@ -820,9 +827,10 @@ Examples:
   );
 
   // Register ibge_cidades tool (Phase 4)
-  server.tool(
+  server.registerTool(
     "ibge_cidades",
-    `Queries municipal indicators from IBGE (similar to Cidades@ portal).
+    {
+      description: `Queries municipal indicators from IBGE (similar to Cidades@ portal).
 
 Features:
 - General overview of a municipality (population, HDI, GDP, etc.)
@@ -845,10 +853,11 @@ Use a different tool when:
 - Census themes / historical series → ibge_censo
 - Comparing multiple municipalities → ibge_comparar
 - A macro indicator time series → ibge_indicadores`,
-    cidadesSchema.shape,
+      inputSchema: cidadesSchema.shape,
+      outputSchema: cidadesOutputSchema.shape,
+    },
     async (args) => {
-      const result = await ibgeCidades(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeCidades(args));
     }
   );
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ibgeComparar } from "../src/tools/comparar.js";
+import { ibgeComparar, compararOutputSchema } from "../src/tools/comparar.js";
 import { cache } from "../src/cache.js";
 import { mockResponse, sidraResponse } from "./helpers.js";
 
@@ -39,9 +39,9 @@ describe("ibge_comparar", () => {
         formato: "tabela",
       });
 
-      expect(result).toContain("Indicadores Disponíveis para Comparação");
-      expect(result).toContain("populacao");
-      expect(result).toContain("pib");
+      expect(result.markdown).toContain("Indicadores Disponíveis para Comparação");
+      expect(result.markdown).toContain("populacao");
+      expect(result.markdown).toContain("pib");
       expect(mockFetch).not.toHaveBeenCalled();
     });
   });
@@ -54,7 +54,7 @@ describe("ibge_comparar", () => {
         formato: "tabela",
       });
 
-      expect(result).toContain("pelo menos 2 localidades");
+      expect(result.markdown).toContain("pelo menos 2 localidades");
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
@@ -66,7 +66,7 @@ describe("ibge_comparar", () => {
         formato: "tabela",
       });
 
-      expect(result).toContain("Máximo de 10 localidades");
+      expect(result.markdown).toContain("Máximo de 10 localidades");
       expect(mockFetch).not.toHaveBeenCalled();
     });
   });
@@ -90,13 +90,19 @@ describe("ibge_comparar", () => {
       expect(sidraUrl).toContain("/t/6579");
       expect(sidraUrl).toContain("/n6/3550308,3304557");
 
-      expect(result).toContain("Comparação: População");
-      expect(result).toContain("São Paulo");
-      expect(result).toContain("Rio de Janeiro");
-      expect(result).toContain("Estatísticas");
-      expect(result).toContain("Maior");
+      expect(result.markdown).toContain("Comparação: População");
+      expect(result.markdown).toContain("São Paulo");
+      expect(result.markdown).toContain("Rio de Janeiro");
+      expect(result.markdown).toContain("Estatísticas");
+      expect(result.markdown).toContain("Maior");
       // value formatted with thousands separators
-      expect(result).toContain("12.300.000");
+      expect(result.markdown).toContain("12.300.000");
+      // Structured output (1.2): typed comparison list + statistics.
+      const s = result.structured as Record<string, unknown>;
+      const locs = s.localidades as Array<{ nome: string; valor: number }>;
+      expect(locs.map((l) => l.nome)).toContain("São Paulo");
+      expect(s.estatisticas).toBeDefined();
+      expect(compararOutputSchema.safeParse(result.structured).success).toBe(true);
     });
 
     it("uses n3 (estados) when localities are 2-digit codes", async () => {
@@ -125,7 +131,7 @@ describe("ibge_comparar", () => {
       const nameUrl = String(mockFetch.mock.calls[1][0]);
       expect(nameUrl).toContain("/estados/");
       // sigla preferred over nome
-      expect(result).toContain("SP");
+      expect(result.markdown).toContain("SP");
     });
   });
 
@@ -143,7 +149,14 @@ describe("ibge_comparar", () => {
       });
 
       // São Paulo (larger) should appear before Rio de Janeiro
-      expect(result.indexOf("São Paulo")).toBeLessThan(result.indexOf("Rio de Janeiro"));
+      expect(result.markdown.indexOf("São Paulo")).toBeLessThan(
+        result.markdown.indexOf("Rio de Janeiro")
+      );
+      // ranking order reflected in the structured payload too
+      const locs = (result.structured as Record<string, unknown>).localidades as Array<{
+        nome: string;
+      }>;
+      expect(locs[0].nome).toBe("São Paulo");
     });
   });
 
@@ -160,8 +173,8 @@ describe("ibge_comparar", () => {
         formato: "json",
       });
 
-      expect(result).toContain("```json");
-      expect(result).toContain("Município");
+      expect(result.markdown).toContain("```json");
+      expect(result.markdown).toContain("Município");
     });
   });
 
@@ -177,8 +190,8 @@ describe("ibge_comparar", () => {
         formato: "tabela",
       });
 
-      expect(result).toContain("Nenhum dado encontrado");
-      expect(result).toContain("ibge_geocodigo");
+      expect(result.markdown).toContain("Nenhum dado encontrado");
+      expect(result.markdown).toContain("ibge_geocodigo");
     });
   });
 
@@ -192,8 +205,8 @@ describe("ibge_comparar", () => {
         formato: "tabela",
       });
 
-      expect(result).toContain("Erro na Comparação");
-      expect(result).toContain("HTTP 500");
+      expect(result.markdown).toContain("Erro na Comparação");
+      expect(result.markdown).toContain("HTTP 500");
     });
   });
 });

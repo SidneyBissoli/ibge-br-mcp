@@ -41,9 +41,8 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
       objetos `xxxTool`) → fonte única em `src/index.ts`
 
 ### 1.2 Saída estruturada e compacta (em andamento)
-- [~] Adicionar `outputSchema` + `structuredContent` (JSON tipado) às tools de dado
-      — feito em `ibge_sidra`, `ibge_censo`, `ibge_indicadores`, `datasaude`;
-      faltam `populacao`, `comparar`, `cidades`, ...
+- [x] Adicionar `outputSchema` + `structuredContent` (JSON tipado) às tools de dado
+      — todos os 7 tools de dado migrados
 - [x] Limitar/paginar respostas grandes (ex.: SIDRA) com orientação de continuação
 - [ ] Seleção de campos onde fizer sentido reduzir volume
 
@@ -52,12 +51,14 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 >   `toMcpResult` + helper `sidraRecords`): sucesso → `structuredContent`; erro →
 >   `isError` (isento de validação no SDK); vazio → payload estruturado vazio
 >   (sucesso); resposta não-dado (ex.: `listar`) → payload mínimo válido.
-> - Migrados (via `server.registerTool` + `outputSchema`): `ibge_sidra`
->   (com paginação de 100/página via input `pagina`), `ibge_censo`,
->   `ibge_indicadores`, `datasaude`. Confirmado end-to-end que `tools/list`
->   anuncia o `outputSchema` desses tools.
-> - **Falta propagar** a `populacao`, `comparar`, `cidades` (e demais tools de
->   dado) e avaliar seleção de campos onde reduzir volume fizer sentido.
+> - **Migrados (7/23, todos os tools de dado)** via `server.registerTool` +
+>   `outputSchema`: `ibge_sidra` (com paginação de 100/página via input `pagina`),
+>   `ibge_censo`, `ibge_indicadores`, `datasaude`, `ibge_populacao`,
+>   `ibge_comparar`, `ibge_cidades`. Confirmado end-to-end que `tools/list`
+>   anuncia o `outputSchema` de cada um.
+> - Os demais 16 tools são de catálogo/localidade/listagem (não-tabular); podem
+>   receber `structuredContent` caso surja demanda.
+> - **Falta:** avaliar seleção de campos onde reduzir volume fizer sentido.
 
 ### 1.3 Consistência de parâmetros ✅
 - [x] Unificar formatos de data entre todas as tools (IBGE e BCB)

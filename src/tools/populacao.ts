@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { fetchWithRetry } from "../retry.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for the tool input
 export const populacaoSchema = z.object({
@@ -17,10 +18,24 @@ export const populacaoSchema = z.object({
 
 export type PopulacaoInput = z.infer<typeof populacaoSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const populacaoOutputSchema = z.object({
+  localidade: z.string().describe("Localidade da projeção"),
+  horario: z.string().describe("Data/hora da consulta"),
+  populacao: z.number().describe("População projetada (habitantes)"),
+  periodoMedio: z
+    .object({
+      incrementoPopulacional: z.number().describe("Incremento populacional por dia"),
+      nascimento: z.number().describe("Segundos entre nascimentos"),
+      obito: z.number().describe("Segundos entre óbitos"),
+    })
+    .describe("Indicadores do período médio"),
+});
+
 /**
  * Fetches population projection/estimate from IBGE API
  */
-export async function ibgePopulacao(input: PopulacaoInput): Promise<string> {
+export async function ibgePopulacao(input: PopulacaoInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_populacao", "populacao", async () => {
     try {
       const url = `${IBGE_API.POPULACAO}/${input.localidade}`;
@@ -55,12 +70,27 @@ export async function ibgePopulacao(input: PopulacaoInput): Promise<string> {
       output += "- O incremento populacional considera nascimentos menos óbitos\n";
       output += "- Fonte: IBGE - Projeção da População\n";
 
-      return output;
+      return {
+        markdown: output,
+        structured: {
+          localidade: input.localidade,
+          horario: data.horario,
+          populacao: data.projecao.populacao,
+          periodoMedio: {
+            incrementoPopulacional: data.projecao.periodoMedio.incrementoPopulacional,
+            nascimento: data.projecao.periodoMedio.nascimento,
+            obito: data.projecao.periodoMedio.obito,
+          },
+        },
+      };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_populacao", { localidade: input.localidade });
+        return {
+          markdown: parseHttpError(error, "ibge_populacao", { localidade: input.localidade }),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_populacao");
+      return { markdown: ValidationErrors.emptyResult("ibge_populacao"), isError: true };
     }
   });
 }

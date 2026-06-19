@@ -2,7 +2,7 @@
 export { ibgeEstados, estadosSchema } from "./estados.js";
 export { ibgeMunicipios, municipiosSchema } from "./municipios.js";
 export { ibgeLocalidade, localidadeSchema } from "./localidade.js";
-export { ibgePopulacao, populacaoSchema } from "./populacao.js";
+export { ibgePopulacao, populacaoSchema, populacaoOutputSchema } from "./populacao.js";
 export { ibgeSidra, sidraSchema, sidraOutputSchema } from "./sidra.js";
 export { ibgeNomes, nomesSchema } from "./nomes.js";
 export { ibgeNoticias, noticiasSchema } from "./noticias.js";
@@ -21,7 +21,7 @@ export { ibgeGeocodigo, geocodigoSchema } from "./geocodigo.js";
 
 // Phase 2 tools (v1.5.0)
 export { ibgeCalendario, calendarioSchema } from "./calendario.js";
-export { ibgeComparar, compararSchema } from "./comparar.js";
+export { ibgeComparar, compararSchema, compararOutputSchema } from "./comparar.js";
 
 // Phase 3 tools (v1.6.0)
 export { ibgeMalhasTema, malhasTemaSchema } from "./malhas-tema.js";
@@ -31,4 +31,4 @@ export { ibgeDatasaude, datasaudeSchema, datasaudeOutputSchema } from "./datasau
 
 // Phase 4 tools (v1.9.0)
 export { ibgePaises, paisesSchema } from "./paises.js";
-export { ibgeCidades, cidadesSchema } from "./cidades.js";
+export { ibgeCidades, cidadesSchema, cidadesOutputSchema } from "./cidades.js";
