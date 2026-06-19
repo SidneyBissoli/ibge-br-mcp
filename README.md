@@ -1,4 +1,4 @@
-[![Verified on MseeP](https://mseep.net/pr/sidneybissoli-ibge-br-mcp-badge.png)](https://mseep.ai/app/b39475dc-331c-48ff-a0d9-441f6575598c)
+[![Verified on MseeP](https://mseep.net/pr/sidneybissoli-ibge-br-mcp-badge.png)](https://mseep.ai/app/sidneybissoli-ibge-br-mcp)
 
 # ibge-br-mcp
 
