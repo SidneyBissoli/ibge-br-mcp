@@ -32,7 +32,7 @@ Node >= 18 (uses the global `fetch`). Tests mock `global.fetch` — they never h
 
 ## Architecture
 
-**Entry point split:** `index.ts` is a thin STDIO wrapper — it imports `createServer()` from `server.ts`, connects a `StdioServerTransport`, and logs to stderr. `server.ts` holds `createServer()`, which builds the `McpServer` and registers every tool, resource, and prompt; it is **side-effect-free and testable** (see `tests/server.test.ts`, which drives it over an in-memory transport). All tool registrations and their English descriptions live in `server.ts`.
+**Entry point split:** `index.ts` is a thin STDIO wrapper — it imports `createServer()` from `server.ts`, connects a `StdioServerTransport`, and logs to stderr. `server.ts` holds `createServer()` (builds the `McpServer`, then calls `registerAll(server)`) and the exported `registerAll(server)`, which registers every tool, resource, and prompt onto a given server. Both are **side-effect-free and testable** (see `tests/server.test.ts`, which drives the server over an in-memory transport). All tool registrations and their English descriptions live in `registerAll`. The `worker/` directory (not published to npm) is an optional Cloudflare Worker that serves the same `registerAll` surface over Streamable HTTP; STDIO remains the default transport.
 
 **Request flow for every tool:** `server.ts` registers the tool → handler calls the tool's `ibgeXxx(args)` function → that function wraps its body in `withMetrics(...)` → calls `cachedFetch(url, key, ttl)` → `cachedFetch` checks the in-memory cache, and on a miss calls `fetchWithRetry` (exponential backoff on network errors + 429/5xx) → on error the tool catches and returns `parseHttpError(...)`.
 

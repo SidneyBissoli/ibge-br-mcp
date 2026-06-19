@@ -95,7 +95,17 @@ export function createServer(): McpServer {
     name: SERVER_NAME,
     version: SERVER_VERSION,
   });
+  registerAll(server);
+  return server;
+}
 
+/**
+ * Registers every tool, resource, and prompt onto a given `McpServer`. Kept
+ * separate from `createServer` so an alternative transport (e.g. the Cloudflare
+ * Worker in `worker/`, which builds its own `McpServer` with hosted metadata)
+ * can reuse the exact same registrations.
+ */
+export function registerAll(server: McpServer): void {
   // Register ibge_estados tool
   server.tool(
     "ibge_estados",
@@ -850,6 +860,4 @@ Use a different tool when:
   // Reference catalogs (roadmap 1.6) and analysis templates
   registerResources(server);
   registerPrompts(server);
-
-  return server;
 }

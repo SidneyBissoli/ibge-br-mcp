@@ -16,7 +16,7 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
  * fall back to the default. Used as the default `timeoutMs` for every fetch.
  */
 export const REQUEST_TIMEOUT_MS = ((): number => {
-  const raw = process.env.IBGE_MCP_TIMEOUT_MS;
+  const raw = typeof process !== "undefined" ? process.env?.IBGE_MCP_TIMEOUT_MS : undefined;
   if (!raw) return DEFAULT_REQUEST_TIMEOUT_MS;
   const parsed = Number(raw);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_REQUEST_TIMEOUT_MS;

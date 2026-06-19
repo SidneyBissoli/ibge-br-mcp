@@ -192,6 +192,24 @@ Só faz sentido divulgar depois que a experiência justifica a adoção.
 - [x] Revisar metadados/keywords do package.json e server.json (SEO de registry)
 - [ ] Presença e qualidade em listagens (MCP Registry, Glama, Smithery,
       listas "awesome-mcp")
+- [~] **Transporte HTTP** (deploy hospedado, p/ clientes web / zero-install) —
+      além do STDIO, que segue o padrão para clientes locais
+
+> Progresso (transporte HTTP):
+> - **Refator habilitador:** registro de tools/resources/prompts extraído para
+>   `registerAll(server)` em `src/server.ts` (o `createServer()` agora só monta o
+>   `McpServer` e chama `registerAll`). Assim STDIO e HTTP compartilham a mesma
+>   superfície, sem duplicação. `config.ts` ganhou acesso defensivo a
+>   `process.env` (roda em runtimes sem `process`, ex.: Cloudflare Workers).
+> - **Scaffold `worker/`** (fora do pacote npm): Cloudflare Worker que serve o
+>   servidor em **Streamable HTTP** (`WebStandardStreamableHTTPServerTransport`,
+>   modo **stateless** — sem Durable Object), reusando `registerAll`. Espelha o
+>   padrão do `senado-br-mcp`. Endpoints `/mcp`, `/health`, `/.well-known/glama.json`,
+>   CORS e auth opcional por `API_KEY`. Validado com `wrangler deploy --dry-run`
+>   (bundle ok, 0 erros).
+> - **Falta (ação do usuário no Cloudflare):** `npm run build` na raiz →
+>   `cd worker && npm install && wrangler deploy` → adicionar Custom Domain
+>   `ibge.sidneybissoli.com`. Passo a passo em `worker/README.md`.
 
 > Progresso (2.1 + 2.4):
 > - **README diferencial:** abertura dos dois READMEs (EN/PT-BR) reescrita com o

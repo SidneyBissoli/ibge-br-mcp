@@ -1,0 +1,22 @@
+name = "ibge-br-mcp"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# --- Custom domain -----------------------------------------------------------
+# After the first `wrangler deploy`, expose the Worker at ibge.sidneybissoli.com
+# either here (uncomment) or via the dashboard
+# (Workers & Pages > ibge-br-mcp > Settings > Domains & Routes > Add Custom Domain).
+# Cloudflare provisions DNS + TLS automatically. The MCP URL is then:
+#   https://ibge.sidneybissoli.com/mcp
+#
+# [[routes]]
+# pattern = "ibge.sidneybissoli.com"
+# custom_domain = true
+
+# --- Optional config ---------------------------------------------------------
+# [vars]
+# ALLOWED_ORIGIN = "*"
+#
+# Lock the endpoint with a bearer token (clients send Authorization: Bearer ...):
+#   wrangler secret put API_KEY
