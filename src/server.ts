@@ -123,7 +123,9 @@ Examples:
 
 Use a different tool when:
 - Municipalities of a state → ibge_municipios
-- Details/hierarchy of one locality by code → ibge_localidade`,
+- Details/hierarchy of one locality by code → ibge_localidade
+
+Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown table.`,
     estadosSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -151,7 +153,9 @@ Examples:
 Use a different tool when:
 - Resolve/decode a code at any level (region, state, district), not just municipalities → ibge_geocodigo
 - Full details/hierarchy of one locality by code → ibge_localidade
-- Neighboring municipalities → ibge_vizinhos`,
+- Neighboring municipalities → ibge_vizinhos
+
+Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown table.`,
     municipiosSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -179,7 +183,9 @@ Examples:
 This tool returns the full record of ONE locality you already have the code for.
 Use a different tool when:
 - You have a name and need the code → ibge_municipios (municipalities) or ibge_geocodigo (any level)
-- You want to decompose/understand a code's structure → ibge_geocodigo`,
+- You want to decompose/understand a code's structure → ibge_geocodigo
+
+Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown record.`,
     localidadeSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -209,7 +215,9 @@ Use a different tool when:
 - Census or historical population → ibge_censo
 - Comparing/ranking multiple localities → ibge_comparar
 - Population time series → ibge_indicadores
-- An arbitrary SIDRA table → ibge_sidra`,
+- An arbitrary SIDRA table → ibge_sidra
+
+Behavior: read-only and idempotent — a live GET against the public IBGE population-projection API. Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: populacaoSchema.shape,
       outputSchema: populacaoOutputSchema.shape,
       annotations: READ_ONLY,
@@ -253,7 +261,9 @@ ibge_sidra is the low-level engine. Prefer a friendlier wrapper when it fits:
 - Economic/social time series → ibge_indicadores
 - Rank/compare 2–10 localities → ibge_comparar
 - One municipality's panel → ibge_cidades
-Use ibge_sidra_tabelas and ibge_sidra_metadados to find a table code and its structure before querying.`,
+Use ibge_sidra_tabelas and ibge_sidra_metadados to find a table code and its structure before querying.
+
+Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: sidraSchema.shape,
       outputSchema: sidraOutputSchema.shape,
       annotations: READ_ONLY,
@@ -284,7 +294,9 @@ Examples:
 - Frequency of "Maria": tipo="frequencia", nomes="Maria"
 - Compare names: tipo="frequencia", nomes="João,José,Pedro"
 - 2000s ranking: tipo="ranking", decada=2000
-- Female names: tipo="ranking", sexo="F"`,
+- Female names: tipo="ranking", sexo="F"
+
+Behavior: read-only and idempotent — a live GET against the public IBGE Nomes (Censo) API. Returns a Markdown table.`,
     nomesSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -313,7 +325,9 @@ Examples:
 - Releases only: tipo="release"
 
 Use a different tool when:
-- Scheduled/upcoming release dates (not published news) → ibge_calendario`,
+- Scheduled/upcoming release dates (not published news) → ibge_calendario
+
+Behavior: read-only and idempotent — a live GET against the public IBGE Notícias API. Returns a Markdown list.`,
     noticiasSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -346,7 +360,9 @@ Examples:
 - Census tables: pesquisa="censo"
 
 This is step 1 of the SIDRA workflow: find a table code → ibge_sidra_metadados (structure) → ibge_sidra (query).
-For common data, a wrapper is usually easier: ibge_censo, ibge_indicadores, ibge_comparar, ibge_cidades.`,
+For common data, a wrapper is usually easier: ibge_censo, ibge_indicadores, ibge_comparar, ibge_cidades.
+
+Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns a Markdown table.`,
     sidraTabelasSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -374,7 +390,9 @@ Examples:
 - Census 2022 metadata: tabela="9514"
 - PNAD unemployment: tabela="4714"
 
-Use this after finding a table code (ibge_sidra_tabelas) and before querying with ibge_sidra.`,
+Use this after finding a table code (ibge_sidra_tabelas) and before querying with ibge_sidra.
+
+Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown.`,
     sidraMetadadosSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -411,7 +429,9 @@ Examples:
 - SVG format: localidade="BR", formato="svg"
 
 Use a different tool when:
-- Thematic meshes (biomes, Legal Amazon, semi-arid, metropolitan regions) → ibge_malhas_tema`,
+- Thematic meshes (biomes, Legal Amazon, semi-arid, metropolitan regions) → ibge_malhas_tema
+
+Behavior: read-only and idempotent — a live GET against the public IBGE Malhas API. Returns the mesh in the requested format (GeoJSON, TopoJSON, or SVG).`,
     malhasSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -443,7 +463,9 @@ Examples:
 - Search population: busca="população"
 - PNAD details: detalhes="pnad"
 
-This lists surveys, not data. To find table codes use ibge_sidra_tabelas; to query data use ibge_sidra (or a wrapper: ibge_censo, ibge_indicadores, ibge_comparar, ibge_cidades).`,
+This lists surveys, not data. To find table codes use ibge_sidra_tabelas; to query data use ibge_sidra (or a wrapper: ibge_censo, ibge_indicadores, ibge_comparar, ibge_cidades).
+
+Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA/Pesquisas API. Returns a Markdown list.`,
     pesquisasSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -483,7 +505,9 @@ Use a different tool when:
 - Current real-time Brazil population → ibge_populacao
 - One municipality's current panel (estimate, HDI, GDP) → ibge_cidades
 - Comparing/ranking localities → ibge_comparar
-- An arbitrary SIDRA table → ibge_sidra`,
+- An arbitrary SIDRA table → ibge_sidra
+
+Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: censoSchema.shape,
       outputSchema: censoOutputSchema.shape,
       annotations: READ_ONLY,
@@ -533,7 +557,9 @@ Examples:
 Use a different tool when:
 - Comparing/ranking localities → ibge_comparar
 - Census themes → ibge_censo
-- One municipality's panel → ibge_cidades`,
+- One municipality's panel → ibge_cidades
+
+Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: indicadoresSchema.shape,
       outputSchema: indicadoresOutputSchema.shape,
       annotations: READ_ONLY,
@@ -567,7 +593,9 @@ Examples:
 - Search software: busca="software"
 - Specific code: codigo="6201-5/01"
 - View section: codigo="J"
-- List divisions: nivel="divisoes"`,
+- List divisions: nivel="divisoes"
+
+Behavior: read-only and idempotent — a live GET against the public IBGE CNAE API. Returns Markdown.`,
     cnaeSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -602,7 +630,9 @@ Examples:
 This tool decodes a code's structure and resolves name→code at any level.
 Use a different tool when:
 - You only need to list/search municipalities → ibge_municipios
-- You want the full detailed record of one locality → ibge_localidade`,
+- You want the full detailed record of one locality → ibge_localidade
+
+Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns Markdown.`,
     geocodigoSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -633,7 +663,9 @@ Examples:
 - Field collections: tipo="coleta"
 
 Use a different tool when:
-- Already-published news and releases → ibge_noticias`,
+- Already-published news and releases → ibge_noticias
+
+Behavior: read-only and idempotent — a live GET against the public IBGE Calendário API. Returns a Markdown list.`,
     calendarioSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -670,7 +702,9 @@ Examples:
 - List indicators: indicador="listar"
 
 Use this tool ONLY to rank/compare 2–10 localities on one indicator.
-For a single locality, use ibge_cidades (municipal panel), ibge_censo, or ibge_sidra.`,
+For a single locality, use ibge_cidades (municipal panel), ibge_censo, or ibge_sidra.
+
+Behavior: read-only and idempotent — a live GET against the public IBGE APIs (SIDRA and Localidades). Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: compararSchema.shape,
       outputSchema: compararOutputSchema.shape,
       annotations: READ_ONLY,
@@ -711,7 +745,9 @@ Examples:
 - List themes: tema="listar"
 
 Use a different tool when:
-- Administrative meshes (Brazil/region/state/municipality outlines) → ibge_malhas`,
+- Administrative meshes (Brazil/region/state/municipality outlines) → ibge_malhas
+
+Behavior: read-only and idempotent — a live GET against the public IBGE Malhas API. Returns the mesh in the requested format (GeoJSON, TopoJSON, or SVG).`,
     malhasTemaSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -739,7 +775,9 @@ Examples:
 - With population: municipio="3550308", incluir_dados=true
 
 Note: proximity is approximated by shared mesoregion (not exact spatial adjacency).
-For listing/searching municipalities, use ibge_municipios.`,
+For listing/searching municipalities, use ibge_municipios.
+
+Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown list.`,
     vizinhosSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -782,7 +820,9 @@ Examples:
 
 Use a different tool when:
 - A single municipality's general panel (which also includes infant mortality) → ibge_cidades
-- Population/demographic counts (not health-specific) → ibge_censo or ibge_sidra`,
+- Population/demographic counts (not health-specific) → ibge_censo or ibge_sidra
+
+Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: datasaudeSchema.shape,
       outputSchema: datasaudeOutputSchema.shape,
       annotations: READ_ONLY,
@@ -812,7 +852,9 @@ Examples:
 - Brazil details: tipo="detalhes", pais="BR"
 - Search: tipo="buscar", busca="Argentina"
 - Americas countries: tipo="listar", regiao="americas"
-- Available indicators: tipo="indicadores"`,
+- Available indicators: tipo="indicadores"
+
+Behavior: read-only and idempotent — a live GET against the public IBGE Países API. Returns Markdown.`,
     paisesSchema.shape,
     READ_ONLY,
     async (args) => {
@@ -847,7 +889,9 @@ Use a different tool when:
 - Real-time Brazil population → ibge_populacao
 - Census themes / historical series → ibge_censo
 - Comparing multiple municipalities → ibge_comparar
-- A macro indicator time series → ibge_indicadores`,
+- A macro indicator time series → ibge_indicadores
+
+Behavior: read-only and idempotent — a live GET against the public IBGE APIs (Cidades@/agregados). Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: cidadesSchema.shape,
       outputSchema: cidadesOutputSchema.shape,
       annotations: READ_ONLY,
