@@ -294,7 +294,12 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
       };
     }
 
-    const meta = { tema, tabela: tabelaInfo.tabela, descricao: tabelaInfo.descricao, ano: input.ano };
+    const meta = {
+      tema,
+      tabela: tabelaInfo.tabela,
+      descricao: tabelaInfo.descricao,
+      ano: input.ano,
+    };
 
     // Build SIDRA query
     try {
@@ -460,4 +465,3 @@ function listAvailableTables(ano?: string): string {
 
   return output;
 }
-

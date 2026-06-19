@@ -259,4 +259,3 @@ function formatMetadadosResponse(
 
   return output;
 }
-

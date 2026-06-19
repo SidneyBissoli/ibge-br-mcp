@@ -441,4 +441,3 @@ function formatErrorMessage(
     `\`\`\`\nibge_sidra_metadados(tabela="${indicador?.tabela}")\n\`\`\``
   );
 }
-

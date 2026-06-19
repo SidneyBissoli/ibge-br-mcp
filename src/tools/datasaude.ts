@@ -400,4 +400,3 @@ function formatResponse(
 
   return output;
 }
-

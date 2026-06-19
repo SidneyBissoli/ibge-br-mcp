@@ -351,7 +351,9 @@ function formatCompararResponse(
     valorTexto: item.valorStr,
   }));
 
-  let estatisticas: { maior: number; menor: number; media: number; variacaoPct: number } | undefined;
+  let estatisticas:
+    | { maior: number; menor: number; media: number; variacaoPct: number }
+    | undefined;
   if (comparisonData.length >= 2 && comparisonData[0].valor > 0) {
     const valores = comparisonData.map((d) => d.valor).filter((v) => v > 0);
     const max = Math.max(...valores);
@@ -478,4 +480,3 @@ function formatCompararError(
     `**Dica:** Verifique se as localidades informadas têm dados disponíveis para este indicador.\n`
   );
 }
-

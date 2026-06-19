@@ -230,4 +230,3 @@ function formatCalendarioError(message: string, input: CalendarioInput): string 
 
   return output;
 }
-

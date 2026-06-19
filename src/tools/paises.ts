@@ -268,4 +268,3 @@ async function listarIndicadores(): Promise<string> {
 
   return output;
 }
-

@@ -241,4 +241,3 @@ export async function ibgeNomes(input: NomesInput): Promise<string> {
     });
   }
 }
-

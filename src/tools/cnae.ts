@@ -329,4 +329,3 @@ function formatCnaeDetail(
 
   return output;
 }
-

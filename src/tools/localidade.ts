@@ -195,4 +195,3 @@ function formatDistrito(distrito: Distrito): string {
 
   return output;
 }
-
