@@ -30,3 +30,7 @@ coverage/
 
 # MCP Registry
 mcp-publisher.exe
+
+# Internal planning docs (kept local, not published)
+ROADMAP.md
+ROADMAP.html

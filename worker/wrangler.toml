@@ -1,5 +1,6 @@
 name = "ibge-br-mcp"
 main = "src/index.ts"
+account_id = "5c499208eebced4e34bd98ffa204f2fb"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
