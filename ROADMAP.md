@@ -185,12 +185,27 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 
 Só faz sentido divulgar depois que a experiência justifica a adoção.
 
-- [ ] Reescrever o README com o diferencial explícito ("vs. só perguntar à IA")
+- [x] Reescrever o README com o diferencial explícito ("vs. só perguntar à IA")
 - [ ] Demo curta (transcrição/GIF) mostrando uma análise real ponta a ponta
 - [ ] Exemplos práticos que também servem de material de divulgação
-- [ ] Revisar metadados/keywords do package.json e server.json (SEO de registry)
+- [x] Revisar metadados/keywords do package.json e server.json (SEO de registry)
 - [ ] Presença e qualidade em listagens (MCP Registry, Glama, Smithery,
       listas "awesome-mcp")
+
+> Progresso (2.1 + 2.4):
+> - **README diferencial:** abertura dos dois READMEs (EN/PT-BR) reescrita com o
+>   pitch "dado ao vivo/exato/com procedência vs. só perguntar à IA", com exemplo
+>   concreto (população de BH no Censo 2022) e citando as três fontes (IBGE,
+>   Banco Central, DataSUS).
+> - **SEO de metadados:** `package.json` ganhou descrição orientada a valor +
+>   ~11 keywords novas (`mcp-server`, `datasus`, `bcb`, `banco-central`, `ipca`,
+>   `selic`, `cidades`, `demografia`, `geografia`, `estatistica`, `dados-abertos`,
+>   `open-data`); `server.json` teve a descrição alinhada e a indentação quebrada
+>   da linha corrigida (≤100 chars p/ o schema do registry).
+> - **Pendente:** demo (2.2) e exemplos práticos (2.3) dependem de gravar/redigir
+>   sessões reais; presença em listagens (2.5) depende de ações externas.
+> - Nota: a nova descrição/keywords do `package.json` só aparecem no npm após o
+>   próximo `publish` (mudança de metadados não republicada automaticamente).
 
 ## 🅿️ Fora de escopo (decidido — não readicionar sem nova justificativa)
 

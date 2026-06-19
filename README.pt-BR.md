@@ -10,11 +10,13 @@
 [![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
 [![ibge-br-mcp MCP server](https://glama.ai/mcp/servers/SidneyBissoli/ibge-br-mcp/badges/score.svg)](https://glama.ai/mcp/servers/SidneyBissoli/ibge-br-mcp)
 
-Servidor MCP para APIs do IBGE (Instituto Brasileiro de Geografia e Estatística).
+**Dados públicos brasileiros ao vivo e exatos para o seu assistente de IA — com procedência, não chute.**
 
-Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) para fornecer acesso às APIs públicas do IBGE, permitindo que assistentes de IA consultem dados geográficos, demográficos e estatísticos do Brasil.
+Pergunte a um LLM _"qual era a população de Belo Horizonte no Censo 2022?"_ e você recebe um número plausível, tirado do treino: talvez certo, talvez desatualizado, sem fonte. O `ibge-br-mcp` faz o seu assistente consultar as APIs oficiais do **IBGE**, **Banco Central** e **DataSUS** em tempo real — devolvendo o valor exato junto com a tabela e o período de onde ele veio.
 
 🇺🇸 [Read in English](README.md)
+
+Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) para dar aos assistentes de IA acesso ao vivo e estruturado aos dados públicos geográficos, demográficos, econômicos e de saúde do Brasil.
 
 ## Recursos
 

@@ -10,10 +10,13 @@
 [![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
 [![ibge-br-mcp MCP server](https://glama.ai/mcp/servers/SidneyBissoli/ibge-br-mcp/badges/score.svg)](https://glama.ai/mcp/servers/SidneyBissoli/ibge-br-mcp)
 
-MCP Server for IBGE (Brazilian Institute of Geography and Statistics) APIs.
+**Live, exact Brazilian public data for your AI assistant — with provenance, not guesswork.**
+
+Ask an LLM _"what was Belo Horizonte's population in the 2022 Census?"_ and you get a plausible number from its training data: maybe right, maybe outdated, with no source. `ibge-br-mcp` instead has your assistant query the official **IBGE**, **Banco Central** and **DataSUS** APIs in real time — returning the exact figure together with the table and period it came from.
+
 🇧🇷 [Leia em Português](README.pt-BR.md)
 
-This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to provide access to IBGE's public APIs, enabling AI assistants to query geographic, demographic, and statistical data from Brazil.
+This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to give AI assistants live, structured access to Brazil's public geographic, demographic, economic, and health data.
 
 ## Features
 
