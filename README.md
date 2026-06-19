@@ -1,3 +1,5 @@
+[![Verified on MseeP](https://mseep.net/pr/sidneybissoli-ibge-br-mcp-badge.png)](https://mseep.ai/app/b39475dc-331c-48ff-a0d9-441f6575598c)
+
 # ibge-br-mcp
 
 [![npm version](https://img.shields.io/npm/v/ibge-br-mcp.svg)](https://www.npmjs.com/package/ibge-br-mcp)
@@ -7,7 +9,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
 [![ibge-br-mcp MCP server](https://glama.ai/mcp/servers/SidneyBissoli/ibge-br-mcp/badges/score.svg)](https://glama.ai/mcp/servers/SidneyBissoli/ibge-br-mcp)
-[![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/b39475dc-331c-48ff-a0d9-441f6575598c)
 
 MCP Server for IBGE (Brazilian Institute of Geography and Statistics) APIs.
 🇧🇷 [Leia em Português](README.pt-BR.md)
