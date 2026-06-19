@@ -32,7 +32,11 @@ Node >= 18 (uses the global `fetch`). Tests mock `global.fetch` — they never h
 
 ## Architecture
 
-**Request flow for every tool:** `index.ts` registers the tool with `server.tool(name, description, schema.shape, handler)` → handler calls the tool's `ibgeXxx(args)` function → that function wraps its body in `withMetrics(...)` → calls `cachedFetch(url, key, ttl)` → `cachedFetch` checks the in-memory cache, and on a miss calls `fetchWithRetry` (exponential backoff on network errors + 429/5xx) → on error the tool catches and returns `parseHttpError(...)`. The handler always returns `{ content: [{ type: "text", text: result }] }`; tools return **Markdown strings**, not structured JSON.
+**Request flow for every tool:** `index.ts` registers the tool → handler calls the tool's `ibgeXxx(args)` function → that function wraps its body in `withMetrics(...)` → calls `cachedFetch(url, key, ttl)` → `cachedFetch` checks the in-memory cache, and on a miss calls `fetchWithRetry` (exponential backoff on network errors + 429/5xx) → on error the tool catches and returns `parseHttpError(...)`.
+
+**Two registration shapes — pick by whether the tool returns tabular data:**
+- **Markdown-only tools** (catalog / localidade / listing — the majority) register with `server.tool(name, description, schema.shape, handler)`; the handler returns `{ content: [{ type: "text", text: result }] }` and the tool's impl returns a **Markdown string**.
+- **Data tools** (the 7 tabular ones: `ibge_sidra`, `ibge_censo`, `ibge_indicadores`, `datasaude`, `ibge_populacao`, `ibge_comparar`, `ibge_cidades`) register with `server.registerTool(name, { description, inputSchema, outputSchema }, handler)`. Their impl returns a `StructuredToolResult` (`{ markdown, structured?, isError? }`) and the handler converts it via `toMcpResult(...)` from `structured.ts`, attaching a typed `structuredContent` payload validated against `outputSchema`. See roadmap 1.2.
 
 **Shared infrastructure (`src/`), used by every tool — reuse these, don't reinvent:**
 - `config.ts` — single source of truth for API endpoints, UF/region code maps, SIDRA territorial levels, biome codes, common SIDRA table codes, validation regexes, and helpers (`getUfCode`, `validateIbgeCode`, etc.). Add new constants/mappings here.
@@ -40,6 +44,7 @@ Node >= 18 (uses the global `fetch`). Tests mock `global.fetch` — they never h
 - `retry.ts` — `fetchWithRetry` and `RETRY_PRESETS`; `cachedFetch` uses it automatically.
 - `errors.ts` — `parseHttpError`, `formatError`, `ValidationErrors`. All user-facing errors are Portuguese Markdown with a suggestion and related tools.
 - `metrics.ts` — wrap every tool body in `withMetrics(toolName, apiName, fn)`. Also exports `logger` (writes to **stderr** only — stdout is the MCP protocol channel, never log there).
+- `structured.ts` — structured-output plumbing for data tools: `StructuredToolResult` type, `toMcpResult` (success → `structuredContent`, error → `isError` so the SDK skips schema validation), `sidraRecords` (SIDRA header+rows → labeled `{ colunas, registros, totalRegistros }`), and `selectSidraColumns` (the `campos` field-selection filter, accent/case-insensitive, returns data unchanged on no match).
 - `utils/formatters.ts` (re-exported via `utils/index.js`) — `createMarkdownTable`, `createKeyValueTable`, `formatNumber`, etc. Output formatting goes through these.
 - `types.ts` — IBGE API response interfaces plus the `IBGE_API` / `BCB_API` endpoint aliases.
 
@@ -50,7 +55,7 @@ Node >= 18 (uses the global `fetch`). Tests mock `global.fetch` — they never h
 Three edits, but the tool's user-facing description lives in exactly ONE place:
 1. The tool file in `src/tools/` — the Zod schema (`xxxSchema`), the input type, and the async impl (`ibgeXxx`).
 2. `src/tools/index.ts` — re-export the schema and the function.
-3. `src/index.ts` — a `server.tool(...)` registration block. This **English** description is the ONLY description the MCP client sees; put tool-selection / disambiguation guidance here.
+3. `src/index.ts` — a registration block (`server.tool(...)` for Markdown-only tools, `server.registerTool(...)` with an `outputSchema` for tabular data tools — see the request flow above). This **English** description is the ONLY description the MCP client sees; put tool-selection / disambiguation guidance here.
 
 Note `SERVER_VERSION` in `src/index.ts` is hardcoded and must be bumped to match `version` in `package.json` and `server.json` on release — all three drift easily. Add a `CHANGELOG.md` entry for the release too.
 
@@ -66,4 +71,4 @@ Note `SERVER_VERSION` in `src/index.ts` is hardcoded and must be bumped to match
 
 ## Tests
 
-Vitest, in `tests/`. Coverage focuses on the shared infrastructure (`cache`, `validation`, `retry`, `errors`, `formatters`) plus mock-based integration tests (`integration.test.ts`, `cidades.test.ts`, `paises.test.ts`) that stub `global.fetch`. When adding a tool, add an integration test that mocks the upstream response rather than calling the live API.
+Vitest, in `tests/`. Coverage spans the shared infrastructure (`cache`, `validation`, `retry`, `errors`, `formatters`, `structured`) and per-tool mock-based tests that stub `global.fetch` (every tool is ≥50% covered — see roadmap 1.5). Use the mock helper in `tests/helpers.ts` rather than hand-rolling `fetch` stubs. Note the two test styles: `xxx.test.ts` files often assert only the Zod schema, while `xxx.tool.test.ts` (and the integration files) actually invoke `ibgeXxx` against a mocked upstream — when adding a tool, write the latter.
