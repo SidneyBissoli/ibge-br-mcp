@@ -121,6 +121,28 @@ describe("Integration Tests with Mocks", () => {
       expect(result).toContain("Municípios");
     });
 
+    it("should accept sigla, name and code interchangeably (all resolve to estados/35)", async () => {
+      for (const uf of ["SP", "sp", "35", "São Paulo", "sao paulo"]) {
+        // Reset between forms: they resolve to the same URL, so without clearing
+        // the cache only the first would actually fetch.
+        mockFetch.mockReset();
+        cache.clear();
+        mockFetch.mockResolvedValueOnce(mockResponse(mockMunicipios));
+
+        await ibgeMunicipios({ uf });
+
+        const url = String(mockFetch.mock.calls.at(-1)?.[0]);
+        expect(url).toContain("/estados/35/municipios");
+      }
+    });
+
+    it("should reject an unrecognized state without calling the API", async () => {
+      const result = await ibgeMunicipios({ uf: "Pindorama" });
+
+      expect(result).toContain("uf");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
     it("should handle empty uf parameter", async () => {
       // When uf is empty string, it's still provided but invalid
       const result = await ibgeMunicipios({ uf: "" });

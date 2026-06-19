@@ -2,6 +2,8 @@
  * Input validation helpers for IBGE MCP Server
  */
 
+import { resolveUf } from "./config.js";
+
 // Valid state codes
 export const UF_CODES = new Set([
   11,
@@ -99,23 +101,12 @@ export function isValidIbgeCode(code: string): boolean {
 }
 
 /**
- * Normalizes a state input (code or abbreviation) to code
+ * Normalizes a state input to its IBGE code, accepting sigla ("SP"), name
+ * ("São Paulo", accent/case-insensitive) or code ("35") interchangeably.
+ * Delegates to the single UF resolver in config.ts.
  */
 export function normalizeUf(input: string): number | null {
-  const upper = input.toUpperCase().trim();
-
-  // Check if it's an abbreviation
-  if (UF_SIGLAS[upper]) {
-    return UF_SIGLAS[upper];
-  }
-
-  // Check if it's a valid code
-  const code = parseInt(input);
-  if (!isNaN(code) && UF_CODES.has(code)) {
-    return code;
-  }
-
-  return null;
+  return resolveUf(input)?.code ?? null;
 }
 
 /**

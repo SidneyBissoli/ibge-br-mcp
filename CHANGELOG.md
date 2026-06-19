@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Unified locality (UF) input** across `ibge_municipios`, `ibge_vizinhos` and
+  `ibge_geocodigo`: a state can now be given by sigla (`SP`), name (`São Paulo`,
+  accent/case-insensitive) or IBGE code (`35`) interchangeably. New single
+  resolver `resolveUf` in `config.ts` is the source of truth; `normalizeUf`
+  delegates to it. Removes a sigla-only schema constraint on `ibge_municipios`
+  and a duplicated lookup map in `ibge_geocodigo` (roadmap item 1.3).
 - **Unified date input format** across all date-taking tools (`bcb`, `ibge_noticias`,
   `ibge_calendario`). All now accept the canonical Brazilian `DD/MM/AAAA` (plus
   `DD-MM-AAAA` and ISO `AAAA-MM-DD`) and convert internally to each upstream API's

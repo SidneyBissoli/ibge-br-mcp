@@ -4,6 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
+import { resolveUf } from "../config.js";
 
 // Map of state codes to names
 const ESTADOS_MAP: Record<number, { sigla: string; nome: string; regiao: string }> = {
@@ -56,7 +57,12 @@ Formatos aceitos:
     .string()
     .optional()
     .describe("Nome da localidade para encontrar o código IBGE (estado ou município)"),
-  uf: z.string().optional().describe("Sigla da UF para restringir a busca por nome de município"),
+  uf: z
+    .string()
+    .optional()
+    .describe(
+      "Estado por sigla (SP), nome (São Paulo) ou código IBGE (35) para restringir a busca por nome de município"
+    ),
 });
 
 export type GeocodigoInput = z.infer<typeof geocodigoSchema>;
@@ -272,16 +278,16 @@ async function searchByName(nome: string, uf?: string): Promise<string> {
 
   // Search municipalities
   let endpoint = `${IBGE_API.LOCALIDADES}/municipios`;
+  let ufKey = "all";
   if (uf) {
-    const ufCode = Object.entries(ESTADOS_MAP).find(
-      ([, info]) => info.sigla.toLowerCase() === uf.toLowerCase()
-    )?.[0];
-    if (ufCode) {
-      endpoint = `${IBGE_API.LOCALIDADES}/estados/${ufCode}/municipios`;
+    const ufResolved = resolveUf(uf);
+    if (ufResolved) {
+      endpoint = `${IBGE_API.LOCALIDADES}/estados/${ufResolved.code}/municipios`;
+      ufKey = ufResolved.sigla;
     }
   }
 
-  const key = cacheKey("municipios", { uf: uf || "all" });
+  const key = cacheKey("municipios", { uf: ufKey });
   const municipios = await cachedFetch<MunicipioSimples[]>(endpoint, key, CACHE_TTL.STATIC);
 
   const matches = municipios

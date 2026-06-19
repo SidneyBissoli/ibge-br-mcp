@@ -47,7 +47,7 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 
 ### 1.3 Consistência de parâmetros
 - [x] Unificar formatos de data entre todas as tools (IBGE e BCB)
-- [ ] Normalizar entrada de localidade (sigla, nome ou código intercambiáveis)
+- [x] Normalizar entrada de localidade (sigla, nome ou código intercambiáveis)
 - [ ] Padronizar nomenclatura de níveis territoriais
 
 > Resolução do item de datas:
@@ -60,10 +60,20 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 > - Bônus: corrigido bug em `ibge_calendario` que lia campos inexistentes
 >   (`data_inicio`/`produto`) e renderizava `NaN`.
 >
-> Notas de descoberta restantes (do trabalho do 1.1):
-> - **Localidade:** já existe `normalizeUf` em `src/validation.ts`, mas a
->   intercambialidade sigla/nome/código não é uniforme entre as tools — partir
->   daí para um helper único de resolução de localidade.
+> Resolução do item de localidade:
+> - Criado `resolveUf(input)` em `src/config.ts` (fonte única) que aceita sigla
+>   (`SP`), nome (`São Paulo`, sem depender de acento/caixa) e código (`35`).
+>   `normalizeUf` passou a delegar a ele, propagando o suporte a nome a todas as
+>   tools que já o usavam. `ibge_municipios`/`ibge_vizinhos`/`ibge_geocodigo`
+>   passam a aceitar as três formas; removida restrição `length(2)` e um mapa de
+>   UF duplicado no `geocodigo`.
+> - Escopo de UF (estado). Resolução de **município por nome → código** já existe
+>   localmente (`ibge_vizinhos`, `ibge_geocodigo`, `ibge_municipios(busca=)`);
+>   unificá-la num helper único é candidato futuro, não bloqueante.
+>
+> Restante do 1.3:
+> - **Níveis territoriais:** padronizar a nomenclatura/uso de níveis (SIDRA e
+>   afins) entre as tools — único subitem em aberto.
 
 ### 1.4 Erros que ensinam
 - [ ] Mensagens de erro que sugerem a correção e a tool correta

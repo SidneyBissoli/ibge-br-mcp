@@ -14,6 +14,7 @@ import {
   REGION_CODES,
   UF_SIGLAS,
 } from "../src/validation.js";
+import { resolveUf } from "../src/config.js";
 
 describe("isValidIbgeCode", () => {
   describe("region codes (1 digit)", () => {
@@ -119,6 +120,32 @@ describe("normalizeUf", () => {
   it("should handle whitespace", () => {
     expect(normalizeUf(" SP ")).toBe(35);
     expect(normalizeUf("  RJ")).toBe(33);
+  });
+
+  it("should resolve state names (accent/case-insensitive)", () => {
+    expect(normalizeUf("São Paulo")).toBe(35);
+    expect(normalizeUf("sao paulo")).toBe(35);
+    expect(normalizeUf("RIO DE JANEIRO")).toBe(33);
+    expect(normalizeUf("Distrito Federal")).toBe(53);
+  });
+});
+
+describe("resolveUf", () => {
+  it("resolves sigla, name and code to the same canonical record", () => {
+    const expected = { code: 35, sigla: "SP", nome: "São Paulo" };
+    expect(resolveUf("SP")).toEqual(expected);
+    expect(resolveUf("sp")).toEqual(expected);
+    expect(resolveUf("35")).toEqual(expected);
+    expect(resolveUf(35)).toEqual(expected);
+    expect(resolveUf("São Paulo")).toEqual(expected);
+    expect(resolveUf("sao paulo")).toEqual(expected);
+  });
+
+  it("returns null for unrecognized input", () => {
+    expect(resolveUf("XX")).toBeNull();
+    expect(resolveUf("99")).toBeNull();
+    expect(resolveUf("")).toBeNull();
+    expect(resolveUf("Pindorama")).toBeNull();
   });
 });
 

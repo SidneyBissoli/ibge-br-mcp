@@ -10,10 +10,9 @@ import { normalizeUf, formatValidationError } from "../validation.js";
 export const municipiosSchema = z.object({
   uf: z
     .string()
-    .length(2)
     .optional()
     .describe(
-      "Sigla do estado (ex: SP, RJ, MG). Se não informado, retorna todos os municípios do Brasil."
+      "Estado por sigla (SP), nome (São Paulo) ou código IBGE (35). Se não informado, retorna todos os municípios do Brasil."
     ),
   busca: z.string().optional().describe("Termo para buscar no nome do município"),
   limite: z
@@ -42,7 +41,7 @@ export async function ibgeMunicipios(input: MunicipiosInput): Promise<string> {
           return formatValidationError(
             "uf",
             input.uf,
-            "Sigla de UF válida (ex: SP, RJ, MG) ou código numérico (ex: 35, 33)"
+            "Estado por sigla (SP), nome (São Paulo) ou código IBGE (35)"
           );
         }
 

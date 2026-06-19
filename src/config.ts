@@ -316,6 +316,64 @@ export function getUfSigla(code: number): string | undefined {
 }
 
 /**
+ * Normalizes free text for matching: lowercased, trimmed, internal whitespace
+ * collapsed, and accents stripped (e.g. "São  Paulo " -> "sao paulo").
+ */
+export function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+/**
+ * Normalized state name -> sigla (e.g. "sao paulo" -> "SP").
+ */
+export const UF_NAME_TO_SIGLA: Record<string, string> = Object.fromEntries(
+  Object.entries(UF_NAMES).map(([sigla, nome]) => [normalizeText(nome), sigla])
+);
+
+export interface ResolvedUf {
+  code: number;
+  sigla: string;
+  nome: string;
+}
+
+/**
+ * Resolves a state (UF) from any of its three forms, interchangeably:
+ *   - sigla:  "SP" / "sp"
+ *   - nome:   "São Paulo" / "sao paulo" (accent- and case-insensitive)
+ *   - código: "35" / 35
+ *
+ * Single source of truth for UF input resolution — tools should accept all
+ * three forms by routing user input through this helper. Returns null if the
+ * input matches none of them.
+ */
+export function resolveUf(input: string | number): ResolvedUf | null {
+  const raw = String(input).trim();
+  if (!raw) return null;
+
+  let sigla: string | undefined;
+
+  if (/^\d+$/.test(raw)) {
+    // Numeric IBGE code (e.g. "35")
+    sigla = UF_SIGLAS[parseInt(raw, 10)];
+  } else if (raw.length === 2 && raw.toUpperCase() in UF_CODES) {
+    // Sigla (e.g. "SP")
+    sigla = raw.toUpperCase();
+  } else {
+    // State name (e.g. "São Paulo")
+    sigla = UF_NAME_TO_SIGLA[normalizeText(raw)];
+  }
+
+  if (!sigla) return null;
+
+  return { code: UF_CODES[sigla], sigla, nome: UF_NAMES[sigla] };
+}
+
+/**
  * Get region code from state abbreviation
  */
 export function getRegionFromUf(uf: string): number | undefined {

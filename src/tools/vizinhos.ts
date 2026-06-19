@@ -4,13 +4,19 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
-import { isValidIbgeCode, normalizeUf, formatValidationError } from "../validation.js";
+import { isValidIbgeCode, formatValidationError } from "../validation.js";
+import { resolveUf } from "../config.js";
 import { fetchWithRetry, RETRY_PRESETS } from "../retry.js";
 
 // Schema for the tool input
 export const vizinhosSchema = z.object({
   municipio: z.string().describe("Código IBGE do município (7 dígitos) ou nome do município"),
-  uf: z.string().optional().describe("Sigla da UF (obrigatório se usar nome do município)"),
+  uf: z
+    .string()
+    .optional()
+    .describe(
+      "Estado por sigla (SP), nome (São Paulo) ou código IBGE (35) — obrigatório se usar nome do município"
+    ),
   raio: z
     .number()
     .optional()
@@ -60,17 +66,21 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<string> {
           return formatValidationError(
             "uf",
             "(não informado)",
-            "Sigla da UF é obrigatória ao buscar por nome de município"
+            "Estado (sigla, nome ou código) é obrigatório ao buscar por nome de município"
           );
         }
-        // Validate UF
-        if (!normalizeUf(input.uf)) {
-          return formatValidationError("uf", input.uf, "Sigla de UF válida (ex: SP, RJ, MG)");
+        const ufResolved = resolveUf(input.uf);
+        if (!ufResolved) {
+          return formatValidationError(
+            "uf",
+            input.uf,
+            "Estado por sigla (SP), nome (São Paulo) ou código IBGE (35)"
+          );
         }
-        const munInfo = await findMunicipioByName(input.municipio, input.uf);
+        const munInfo = await findMunicipioByName(input.municipio, ufResolved.code);
         if (!munInfo) {
           return ValidationErrors.notFound(
-            `Município "${input.municipio}" em ${input.uf.toUpperCase()}`,
+            `Município "${input.municipio}" em ${ufResolved.sigla}`,
             "ibge_vizinhos",
             "ibge_municipios"
           );
@@ -153,9 +163,9 @@ async function getMunicipioInfo(codigo: string): Promise<Municipio | null> {
   }
 }
 
-async function findMunicipioByName(nome: string, uf: string): Promise<Municipio | null> {
+async function findMunicipioByName(nome: string, uf: string | number): Promise<Municipio | null> {
   try {
-    const url = `${IBGE_API.LOCALIDADES}/estados/${uf.toUpperCase()}/municipios`;
+    const url = `${IBGE_API.LOCALIDADES}/estados/${uf}/municipios`;
     const key = cacheKey(url);
 
     const municipios = await cachedFetch<Municipio[]>(url, key, CACHE_TTL.STATIC);
