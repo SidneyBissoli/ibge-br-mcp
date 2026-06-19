@@ -99,7 +99,23 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 ### 1.4 Erros que ensinam
 - [ ] Mensagens de erro que sugerem a correção e a tool correta
 - [ ] Mensagens claras para "combinação sem dado" (vs. falha real)
-- [ ] Timeout de requisição configurável
+- [x] Timeout de requisição configurável
+
+> Resolução do item de timeout:
+> - Cada requisição agora tem um teto de tempo real: `fetchWithRetry` arma um
+>   `AbortController` por tentativa (`createTimeoutSignal` em `retry.ts`), então
+>   uma conexão pendurada não trava mais o cliente — antes não havia
+>   `signal`/timeout e o `fetch` podia esperar indefinidamente.
+> - **Configurável** via env `IBGE_MCP_TIMEOUT_MS` (default `30000`, em
+>   `config.ts`) e por chamada via `RetryOptions.timeoutMs`.
+> - Timeout conta como erro **transiente** (retentável); ao esgotar as
+>   tentativas, lança `TimeoutError`, que `parseHttpError` converte na mensagem
+>   pronta `timeoutError` (com segundos e tools relacionadas) — antes
+>   `timeoutError` e o campo `FetchOptions.timeout` eram scaffolding morto, nunca
+>   acionados. `FetchOptions` (não usado) foi removido.
+> - +15 testes (`retry.test.ts`, `errors.test.ts`): aborta no teto, retenta e
+>   sucede numa tentativa posterior, não aborta requisição rápida, e renderização
+>   da mensagem de timeout.
 
 ### 1.5 Confiabilidade (a base da usabilidade)
 - [x] Elevar cobertura de teste das tools (alvo: ≥50%), priorizando

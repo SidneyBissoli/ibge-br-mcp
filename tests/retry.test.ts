@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   isNetworkError,
   isRetryableStatus,
   calculateDelay,
+  fetchWithRetry,
+  TimeoutError,
   RETRY_PRESETS,
   type RetryOptions,
 } from "../src/retry.js";
@@ -133,6 +135,7 @@ describe("calculateDelay", () => {
     backoffMultiplier: 2,
     retryableStatusCodes: [429, 500, 502, 503, 504],
     isRetryable: isNetworkError,
+    timeoutMs: 30000,
   };
 
   it("should return initial delay for first attempt", () => {
@@ -216,5 +219,82 @@ describe("RETRY_PRESETS", () => {
     it("should have maxRetries of 0", () => {
       expect(RETRY_PRESETS.NONE.maxRetries).toBe(0);
     });
+  });
+});
+
+describe("TimeoutError", () => {
+  it("carries the timeout value and a recognizable name", () => {
+    const error = new TimeoutError(5000);
+    expect(error).toBeInstanceOf(Error);
+    expect(error.timeoutMs).toBe(5000);
+    expect(error.name).toBe("TimeoutError");
+    expect(error.message).toContain("5000");
+  });
+});
+
+describe("fetchWithRetry timeout", () => {
+  const realFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = realFetch;
+    vi.restoreAllMocks();
+  });
+
+  /** A fetch that never resolves on its own — only rejects when its signal aborts. */
+  function hangingFetch() {
+    return vi.fn((_url: string, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener(
+          "abort",
+          () => reject(init.signal?.reason ?? new Error("aborted")),
+          { once: true }
+        );
+      });
+    });
+  }
+
+  it("throws a TimeoutError when the request exceeds timeoutMs", async () => {
+    global.fetch = hangingFetch() as unknown as typeof fetch;
+
+    await expect(
+      fetchWithRetry("https://example.test/slow", undefined, { maxRetries: 0, timeoutMs: 20 })
+    ).rejects.toBeInstanceOf(TimeoutError);
+  });
+
+  it("retries after a timeout and succeeds on a later attempt", async () => {
+    let calls = 0;
+    global.fetch = vi.fn((_url: string, init?: RequestInit) => {
+      calls++;
+      if (calls === 1) {
+        // First attempt hangs until aborted by the timeout.
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+            once: true,
+          });
+        });
+      }
+      return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    }) as unknown as typeof fetch;
+
+    const response = await fetchWithRetry("https://example.test/flaky", undefined, {
+      maxRetries: 1,
+      timeoutMs: 20,
+      initialDelayMs: 0,
+    });
+
+    expect(response.status).toBe(200);
+    expect(calls).toBe(2);
+  });
+
+  it("does not abort a fast request", async () => {
+    global.fetch = vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }))
+    ) as unknown as typeof fetch;
+
+    const response = await fetchWithRetry("https://example.test/fast", undefined, {
+      timeoutMs: 1000,
+    });
+
+    expect(response.status).toBe(200);
   });
 });

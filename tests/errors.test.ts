@@ -7,6 +7,7 @@ import {
   networkError,
   IBGE_ERROR_CODES,
 } from "../src/errors.js";
+import { TimeoutError } from "../src/retry.js";
 
 describe("IBGE_ERROR_CODES", () => {
   it("should have definitions for common HTTP errors", () => {
@@ -137,6 +138,16 @@ describe("parseHttpError", () => {
 
     expect(result).toContain("**tabela:** 6579");
     expect(result).toContain("`ibge_sidra_metadados`");
+  });
+
+  it("should render a dedicated timeout message for a TimeoutError", () => {
+    const result = parseHttpError(new TimeoutError(30000), "ibge_sidra", undefined, [
+      "ibge_censo",
+    ]);
+
+    expect(result).toContain("Tempo de resposta excedido");
+    expect(result).toContain("30 segundos");
+    expect(result).toContain("`ibge_censo`");
   });
 });
 

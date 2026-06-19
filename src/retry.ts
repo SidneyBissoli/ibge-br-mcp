@@ -2,6 +2,19 @@
  * Retry utility with exponential backoff for network requests
  */
 
+import { REQUEST_TIMEOUT_MS } from "./config.js";
+
+/**
+ * Thrown when a request exceeds its configured timeout. Carries the limit so
+ * callers (e.g. `parseHttpError`) can render a precise, user-facing message.
+ */
+export class TimeoutError extends Error {
+  constructor(public readonly timeoutMs: number) {
+    super(`Request timeout after ${timeoutMs}ms`);
+    this.name = "TimeoutError";
+  }
+}
+
 export interface RetryOptions {
   /** Maximum number of retry attempts (default: 4) */
   maxRetries?: number;
@@ -15,6 +28,8 @@ export interface RetryOptions {
   retryableStatusCodes?: number[];
   /** Custom function to determine if error is retryable */
   isRetryable?: (error: Error) => boolean;
+  /** Per-request timeout in milliseconds (default: REQUEST_TIMEOUT_MS) */
+  timeoutMs?: number;
 }
 
 const DEFAULT_OPTIONS: Required<RetryOptions> = {
@@ -24,6 +39,7 @@ const DEFAULT_OPTIONS: Required<RetryOptions> = {
   backoffMultiplier: 2,
   retryableStatusCodes: [429, 500, 502, 503, 504],
   isRetryable: isNetworkError,
+  timeoutMs: REQUEST_TIMEOUT_MS,
 };
 
 /**
@@ -76,6 +92,30 @@ export function calculateDelay(attempt: number, options: Required<RetryOptions>)
 }
 
 /**
+ * Build an AbortSignal that fires after `timeoutMs`, also chaining any caller
+ * signal passed via `init`. Aborting with a `TimeoutError` reason lets the
+ * fetch rejection be recognized as a timeout (vs. a deliberate cancellation).
+ * Returns a `cleanup` that must run after each attempt to clear the timer.
+ */
+function createTimeoutSignal(
+  timeoutMs: number,
+  upstream?: AbortSignal | null
+): { signal: AbortSignal; cleanup: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new TimeoutError(timeoutMs)), timeoutMs);
+
+  if (upstream) {
+    if (upstream.aborted) {
+      controller.abort(upstream.reason);
+    } else {
+      upstream.addEventListener("abort", () => controller.abort(upstream.reason), { once: true });
+    }
+  }
+
+  return { signal: controller.signal, cleanup: () => clearTimeout(timer) };
+}
+
+/**
  * Wrapper for fetch with automatic retry on network errors
  */
 export async function fetchWithRetry(
@@ -88,8 +128,9 @@ export async function fetchWithRetry(
   let lastResponse: Response | null = null;
 
   for (let attempt = 1; attempt <= opts.maxRetries + 1; attempt++) {
+    const { signal, cleanup } = createTimeoutSignal(opts.timeoutMs, init?.signal);
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, { ...init, signal });
 
       // Check if status code is retryable
       if (!response.ok && isRetryableStatus(response.status, opts.retryableStatusCodes)) {
@@ -103,10 +144,17 @@ export async function fetchWithRetry(
 
       return response;
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
+      // A timeout aborts with a TimeoutError reason; surface that, not the
+      // generic AbortError the fetch implementation may throw.
+      const timedOut = signal.reason instanceof TimeoutError;
+      lastError = timedOut
+        ? signal.reason
+        : error instanceof Error
+          ? error
+          : new Error(String(error));
 
-      // Check if error is retryable
-      const shouldRetry = opts.isRetryable(lastError);
+      // Timeouts are transient and retryable; otherwise defer to the predicate.
+      const shouldRetry = timedOut || opts.isRetryable(lastError);
 
       if (shouldRetry && attempt <= opts.maxRetries) {
         const delay = calculateDelay(attempt, opts);
@@ -116,6 +164,8 @@ export async function fetchWithRetry(
 
       // If not retryable or no more retries, throw
       throw lastError;
+    } finally {
+      cleanup();
     }
   }
 

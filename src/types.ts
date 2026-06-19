@@ -338,10 +338,6 @@ export const BCB_API = API_ENDPOINTS.BCB;
 
 export type SexoFilter = "M" | "F" | null;
 
-export interface FetchOptions {
-  timeout?: number;
-}
-
 export type NivelTerritorial =
   | "N1" // Brasil
   | "N2" // Região

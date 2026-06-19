@@ -2,6 +2,8 @@
  * Standardized error handling for IBGE MCP Server
  */
 
+import { TimeoutError } from "./retry.js";
+
 // Common IBGE API error codes and their meanings
 export const IBGE_ERROR_CODES: Record<number, { message: string; suggestion: string }> = {
   400: {
@@ -83,6 +85,11 @@ export function parseHttpError(
   params?: Record<string, unknown>,
   relatedTools?: string[]
 ): string {
+  // A timed-out request gets a dedicated, actionable message.
+  if (error instanceof TimeoutError) {
+    return timeoutError(tool, error.timeoutMs, relatedTools);
+  }
+
   // Extract HTTP code from error message if present
   const httpMatch = error.message.match(/HTTP (\d+)/);
   const code = httpMatch ? parseInt(httpMatch[1]) : undefined;
@@ -155,12 +162,13 @@ Use ibge_sidra_metadados para ver os níveis disponíveis para cada tabela.`,
 /**
  * Timeout error handler
  */
-export function timeoutError(tool: string, timeoutMs: number): string {
+export function timeoutError(tool: string, timeoutMs: number, relatedTools?: string[]): string {
   return formatError({
     message: "Tempo de resposta excedido",
     tool,
     suggestion: `A requisição demorou mais de ${timeoutMs / 1000} segundos.
 Tente novamente ou reduza o escopo da consulta (menos localidades ou períodos).`,
+    relatedTools,
   });
 }
 

@@ -4,6 +4,25 @@
  */
 
 // ============================================================================
+// Request timeout
+// ============================================================================
+
+/** Default per-request timeout in milliseconds (upstream APIs are usually fast). */
+export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * Effective request timeout, overridable at startup via the
+ * `IBGE_MCP_TIMEOUT_MS` environment variable. Invalid or non-positive values
+ * fall back to the default. Used as the default `timeoutMs` for every fetch.
+ */
+export const REQUEST_TIMEOUT_MS = ((): number => {
+  const raw = process.env.IBGE_MCP_TIMEOUT_MS;
+  if (!raw) return DEFAULT_REQUEST_TIMEOUT_MS;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_REQUEST_TIMEOUT_MS;
+})();
+
+// ============================================================================
 // API Endpoints
 // ============================================================================
 
