@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
+import { type StructuredToolResult, sidraRecords } from "../structured.js";
 
 // Census data is published by SIDRA down to the municipality level.
 const CENSO_NIVEIS = ["1", "2", "3", "6"];
@@ -200,14 +201,32 @@ export const censoSchema = z.object({
 
 export type CensoInput = z.infer<typeof censoSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const censoOutputSchema = z.object({
+  tema: z.string().optional().describe("Tema do censo consultado"),
+  tabela: z.string().optional().describe("Tabela SIDRA de origem"),
+  descricao: z.string().optional().describe("Descrição da tabela"),
+  ano: z.string().optional().describe("Ano(s) de referência"),
+  totalRegistros: z.number().describe("Total de registros de dados"),
+  colunas: z.array(z.string()).describe("Rótulos das colunas, na ordem"),
+  registros: z
+    .array(z.record(z.string()))
+    .describe("Registros: cada um mapeia rótulo da coluna -> valor"),
+});
+
+/** Minimal valid payload for non-data success responses (e.g. the table catalog). */
+function emptyMeta(): Record<string, unknown> {
+  return { totalRegistros: 0, colunas: [], registros: [] };
+}
+
 /**
  * Fetches census data from IBGE SIDRA API
  */
-export async function ibgeCenso(input: CensoInput): Promise<string> {
+export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_censo", "sidra", async () => {
-    // If tema is "listar", show available tables
+    // If tema is "listar", show available tables (catalog in the text channel)
     if (input.tema === "listar") {
-      return listAvailableTables(input.ano);
+      return { markdown: listAvailableTables(input.ano), structured: emptyMeta() };
     }
 
     // Get the appropriate table
@@ -215,7 +234,10 @@ export async function ibgeCenso(input: CensoInput): Promise<string> {
     const temaTabelas = CENSO_TABELAS[tema];
 
     if (!temaTabelas) {
-      return `Tema "${tema}" não encontrado. Temas disponíveis: ${TEMAS_CENSO.join(", ")}`;
+      return {
+        markdown: `Tema "${tema}" não encontrado. Temas disponíveis: ${TEMAS_CENSO.join(", ")}`,
+        isError: true,
+      };
     }
 
     // Determine which table to use based on year
@@ -246,16 +268,27 @@ export async function ibgeCenso(input: CensoInput): Promise<string> {
     }
 
     if (!tabelaInfo) {
-      return (
-        `Dados de "${tema}" não disponíveis para o ano ${input.ano || "solicitado"}.\n\n` +
-        `Use ibge_censo(tema="listar") para ver tabelas disponíveis.`
-      );
+      return {
+        markdown:
+          `Dados de "${tema}" não disponíveis para o ano ${input.ano || "solicitado"}.\n\n` +
+          `Use ibge_censo(tema="listar") para ver tabelas disponíveis.`,
+        isError: true,
+      };
     }
 
     const nivel = input.nivel_territorial ?? "1";
     if (!CENSO_NIVEIS.includes(nivel)) {
-      return ValidationErrors.invalidTerritory(nivel, "ibge_censo", territorialLevelList(CENSO_NIVEIS));
+      return {
+        markdown: ValidationErrors.invalidTerritory(
+          nivel,
+          "ibge_censo",
+          territorialLevelList(CENSO_NIVEIS)
+        ),
+        isError: true,
+      };
     }
+
+    const meta = { tema, tabela: tabelaInfo.tabela, descricao: tabelaInfo.descricao, ano: input.ano };
 
     // Build SIDRA query
     try {
@@ -269,17 +302,22 @@ export async function ibgeCenso(input: CensoInput): Promise<string> {
         data = await cachedFetch<Record<string, string>[]>(url, key, CACHE_TTL.MEDIUM);
       } catch (error) {
         if (error instanceof Error && error.message.includes("400")) {
-          return (
-            `Erro na consulta: Parâmetros inválidos para a tabela ${tabelaInfo.tabela}.\n` +
-            `Descrição: ${tabelaInfo.descricao}\n\n` +
-            `Use ibge_sidra_metadados(tabela="${tabelaInfo.tabela}") para ver a estrutura da tabela.`
-          );
+          return {
+            markdown:
+              `Erro na consulta: Parâmetros inválidos para a tabela ${tabelaInfo.tabela}.\n` +
+              `Descrição: ${tabelaInfo.descricao}\n\n` +
+              `Use ibge_sidra_metadados(tabela="${tabelaInfo.tabela}") para ver a estrutura da tabela.`,
+            isError: true,
+          };
         }
         throw error;
       }
 
       if (!data || data.length === 0) {
-        return "Nenhum dado encontrado para os parâmetros informados.";
+        return {
+          markdown: "Nenhum dado encontrado para os parâmetros informados.",
+          structured: { ...meta, ...sidraRecords(data) },
+        };
       }
 
       // Format output
@@ -288,27 +326,27 @@ export async function ibgeCenso(input: CensoInput): Promise<string> {
       output += `**Descrição:** ${tabelaInfo.descricao}\n`;
       output += `**Ano(s):** ${input.ano || "Série histórica"}\n\n`;
 
+      const structured = { ...meta, ...sidraRecords(data) };
+
       if (input.formato === "json") {
-        return output + "```json\n" + JSON.stringify(data, null, 2) + "\n```";
+        return { markdown: output + "```json\n" + JSON.stringify(data, null, 2) + "\n```", structured };
       }
 
       // Format as table
       output += formatCensoTable(data);
 
-      return output;
+      return { markdown: output, structured };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(
-          error,
-          "ibge_censo",
-          {
-            ano: input.ano,
-            tema: input.tema,
-          },
-          ["ibge_sidra_metadados", "ibge_sidra"]
-        );
+        return {
+          markdown: parseHttpError(error, "ibge_censo", { ano: input.ano, tema: input.tema }, [
+            "ibge_sidra_metadados",
+            "ibge_sidra",
+          ]),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_censo");
+      return { markdown: ValidationErrors.emptyResult("ibge_censo"), isError: true };
     }
   });
 }

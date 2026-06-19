@@ -8,16 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Structured output for `ibge_sidra`** (roadmap item 1.2, first slice). The
-  tool now declares an `outputSchema` and returns a typed `structuredContent`
-  payload (`tabela`, `nome`, `totalRegistros`, `colunas`, `registros`,
-  `paginacao`) alongside the Markdown text, so agents can consume data without
-  parsing Markdown. Large results are **paginated** (100 rows/page) via a new
-  `pagina` input, with continuation guidance in the text channel. A reusable
-  `StructuredToolResult` + `toMcpResult` pattern (`src/structured.ts`) is in
-  place to propagate this to the other data tools. Note: `formato="json"` now
-  returns the structured payload as JSON (was the raw SIDRA array); empty
-  results are reported as success-with-empty-payload rather than as errors.
+- **Structured output** (roadmap item 1.2). Data tools now declare an
+  `outputSchema` and return a typed `structuredContent` payload alongside the
+  Markdown text, so agents can consume data without parsing Markdown. Done for
+  `ibge_sidra`, `ibge_censo`, `ibge_indicadores` and `datasaude` (registered via
+  `server.registerTool`). A reusable pattern lives in `src/structured.ts`
+  (`StructuredToolResult` + `toMcpResult`, plus a shared `sidraRecords` helper
+  that turns a SIDRA response into typed `colunas`/`registros`); the remaining
+  data tools can adopt it the same way.
+  - `ibge_sidra` paginates large results (100 rows/page) via a new `pagina`
+    input, with continuation guidance in the text channel.
+  - Convention: success returns `structuredContent`; errors return `isError`
+    (the SDK skips output validation); an empty result is success-with-empty
+    payload, not an error; non-data responses (e.g. `listar` catalogs) return a
+    minimal valid payload with the listing in the text channel.
+  - Note: `ibge_sidra` `formato="json"` now returns the structured payload as
+    JSON (was the raw SIDRA array).
 
 ### Changed
 - **Standardized territorial-level (`nivel_territorial`) nomenclature** across

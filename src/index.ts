@@ -30,9 +30,11 @@ import {
   pesquisasSchema,
   ibgePesquisas,
   censoSchema,
+  censoOutputSchema,
   ibgeCenso,
   // Phase 1 tools (v1.4.0)
   indicadoresSchema,
+  indicadoresOutputSchema,
   ibgeIndicadores,
   cnaeSchema,
   ibgeCnae,
@@ -51,6 +53,7 @@ import {
   bcbSchema,
   ibgeBcb,
   datasaudeSchema,
+  datasaudeOutputSchema,
   ibgeDatasaude,
   // Phase 4 tools (v1.9.0)
   paisesSchema,
@@ -414,9 +417,10 @@ This lists surveys, not data. To find table codes use ibge_sidra_tabelas; to que
   );
 
   // Register ibge_censo tool
-  server.tool(
+  server.registerTool(
     "ibge_censo",
-    `Queries IBGE Demographic Census data (1970-2022).
+    {
+      description: `Queries IBGE Demographic Census data (1970-2022).
 
 Simplified tool to access census data without knowing SIDRA table codes.
 
@@ -444,17 +448,19 @@ Use a different tool when:
 - One municipality's current panel (estimate, HDI, GDP) → ibge_cidades
 - Comparing/ranking localities → ibge_comparar
 - An arbitrary SIDRA table → ibge_sidra`,
-    censoSchema.shape,
+      inputSchema: censoSchema.shape,
+      outputSchema: censoOutputSchema.shape,
+    },
     async (args) => {
-      const result = await ibgeCenso(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeCenso(args));
     }
   );
 
   // Register ibge_indicadores tool (Phase 1)
-  server.tool(
+  server.registerTool(
     "ibge_indicadores",
-    `Queries IBGE economic and social indicators.
+    {
+      description: `Queries IBGE economic and social indicators.
 
 Available indicators:
 
@@ -493,10 +499,11 @@ Use a different tool when:
 - Census themes → ibge_censo
 - One municipality's panel → ibge_cidades
 Note: IPCA/INPC here come from IBGE (primary source); bcb also exposes them via the Central Bank's SGS.`,
-    indicadoresSchema.shape,
+      inputSchema: indicadoresSchema.shape,
+      outputSchema: indicadoresOutputSchema.shape,
+    },
     async (args) => {
-      const result = await ibgeIndicadores(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeIndicadores(args));
     }
   );
 
@@ -742,9 +749,10 @@ bcb is the right tool for interest rates (SELIC, CDI, TR) and exchange rates (do
   );
 
   // Register datasaude tool (Phase 3)
-  server.tool(
+  server.registerTool(
     "datasaude",
-    `Queries Brazil health indicators via IBGE/DataSUS.
+    {
+      description: `Queries Brazil health indicators via IBGE/DataSUS.
 
 Mortality and Birth:
 - mortalidade_infantil: Infant mortality rate
@@ -775,10 +783,11 @@ Examples:
 Use a different tool when:
 - A single municipality's general panel (which also includes infant mortality) → ibge_cidades
 - Population/demographic counts (not health-specific) → ibge_censo or ibge_sidra`,
-    datasaudeSchema.shape,
+      inputSchema: datasaudeSchema.shape,
+      outputSchema: datasaudeOutputSchema.shape,
+    },
     async (args) => {
-      const result = await ibgeDatasaude(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeDatasaude(args));
     }
   );
 

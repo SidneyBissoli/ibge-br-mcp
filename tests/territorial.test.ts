@@ -48,8 +48,9 @@ describe("Territorial level validation", () => {
     it("rejects municipality level (6) without calling the API", async () => {
       const result = await ibgeIndicadores({ indicador: "desemprego", nivel_territorial: "6" });
 
-      expect(result).toContain("Nível territorial inválido");
-      expect(result).toContain('"6"');
+      expect(result.isError).toBe(true);
+      expect(result.markdown).toContain("Nível territorial inválido");
+      expect(result.markdown).toContain('"6"');
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
@@ -66,7 +67,8 @@ describe("Territorial level validation", () => {
     it("rejects an unsupported level (9) without calling the API", async () => {
       const result = await ibgeCenso({ tema: "populacao", nivel_territorial: "9" });
 
-      expect(result).toContain("Nível territorial inválido");
+      expect(result.isError).toBe(true);
+      expect(result.markdown).toContain("Nível territorial inválido");
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
@@ -83,7 +85,8 @@ describe("Territorial level validation", () => {
     it("rejects level 9 without calling the API", async () => {
       const result = await ibgeDatasaude({ indicador: "esperanca_vida", nivel_territorial: "9" });
 
-      expect(result).toContain("Nível territorial inválido");
+      expect(result.isError).toBe(true);
+      expect(result.markdown).toContain("Nível territorial inválido");
       expect(mockFetch).not.toHaveBeenCalled();
     });
   });

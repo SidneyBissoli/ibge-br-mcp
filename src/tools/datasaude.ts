@@ -6,6 +6,7 @@ import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { fetchWithRetry } from "../retry.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
+import { type StructuredToolResult, sidraRecords } from "../structured.js";
 
 // Health data is published by SIDRA down to the municipality level.
 const DATASAUDE_NIVEIS = ["1", "2", "3", "6"];
@@ -112,33 +113,61 @@ export const datasaudeSchema = z.object({
 
 export type DatasaudeInput = z.infer<typeof datasaudeSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const datasaudeOutputSchema = z.object({
+  indicador: z.string().optional().describe("Chave do indicador de saúde consultado"),
+  nome: z.string().optional().describe("Nome do indicador"),
+  fonte: z.string().optional().describe("Fonte do dado"),
+  totalRegistros: z.number().describe("Total de registros de dados"),
+  colunas: z.array(z.string()).describe("Rótulos das colunas, na ordem"),
+  registros: z
+    .array(z.record(z.string()))
+    .describe("Registros: cada um mapeia rótulo da coluna -> valor"),
+});
+
+/** Minimal valid payload for non-data success responses (e.g. the indicator catalog). */
+function emptyMeta(): Record<string, unknown> {
+  return { totalRegistros: 0, colunas: [], registros: [] };
+}
+
 /**
  * Fetches health data from IBGE and DataSUS
  */
-export async function ibgeDatasaude(input: DatasaudeInput): Promise<string> {
+export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_datasaude", "sidra", async () => {
-    // List indicators
+    // List indicators (catalog in the text channel)
     if (input.indicador === "listar") {
-      return listHealthIndicators();
+      return { markdown: listHealthIndicators(), structured: emptyMeta() };
     }
 
     const indicadorInfo = INDICADORES_SAUDE[input.indicador.toLowerCase()];
 
     if (!indicadorInfo) {
-      return (
-        `Indicador "${input.indicador}" não encontrado.\n\n` +
-        `Use indicador="listar" para ver indicadores disponíveis.`
-      );
+      return {
+        markdown:
+          `Indicador "${input.indicador}" não encontrado.\n\n` +
+          `Use indicador="listar" para ver indicadores disponíveis.`,
+        isError: true,
+      };
     }
 
     const nivel = input.nivel_territorial ?? "1";
     if (!DATASAUDE_NIVEIS.includes(nivel)) {
-      return ValidationErrors.invalidTerritory(
-        nivel,
-        "ibge_datasaude",
-        territorialLevelList(DATASAUDE_NIVEIS)
-      );
+      return {
+        markdown: ValidationErrors.invalidTerritory(
+          nivel,
+          "ibge_datasaude",
+          territorialLevelList(DATASAUDE_NIVEIS)
+        ),
+        isError: true,
+      };
     }
+
+    const meta = {
+      indicador: input.indicador.toLowerCase(),
+      nome: indicadorInfo.nome,
+      fonte: indicadorInfo.fonte,
+    };
 
     try {
       // Build SIDRA query
@@ -165,18 +194,27 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<string> {
       }
 
       if (!data || data.length === 0) {
-        return `Nenhum dado encontrado para ${indicadorInfo.nome}.`;
+        return {
+          markdown: `Nenhum dado encontrado para ${indicadorInfo.nome}.`,
+          structured: { ...meta, ...sidraRecords(data) },
+        };
       }
 
-      return formatResponse(data, indicadorInfo, input);
+      return {
+        markdown: formatResponse(data, indicadorInfo, input),
+        structured: { ...meta, ...sidraRecords(data) },
+      };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "datasaude", { indicador: input.indicador }, [
-          "ibge_sidra",
-          "ibge_sidra_metadados",
-        ]);
+        return {
+          markdown: parseHttpError(error, "datasaude", { indicador: input.indicador }, [
+            "ibge_sidra",
+            "ibge_sidra_metadados",
+          ]),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("datasaude");
+      return { markdown: ValidationErrors.emptyResult("datasaude"), isError: true };
     }
   });
 }

@@ -42,20 +42,22 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 
 ### 1.2 Saída estruturada e compacta (em andamento)
 - [~] Adicionar `outputSchema` + `structuredContent` (JSON tipado) às tools de dado
-      — feito em `ibge_sidra`; padrão reutilizável pronto para propagar
+      — feito em `ibge_sidra`, `ibge_censo`, `ibge_indicadores`, `datasaude`;
+      faltam `populacao`, `comparar`, `cidades`, ...
 - [x] Limitar/paginar respostas grandes (ex.: SIDRA) com orientação de continuação
 - [ ] Seleção de campos onde fizer sentido reduzir volume
 
-> Fatia inicial entregue:
+> Progresso:
 > - Padrão reutilizável em `src/structured.ts` (`StructuredToolResult` +
->   `toMcpResult`): sucesso → `structuredContent`; erro → `isError` (isento de
->   validação no SDK); vazio → payload estruturado vazio (sucesso, não erro).
-> - `ibge_sidra` registrado via `server.registerTool` com `outputSchema`
->   (`sidraOutputSchema`); retorna `{tabela, nome, totalRegistros, colunas,
->   registros, paginacao}`. Paginação de 100 registros/página via input `pagina`.
-> - **Propagar** o mesmo padrão aos demais tools de dado (`indicadores`, `censo`,
->   `datasaude`, `populacao`, `comparar`, `cidades`, ...) e avaliar seleção de
->   campos onde reduzir volume fizer sentido.
+>   `toMcpResult` + helper `sidraRecords`): sucesso → `structuredContent`; erro →
+>   `isError` (isento de validação no SDK); vazio → payload estruturado vazio
+>   (sucesso); resposta não-dado (ex.: `listar`) → payload mínimo válido.
+> - Migrados (via `server.registerTool` + `outputSchema`): `ibge_sidra`
+>   (com paginação de 100/página via input `pagina`), `ibge_censo`,
+>   `ibge_indicadores`, `datasaude`. Confirmado end-to-end que `tools/list`
+>   anuncia o `outputSchema` desses tools.
+> - **Falta propagar** a `populacao`, `comparar`, `cidades` (e demais tools de
+>   dado) e avaliar seleção de campos onde reduzir volume fizer sentido.
 
 ### 1.3 Consistência de parâmetros ✅
 - [x] Unificar formatos de data entre todas as tools (IBGE e BCB)

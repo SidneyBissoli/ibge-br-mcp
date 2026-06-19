@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
+import { type StructuredToolResult, sidraRecords } from "../structured.js";
 
 // These aggregates are published down to UF level (no municipal breakdown).
 const INDICADORES_NIVEIS = ["1", "2", "3"];
@@ -182,43 +183,65 @@ Use "listar" para ver todos os indicadores disponíveis.`),
 
 export type IndicadoresInput = z.infer<typeof indicadoresSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const indicadoresOutputSchema = z.object({
+  indicador: z.string().optional().describe("Chave do indicador consultado"),
+  nome: z.string().optional().describe("Nome do indicador"),
+  tabela: z.string().optional().describe("Tabela SIDRA de origem"),
+  totalRegistros: z.number().describe("Total de registros de dados"),
+  colunas: z.array(z.string()).describe("Rótulos das colunas, na ordem"),
+  registros: z
+    .array(z.record(z.string()))
+    .describe("Registros: cada um mapeia rótulo da coluna -> valor"),
+});
+
+/** Minimal valid payload for non-data success responses (e.g. the indicator catalog). */
+function emptyMeta(): Record<string, unknown> {
+  return { totalRegistros: 0, colunas: [], registros: [] };
+}
+
 /**
  * Fetches economic and social indicators from IBGE
  */
-export async function ibgeIndicadores(input: IndicadoresInput): Promise<string> {
+export async function ibgeIndicadores(input: IndicadoresInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_indicadores", "agregados", async () => {
-    // List available indicators
+    // List available indicators (catalog goes in the text channel)
     if (input.indicador === "listar" || (!input.indicador && !input.categoria)) {
-      return listIndicadores(input.categoria);
+      return { markdown: listIndicadores(input.categoria), structured: emptyMeta() };
     }
 
     // Get indicator by category
     if (input.categoria && input.categoria !== "todos" && !input.indicador) {
-      return listIndicadores(input.categoria);
+      return { markdown: listIndicadores(input.categoria), structured: emptyMeta() };
     }
 
     // Get specific indicator
     const indicadorKey = input.indicador?.toLowerCase();
     if (!indicadorKey) {
-      return listIndicadores();
+      return { markdown: listIndicadores(), structured: emptyMeta() };
     }
 
     const indicador = INDICADORES_CONHECIDOS[indicadorKey];
     if (!indicador) {
-      return (
-        `Indicador "${input.indicador}" não encontrado.\n\n` +
-        `Use ibge_indicadores(indicador="listar") para ver os indicadores disponíveis.\n\n` +
-        `Dica: Você também pode usar ibge_sidra_tabelas para buscar tabelas específicas.`
-      );
+      return {
+        markdown:
+          `Indicador "${input.indicador}" não encontrado.\n\n` +
+          `Use ibge_indicadores(indicador="listar") para ver os indicadores disponíveis.\n\n` +
+          `Dica: Você também pode usar ibge_sidra_tabelas para buscar tabelas específicas.`,
+        isError: true,
+      };
     }
 
     const nivel = input.nivel_territorial ?? "1";
     if (!INDICADORES_NIVEIS.includes(nivel)) {
-      return ValidationErrors.invalidTerritory(
-        nivel,
-        "ibge_indicadores",
-        territorialLevelList(INDICADORES_NIVEIS)
-      );
+      return {
+        markdown: ValidationErrors.invalidTerritory(
+          nivel,
+          "ibge_indicadores",
+          territorialLevelList(INDICADORES_NIVEIS)
+        ),
+        isError: true,
+      };
     }
 
     try {
@@ -244,23 +267,32 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<string> 
       } catch (fetchError) {
         // Provide helpful error message
         if (fetchError instanceof Error && fetchError.message.includes("400")) {
-          return formatErrorMessage(
-            "Parâmetros inválidos",
-            indicador,
-            indicadorKey,
-            "Verifique se o nível territorial e localidades são suportados para este indicador."
-          );
+          return {
+            markdown: formatErrorMessage(
+              "Parâmetros inválidos",
+              indicador,
+              indicadorKey,
+              "Verifique se o nível territorial e localidades são suportados para este indicador."
+            ),
+            isError: true,
+          };
         }
         throw fetchError;
       }
 
+      const meta = { indicador: indicadorKey, nome: indicador.nome, tabela: indicador.tabela };
+
       if (!data || data.length === 0) {
-        return formatErrorMessage(
-          "Nenhum dado encontrado",
-          indicador,
-          indicadorKey,
-          "Tente ajustar os períodos ou localidades."
-        );
+        // No data is a valid (empty) result, not a failure.
+        return {
+          markdown: formatErrorMessage(
+            "Nenhum dado encontrado",
+            indicador,
+            indicadorKey,
+            "Tente ajustar os períodos ou localidades."
+          ),
+          structured: { ...meta, ...sidraRecords(data) },
+        };
       }
 
       // Format output
@@ -269,22 +301,27 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<string> 
       output += `**Periodicidade:** ${indicador.periodicidade}\n`;
       output += `**Tabela SIDRA:** ${indicador.tabela}\n\n`;
 
+      const structured = { ...meta, ...sidraRecords(data) };
+
       if (input.formato === "json") {
-        return output + "```json\n" + JSON.stringify(data, null, 2) + "\n```";
+        return { markdown: output + "```json\n" + JSON.stringify(data, null, 2) + "\n```", structured };
       }
 
       output += formatIndicadorTable(data);
-      return output;
+      return { markdown: output, structured };
     } catch (error) {
       if (error instanceof Error) {
-        return formatErrorMessage(
-          error.message,
-          indicadorKey ? INDICADORES_CONHECIDOS[indicadorKey] : undefined,
-          indicadorKey ?? "unknown",
-          "Verifique sua conexão ou tente novamente mais tarde."
-        );
+        return {
+          markdown: formatErrorMessage(
+            error.message,
+            indicadorKey ? INDICADORES_CONHECIDOS[indicadorKey] : undefined,
+            indicadorKey ?? "unknown",
+            "Verifique sua conexão ou tente novamente mais tarde."
+          ),
+          isError: true,
+        };
       }
-      return "Erro desconhecido ao consultar indicador.";
+      return { markdown: "Erro desconhecido ao consultar indicador.", isError: true };
     }
   });
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ibgeCenso } from "../src/tools/censo.js";
-import { ibgeIndicadores } from "../src/tools/indicadores.js";
-import { ibgeDatasaude } from "../src/tools/datasaude.js";
+import { ibgeCenso, censoOutputSchema } from "../src/tools/censo.js";
+import { ibgeIndicadores, indicadoresOutputSchema } from "../src/tools/indicadores.js";
+import { ibgeDatasaude, datasaudeOutputSchema } from "../src/tools/datasaude.js";
 import { cache } from "../src/cache.js";
 import { mockResponse, sidraResponse } from "./helpers.js";
 
@@ -28,10 +28,16 @@ describe("ibge_censo", () => {
 
     const result = await ibgeCenso({ tema: "populacao", nivel_territorial: "3" });
 
-    expect(result).toContain("Censo Demográfico");
-    expect(result).toContain("Tabela SIDRA:");
-    expect(result).toContain("São Paulo");
-    expect(result).toContain("44.411.238");
+    expect(result.markdown).toContain("Censo Demográfico");
+    expect(result.markdown).toContain("Tabela SIDRA:");
+    expect(result.markdown).toContain("São Paulo");
+    expect(result.markdown).toContain("44.411.238");
+    // Structured output (1.2): typed records validated against the outputSchema.
+    const s = result.structured as Record<string, unknown>;
+    expect(s.tema).toBe("populacao");
+    expect(s.colunas).toContain("Unidade da Federação");
+    expect((s.registros as Record<string, string>[])[0]["Unidade da Federação"]).toBe("São Paulo");
+    expect(censoOutputSchema.safeParse(result.structured).success).toBe(true);
   });
 
   it("returns embedded JSON when formato='json'", async () => {
@@ -39,14 +45,14 @@ describe("ibge_censo", () => {
 
     const result = await ibgeCenso({ tema: "populacao", formato: "json" });
 
-    expect(result).toContain("```json");
-    expect(result).toContain('"São Paulo"');
+    expect(result.markdown).toContain("```json");
+    expect(result.markdown).toContain('"São Paulo"');
   });
 
   it("lists available tables for tema='listar' without calling the API", async () => {
     const result = await ibgeCenso({ tema: "listar" });
 
-    expect(result).toContain("Tabelas do Censo");
+    expect(result.markdown).toContain("Tabelas do Censo");
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -55,8 +61,8 @@ describe("ibge_censo", () => {
 
     const result = await ibgeCenso({ tema: "populacao" });
 
-    expect(result).toContain("Nenhum dado encontrado");
-    expect(result).not.toContain("Código HTTP");
+    expect(result.markdown).toContain("Nenhum dado encontrado");
+    expect(result.markdown).not.toContain("Código HTTP");
   });
 
   it("surfaces an upstream error gracefully", async () => {
@@ -64,7 +70,7 @@ describe("ibge_censo", () => {
 
     const result = await ibgeCenso({ tema: "populacao" });
 
-    expect(result).toContain("Erro");
+    expect(result.markdown).toContain("Erro");
   });
 });
 
@@ -81,7 +87,7 @@ describe("ibge_indicadores", () => {
   it("lists indicators when called with no indicator", async () => {
     const result = await ibgeIndicadores({});
 
-    expect(result.length).toBeGreaterThan(0);
+    expect(result.markdown.length).toBeGreaterThan(0);
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -90,8 +96,12 @@ describe("ibge_indicadores", () => {
 
     const result = await ibgeIndicadores({ indicador: "desemprego", nivel_territorial: "3" });
 
-    expect(result).toContain("Tabela SIDRA:");
-    expect(result).toContain("São Paulo");
+    expect(result.markdown).toContain("Tabela SIDRA:");
+    expect(result.markdown).toContain("São Paulo");
+    const s = result.structured as Record<string, unknown>;
+    expect(s.indicador).toBe("desemprego");
+    expect(s.totalRegistros).toBe(1);
+    expect(indicadoresOutputSchema.safeParse(result.structured).success).toBe(true);
   });
 
   it("returns embedded JSON when formato='json'", async () => {
@@ -103,13 +113,13 @@ describe("ibge_indicadores", () => {
       formato: "json",
     });
 
-    expect(result).toContain("```json");
+    expect(result.markdown).toContain("```json");
   });
 
   it("reports an unknown indicator without calling the API", async () => {
     const result = await ibgeIndicadores({ indicador: "inexistente-xyz" });
 
-    expect(result).toContain("não encontrado");
+    expect(result.markdown).toContain("não encontrado");
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -118,7 +128,7 @@ describe("ibge_indicadores", () => {
 
     const result = await ibgeIndicadores({ indicador: "desemprego", nivel_territorial: "3" });
 
-    expect(result).toContain("Nenhum dado encontrado");
+    expect(result.markdown).toContain("Nenhum dado encontrado");
   });
 });
 
@@ -135,7 +145,7 @@ describe("ibge_datasaude", () => {
   it("lists health indicators for indicador='listar' without calling the API", async () => {
     const result = await ibgeDatasaude({ indicador: "listar" });
 
-    expect(result).toContain("Indicadores de Saúde");
+    expect(result.markdown).toContain("Indicadores de Saúde");
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -144,14 +154,17 @@ describe("ibge_datasaude", () => {
 
     const result = await ibgeDatasaude({ indicador: "esperanca_vida", nivel_territorial: "3" });
 
-    expect(result).toContain("**Fonte:**");
-    expect(result).toContain("São Paulo");
+    expect(result.markdown).toContain("**Fonte:**");
+    expect(result.markdown).toContain("São Paulo");
+    const s = result.structured as Record<string, unknown>;
+    expect(s.indicador).toBe("esperanca_vida");
+    expect(datasaudeOutputSchema.safeParse(result.structured).success).toBe(true);
   });
 
   it("reports an unknown indicator without calling the API", async () => {
     const result = await ibgeDatasaude({ indicador: "inexistente-xyz" });
 
-    expect(result).toContain("não encontrado");
+    expect(result.markdown).toContain("não encontrado");
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -160,8 +173,8 @@ describe("ibge_datasaude", () => {
 
     const result = await ibgeDatasaude({ indicador: "esperanca_vida", nivel_territorial: "3" });
 
-    expect(result).toContain("Nenhum dado encontrado");
-    expect(result).not.toContain("Código HTTP");
+    expect(result.markdown).toContain("Nenhum dado encontrado");
+    expect(result.markdown).not.toContain("Código HTTP");
   });
 
   it("surfaces an upstream error gracefully", async () => {
@@ -169,6 +182,6 @@ describe("ibge_datasaude", () => {
 
     const result = await ibgeDatasaude({ indicador: "esperanca_vida", nivel_territorial: "3" });
 
-    expect(result).toContain("Erro");
+    expect(result.markdown).toContain("Erro");
   });
 });

@@ -6,7 +6,7 @@ import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidPeriod, isValidTerritorialLevel, formatValidationError } from "../validation.js";
 import { territorialLevelHint, territorialLevelList, ALL_TERRITORIAL_LEVELS } from "../config.js";
-import type { StructuredToolResult } from "../structured.js";
+import { type StructuredToolResult, sidraRecords } from "../structured.js";
 
 /** Data rows returned per page in the structured payload and Markdown table. */
 const PAGE_SIZE = 100;
@@ -223,24 +223,12 @@ function buildSidraResult(
   formato: string
 ): StructuredToolResult {
   const tabelaNome = TABELAS_COMUNS[tabela] || `Tabela ${tabela}`;
-  const headerRow = data[0];
-  const dataRows = data.slice(1);
-  const columns = Object.keys(headerRow);
-  const colLabels = columns.map((col) => headerRow[col] || col);
+  const { colunas, registros: allRegistros, totalRegistros } = sidraRecords(data);
 
-  const total = dataRows.length;
-  const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPaginas = Math.max(1, Math.ceil(totalRegistros / PAGE_SIZE));
   const page = Math.min(Math.max(1, pagina), totalPaginas);
   const start = (page - 1) * PAGE_SIZE;
-  const pageRows = dataRows.slice(start, start + PAGE_SIZE);
-
-  const registros = pageRows.map((row) => {
-    const obj: Record<string, string> = {};
-    columns.forEach((col, i) => {
-      obj[colLabels[i]] = row[col] ?? "";
-    });
-    return obj;
-  });
+  const registros = allRegistros.slice(start, start + PAGE_SIZE);
 
   const paginacao = {
     pagina: page,
@@ -249,29 +237,22 @@ function buildSidraResult(
     temMais: page < totalPaginas,
   };
 
-  const structured = {
-    tabela,
-    nome: tabelaNome,
-    totalRegistros: total,
-    colunas: colLabels,
-    registros,
-    paginacao,
-  };
+  const structured = { tabela, nome: tabelaNome, totalRegistros, colunas, registros, paginacao };
 
   if (formato === "json") {
     return { markdown: JSON.stringify(structured, null, 2), structured };
   }
 
   let output = `## SIDRA - ${tabelaNome}\n\n`;
-  output += `Total de registros: ${total}\n\n`;
+  output += `Total de registros: ${totalRegistros}\n\n`;
 
-  if (total === 0) {
+  if (totalRegistros === 0) {
     return { markdown: output + "Nenhum dado encontrado para os filtros aplicados.", structured };
   }
 
-  const rows = pageRows.map((row) =>
-    columns.map((col) => {
-      const value = row[col];
+  const rows = registros.map((reg) =>
+    colunas.map((col) => {
+      const value = reg[col];
       if (value && !isNaN(Number(value)) && value.length > 3) {
         return formatNumber(Number(value));
       }
@@ -279,7 +260,7 @@ function buildSidraResult(
     })
   );
 
-  output += createMarkdownTable(colLabels, rows, { showRowCount: true });
+  output += createMarkdownTable(colunas, rows, { showRowCount: true });
 
   if (paginacao.temMais) {
     output += `\n_Página ${page} de ${totalPaginas}. Use pagina=${page + 1} para a próxima página (ou formato='json' para os dados completos)._\n`;

@@ -12,10 +12,10 @@ export { ibgeSidraTabelas, sidraTabelasSchema } from "./sidra-tabelas.js";
 export { ibgeSidraMetadados, sidraMetadadosSchema } from "./sidra-metadados.js";
 export { ibgeMalhas, malhasSchema } from "./malhas.js";
 export { ibgePesquisas, pesquisasSchema } from "./pesquisas.js";
-export { ibgeCenso, censoSchema } from "./censo.js";
+export { ibgeCenso, censoSchema, censoOutputSchema } from "./censo.js";
 
 // Phase 1 tools (v1.4.0)
-export { ibgeIndicadores, indicadoresSchema } from "./indicadores.js";
+export { ibgeIndicadores, indicadoresSchema, indicadoresOutputSchema } from "./indicadores.js";
 export { ibgeCnae, cnaeSchema } from "./cnae.js";
 export { ibgeGeocodigo, geocodigoSchema } from "./geocodigo.js";
 
@@ -27,7 +27,7 @@ export { ibgeComparar, compararSchema } from "./comparar.js";
 export { ibgeMalhasTema, malhasTemaSchema } from "./malhas-tema.js";
 export { ibgeVizinhos, vizinhosSchema } from "./vizinhos.js";
 export { ibgeBcb, bcbSchema } from "./bcb.js";
-export { ibgeDatasaude, datasaudeSchema } from "./datasaude.js";
+export { ibgeDatasaude, datasaudeSchema, datasaudeOutputSchema } from "./datasaude.js";
 
 // Phase 4 tools (v1.9.0)
 export { ibgePaises, paisesSchema } from "./paises.js";
