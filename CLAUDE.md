@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-An MCP (Model Context Protocol) server, published to npm as `ibge-br-mcp`, that exposes Brazilian public data (IBGE, Banco Central, DataSUS) as ~23 tools over STDIO. Pure TypeScript, ESM, no runtime framework — just `@modelcontextprotocol/sdk` + `zod`. There is no database and no local state beyond an in-memory cache; every tool is a thin async function that fetches from a public REST API and formats the result as Markdown text.
+An MCP (Model Context Protocol) server, published to npm as `ibge-br-mcp`, that exposes Brazilian public data from the IBGE APIs as ~22 tools over STDIO (health data, including some DataSUS-origin stats, is read via IBGE's SIDRA — the server only ever calls IBGE endpoints). Pure TypeScript, ESM, no runtime framework — just `@modelcontextprotocol/sdk` + `zod`. There is no database and no local state beyond an in-memory cache; every tool is a thin async function that fetches from a public REST API and formats the result as Markdown text.
 
 ## Commands
 
@@ -36,7 +36,7 @@ Node >= 18 (uses the global `fetch`). Tests mock `global.fetch` — they never h
 
 **Request flow for every tool:** `server.ts` registers the tool → handler calls the tool's `ibgeXxx(args)` function → that function wraps its body in `withMetrics(...)` → calls `cachedFetch(url, key, ttl)` → `cachedFetch` checks the in-memory cache, and on a miss calls `fetchWithRetry` (exponential backoff on network errors + 429/5xx) → on error the tool catches and returns `parseHttpError(...)`.
 
-**All 23 tools are annotated read-only** via a shared `READ_ONLY` `ToolAnnotations` const in `server.ts` (`readOnlyHint`/`idempotentHint`/`openWorldHint` true, `destructiveHint` false) — every tool is a pure GET against a public API. Reference catalogs (UF/region codes, SIDRA territorial levels & table codes, biomes) are exposed as `ibge://catalogos/...` **resources** (`resources.ts`), and analysis templates (compare municipalities, demographic profile, cross IBGE+BCB) as **prompts** (`prompts.ts`). See roadmap 1.6.
+**All 22 tools are annotated read-only** via a shared `READ_ONLY` `ToolAnnotations` const in `server.ts` (`readOnlyHint`/`idempotentHint`/`openWorldHint` true, `destructiveHint` false) — every tool is a pure GET against a public API. Reference catalogs (UF/region codes, SIDRA territorial levels & table codes, biomes) are exposed as `ibge://catalogos/...` **resources** (`resources.ts`), and analysis templates (compare municipalities, demographic profile) as **prompts** (`prompts.ts`). See roadmap 1.6.
 
 **Two registration shapes — pick by whether the tool returns tabular data:**
 - **Markdown-only tools** (catalog / localidade / listing — the majority) register with `server.tool(name, description, schema.shape, handler)`; the handler returns `{ content: [{ type: "text", text: result }] }` and the tool's impl returns a **Markdown string**.
@@ -50,7 +50,7 @@ Node >= 18 (uses the global `fetch`). Tests mock `global.fetch` — they never h
 - `metrics.ts` — wrap every tool body in `withMetrics(toolName, apiName, fn)`. Also exports `logger` (writes to **stderr** only — stdout is the MCP protocol channel, never log there).
 - `structured.ts` — structured-output plumbing for data tools: `StructuredToolResult` type, `toMcpResult` (success → `structuredContent`, error → `isError` so the SDK skips schema validation), `sidraRecords` (SIDRA header+rows → labeled `{ colunas, registros, totalRegistros }`), and `selectSidraColumns` (the `campos` field-selection filter, accent/case-insensitive, returns data unchanged on no match).
 - `utils/formatters.ts` (re-exported via `utils/index.js`) — `createMarkdownTable`, `createKeyValueTable`, `formatNumber`, etc. Output formatting goes through these.
-- `types.ts` — IBGE API response interfaces plus the `IBGE_API` / `BCB_API` endpoint aliases.
+- `types.ts` — IBGE API response interfaces plus the `IBGE_API` endpoint alias.
 
 **Tools live in `src/tools/`, one file per tool.** Each file exports a zod schema `xxxSchema` and the async impl `ibgeXxx`. The canonical small example is `estados.ts`.
 

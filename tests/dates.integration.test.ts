@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ibgeBcb } from "../src/tools/bcb.js";
 import { ibgeNoticias } from "../src/tools/noticias.js";
 import { ibgeCalendario } from "../src/tools/calendario.js";
 import { cache } from "../src/cache.js";
@@ -42,33 +41,6 @@ describe("Date normalization across tools", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  describe("bcb — converts canonical date to DD/MM/AAAA", () => {
-    it("passes Brazilian DD/MM/AAAA through to the BCB API", async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse([{ data: "01/03/2026", valor: "1.0" }]));
-
-      await ibgeBcb({ indicador: "ipca", dataInicio: "01/03/2026", dataFim: "31/03/2026" });
-
-      const url = lastUrl();
-      expect(url).toContain(`dataInicial=${encodeURIComponent("01/03/2026")}`);
-      expect(url).toContain(`dataFinal=${encodeURIComponent("31/03/2026")}`);
-    });
-
-    it("accepts ISO input and converts it to DD/MM/AAAA", async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse([{ data: "01/03/2026", valor: "1.0" }]));
-
-      await ibgeBcb({ indicador: "ipca", dataInicio: "2026-03-01" });
-
-      expect(lastUrl()).toContain(`dataInicial=${encodeURIComponent("01/03/2026")}`);
-    });
-
-    it("rejects an invalid date without calling the API", async () => {
-      const result = await ibgeBcb({ indicador: "ipca", dataInicio: "31/31/2026" });
-
-      expect(result).toContain("Data inválida");
-      expect(mockFetch).not.toHaveBeenCalled();
-    });
   });
 
   describe("noticias — converts canonical date to MM-DD-AAAA", () => {

@@ -126,7 +126,7 @@ export interface ParsedDate {
  * Month-first ordering (the old `MM-DD-AAAA`) is intentionally NOT accepted — it
  * is ambiguous for Brazilian users and silently produced wrong results. Each
  * tool re-emits the parsed date in whatever its upstream API requires; see
- * `toBcbDate` (DD/MM/AAAA) and `toIbgeApiDate` (MM-DD-AAAA).
+ * `toIbgeApiDate` (MM-DD-AAAA).
  *
  * Returns null if the input does not match a supported format or is out of range.
  */
@@ -160,13 +160,6 @@ export function parseUserDate(input: string): ParsedDate | null {
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
-}
-
-/**
- * Formats a parsed date as `DD/MM/AAAA` — the format the BCB SGS API expects.
- */
-export function toBcbDate(d: ParsedDate): string {
-  return `${pad2(d.day)}/${pad2(d.month)}/${d.year}`;
 }
 
 /**

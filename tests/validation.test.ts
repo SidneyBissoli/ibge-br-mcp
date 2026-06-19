@@ -3,7 +3,6 @@ import {
   isValidIbgeCode,
   normalizeUf,
   parseUserDate,
-  toBcbDate,
   toIbgeApiDate,
   isValidPeriod,
   isValidTerritorialLevel,
@@ -204,20 +203,14 @@ describe("parseUserDate", () => {
   });
 });
 
-describe("toBcbDate / toIbgeApiDate", () => {
-  it("toBcbDate emits DD/MM/AAAA", () => {
-    expect(toBcbDate({ day: 1, month: 3, year: 2026 })).toBe("01/03/2026");
-    expect(toBcbDate({ day: 31, month: 12, year: 2024 })).toBe("31/12/2024");
-  });
-
+describe("toIbgeApiDate", () => {
   it("toIbgeApiDate emits MM-DD-AAAA (month-first, what the IBGE API expects)", () => {
     expect(toIbgeApiDate({ day: 1, month: 3, year: 2026 })).toBe("03-01-2026");
     expect(toIbgeApiDate({ day: 31, month: 12, year: 2024 })).toBe("12-31-2024");
   });
 
-  it("round-trips a canonical user date to each API format", () => {
+  it("round-trips a canonical user date to the IBGE API format", () => {
     const parsed = parseUserDate("15/06/2026")!;
-    expect(toBcbDate(parsed)).toBe("15/06/2026");
     expect(toIbgeApiDate(parsed)).toBe("06-15-2026");
   });
 });

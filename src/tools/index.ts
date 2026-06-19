@@ -26,7 +26,6 @@ export { ibgeComparar, compararSchema, compararOutputSchema } from "./comparar.j
 // Phase 3 tools (v1.6.0)
 export { ibgeMalhasTema, malhasTemaSchema } from "./malhas-tema.js";
 export { ibgeVizinhos, vizinhosSchema } from "./vizinhos.js";
-export { ibgeBcb, bcbSchema } from "./bcb.js";
 export { ibgeDatasaude, datasaudeSchema, datasaudeOutputSchema } from "./datasaude.js";
 
 // Phase 4 tools (v1.9.0)

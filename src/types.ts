@@ -329,9 +329,6 @@ export const IBGE_API = {
   SIDRA: API_ENDPOINTS.SIDRA,
 } as const;
 
-// Re-export BCB API for convenience
-export const BCB_API = API_ENDPOINTS.BCB;
-
 // ============================================================================
 // Helper Types
 // ============================================================================

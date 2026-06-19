@@ -1,18 +1,18 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.SidneyBissoli/ibge-br-mcp",
-  "description": "MCP server for live, sourced Brazilian public data from the IBGE and Banco Central APIs.",
+  "description": "MCP server for live, sourced Brazilian public data from the official IBGE APIs.",
   "repository": {
     "url": "https://github.com/SidneyBissoli/ibge-br-mcp",
     "source": "github"
   },
-  "version": "1.10.0",
+  "version": "2.0.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "ibge-br-mcp",
-      "version": "1.10.0",
+      "version": "2.0.0",
       "transport": {
         "type": "stdio"
       }

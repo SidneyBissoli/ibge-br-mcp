@@ -12,15 +12,15 @@
 
 **Live, exact Brazilian public data for your AI assistant — with provenance, not guesswork.**
 
-Ask an LLM _"what was Belo Horizonte's population in the 2022 Census?"_ and you get a plausible number from its training data: maybe right, maybe outdated, with no source. `ibge-br-mcp` instead has your assistant query the official **IBGE** and **Banco Central** APIs in real time — returning the exact figure together with the table and period it came from.
+Ask an LLM _"what was Belo Horizonte's population in the 2022 Census?"_ and you get a plausible number from its training data: maybe right, maybe outdated, with no source. `ibge-br-mcp` instead has your assistant query the official **IBGE** APIs in real time — returning the exact figure together with the table and period it came from.
 
 🇧🇷 [Leia em Português](README.pt-BR.md)
 
-This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to give AI assistants live, structured access to Brazil's public geographic, demographic, economic, and health data — sourced from the IBGE APIs (including health indicators served through IBGE's SIDRA system) and the Central Bank's SGS.
+This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to give AI assistants live, structured access to Brazil's public geographic, demographic, economic, and health data — sourced from the IBGE APIs (including health indicators served through IBGE's SIDRA system).
 
 ## Features
 
-- **23 specialized tools** covering all major IBGE data domains
+- **22 specialized tools** covering all major IBGE data domains
 - **Reference resources & analysis prompts** (MCP catalogs + ready-made templates)
 - **460 automated tests** with 97%+ core coverage
 - **Automatic caching** with configurable TTL for optimal performance
@@ -82,10 +82,9 @@ This server implements the [Model Context Protocol (MCP)](https://modelcontextpr
 | `ibge_malhas` | Geographic meshes (GeoJSON, TopoJSON, SVG) |
 | `ibge_malhas_tema` | Thematic meshes (biomes, Legal Amazon, semi-arid) |
 
-### External Data (BCB & Health)
+### Health
 | Tool | Description |
 |:-----|:------------|
-| `bcb` | Central Bank data (SELIC, IPCA, exchange rates) |
 | `datasaude` | Health indicators via IBGE's SIDRA |
 
 ### News & Calendar
@@ -96,7 +95,7 @@ This server implements the [Model Context Protocol (MCP)](https://modelcontextpr
 
 ## Which tool should I use?
 
-With 23 tools, several can touch the same topic. Quick guide for the common overlaps:
+With 22 tools, several can touch the same topic. Quick guide for the common overlaps:
 
 ### Population & demographics
 
@@ -114,7 +113,6 @@ With 23 tools, several can touch the same topic. Quick guide for the common over
 | You want… | Use |
 |:----------|:----|
 | IPCA, INPC, GDP, unemployment (IBGE, primary source) | `ibge_indicadores` |
-| SELIC, CDI, TR, dollar/euro exchange rates | `bcb` |
 
 ### Localities & codes
 
@@ -398,23 +396,6 @@ ibge_malhas(localidade="BR", formato="svg")
 | 2 | States |
 | 5 | Municipalities |
 
-### bcb
-
-Query Central Bank of Brazil data.
-
-```
-# SELIC last 12 months
-bcb(indicador="selic", ultimos=12)
-
-# IPCA for 2023
-bcb(indicador="ipca", dataInicio="01/01/2023", dataFim="31/12/2023")
-
-# Dollar exchange rate last 30 days
-bcb(indicador="dolar_venda", ultimos=30)
-```
-
-**Available indicators:** selic, cdi, tr, ipca, ipca_acum, igpm, inpc, dolar_compra, dolar_venda, euro, desemprego
-
 ### datasaude
 
 Query Brazilian health indicators served through IBGE's SIDRA (some originally produced by DataSUS, e.g. mortality and births).
@@ -447,10 +428,6 @@ datasaude(indicador="listar")
 - **Calendar**: `servicodados.ibge.gov.br/api/v3/calendario`
 - **Countries**: `servicodados.ibge.gov.br/api/v1/paises`
 - **Research**: `servicodados.ibge.gov.br/api/v1/pesquisas`
-
-### External APIs
-
-- **Central Bank (BCB)**: `api.bcb.gov.br/dados/serie/bcdata.sgs` - Interest rates, exchange rates, inflation
 
 ## Development
 
@@ -510,7 +487,6 @@ ibge-br-mcp/
 │       ├── malhas.ts         # ibge_malhas
 │       ├── malhas-tema.ts    # ibge_malhas_tema
 │       ├── vizinhos.ts       # ibge_vizinhos
-│       ├── bcb.ts            # bcb
 │       ├── datasaude.ts      # datasaude
 │       ├── pesquisas.ts      # ibge_pesquisas
 │       ├── nomes.ts          # ibge_nomes

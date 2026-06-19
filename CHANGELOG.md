@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-19
+
+Refocus on the project's stated principle — **IBGE specialist, no scope creep
+to other sources** — plus the first discoverability work (roadmap Phase 2).
+
+### Removed (BREAKING)
+- **The `bcb` tool** (Banco Central do Brasil data) has been removed. It was the
+  only non-IBGE data source and contradicted the roadmap's "IBGE specialist"
+  scope; dedicated Banco Central MCP servers cover this better. Also removed the
+  accompanying `cruzar-ibge-bcb` prompt, the BCB API endpoints in `config.ts`
+  (SGS/PTAX/EXPECTATIVAS), the `BCB_API` alias, and the `toBcbDate` helper.
+  Tool count: 23 → 22. IPCA/INPC and other price indices remain available via
+  `ibge_indicadores` (IBGE is their primary source).
+
+### Added
+- **README differentiator** (roadmap 2.1): both READMEs now lead with the
+  "live, exact, sourced data vs. just asking an LLM" pitch, with a concrete
+  example.
+- **Registry metadata / SEO** (roadmap 2.4): value-oriented `package.json`
+  description and expanded keywords; `server.json` description aligned and its
+  malformed indentation fixed.
+
+### Fixed
+- **Accuracy:** removed the claim that the server queries a **DataSUS** API. It
+  does not — health indicators are read from IBGE's SIDRA (the `datasaude`
+  tool). DataSUS is credited only as the original producer of some stats
+  (mortality/births) served via SIDRA. Corrected across README, metadata, the
+  `datasaude` tool description, and internal comments.
+
 ## [1.10.0] - 2026-06-19
 
 This release completes **Phase 1 (usability)** of the roadmap: structured

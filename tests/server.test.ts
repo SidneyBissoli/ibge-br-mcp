@@ -26,7 +26,7 @@ describe("MCP server protocol surface", () => {
     it("marks every tool read-only, idempotent, and open-world", async () => {
       const { tools } = await client.listTools();
 
-      expect(tools.length).toBeGreaterThanOrEqual(23);
+      expect(tools.length).toBeGreaterThanOrEqual(22);
       for (const tool of tools) {
         expect(tool.annotations, `tool ${tool.name} missing annotations`).toBeDefined();
         expect(tool.annotations?.readOnlyHint, `tool ${tool.name}`).toBe(true);
@@ -77,7 +77,6 @@ describe("MCP server protocol surface", () => {
 
       expect(names).toContain("comparar-municipios");
       expect(names).toContain("perfil-demografico");
-      expect(names).toContain("cruzar-ibge-bcb");
     });
 
     it("expands comparar-municipios with the provided arguments", async () => {

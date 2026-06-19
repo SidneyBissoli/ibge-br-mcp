@@ -12,15 +12,15 @@
 
 **Dados públicos brasileiros ao vivo e exatos para o seu assistente de IA — com procedência, não chute.**
 
-Pergunte a um LLM _"qual era a população de Belo Horizonte no Censo 2022?"_ e você recebe um número plausível, tirado do treino: talvez certo, talvez desatualizado, sem fonte. O `ibge-br-mcp` faz o seu assistente consultar as APIs oficiais do **IBGE** e do **Banco Central** em tempo real — devolvendo o valor exato junto com a tabela e o período de onde ele veio.
+Pergunte a um LLM _"qual era a população de Belo Horizonte no Censo 2022?"_ e você recebe um número plausível, tirado do treino: talvez certo, talvez desatualizado, sem fonte. O `ibge-br-mcp` faz o seu assistente consultar as APIs oficiais do **IBGE** em tempo real — devolvendo o valor exato junto com a tabela e o período de onde ele veio.
 
 🇺🇸 [Read in English](README.md)
 
-Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) para dar aos assistentes de IA acesso ao vivo e estruturado aos dados públicos geográficos, demográficos, econômicos e de saúde do Brasil — vindos das APIs do IBGE (inclusive os indicadores de saúde, servidos pelo SIDRA do IBGE) e do sistema SGS do Banco Central.
+Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) para dar aos assistentes de IA acesso ao vivo e estruturado aos dados públicos geográficos, demográficos, econômicos e de saúde do Brasil — vindos das APIs do IBGE (inclusive os indicadores de saúde, servidos pelo SIDRA do IBGE).
 
 ## Recursos
 
-- **23 ferramentas especializadas** cobrindo todos os principais domínios de dados do IBGE
+- **22 ferramentas especializadas** cobrindo todos os principais domínios de dados do IBGE
 - **Resources de referência & prompts de análise** (catálogos MCP + templates prontos)
 - **460 testes automatizados** com 97%+ de cobertura no core
 - **Cache automático** com TTL configurável para performance otimizada
@@ -82,10 +82,9 @@ Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextpr
 | `ibge_malhas` | Malhas geográficas (GeoJSON, TopoJSON, SVG) |
 | `ibge_malhas_tema` | Malhas temáticas (biomas, Amazônia Legal, semiárido) |
 
-### Dados Externos (BCB e Saúde)
+### Saúde
 | Ferramenta | Descrição |
 |:-----------|:----------|
-| `bcb` | Dados do Banco Central (SELIC, IPCA, câmbio) |
 | `datasaude` | Indicadores de saúde via SIDRA do IBGE |
 
 ### Notícias e Calendário
@@ -96,7 +95,7 @@ Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextpr
 
 ## Qual ferramenta usar?
 
-Com 23 ferramentas, várias podem tocar no mesmo assunto. Guia rápido para as sobreposições comuns:
+Com 22 ferramentas, várias podem tocar no mesmo assunto. Guia rápido para as sobreposições comuns:
 
 ### População e demografia
 
@@ -114,7 +113,6 @@ Com 23 ferramentas, várias podem tocar no mesmo assunto. Guia rápido para as s
 | Você quer… | Use |
 |:-----------|:----|
 | IPCA, INPC, PIB, desemprego (IBGE, fonte primária) | `ibge_indicadores` |
-| SELIC, CDI, TR, câmbio dólar/euro | `bcb` |
 
 ### Localidades e códigos
 
@@ -398,23 +396,6 @@ ibge_malhas(localidade="BR", formato="svg")
 | 2 | Estados |
 | 5 | Municípios |
 
-### bcb
-
-Consulta dados do Banco Central do Brasil.
-
-```
-# SELIC últimos 12 meses
-bcb(indicador="selic", ultimos=12)
-
-# IPCA de 2023
-bcb(indicador="ipca", dataInicio="01/01/2023", dataFim="31/12/2023")
-
-# Cotação do dólar últimos 30 dias
-bcb(indicador="dolar_venda", ultimos=30)
-```
-
-**Indicadores disponíveis:** selic, cdi, tr, ipca, ipca_acum, igpm, inpc, dolar_compra, dolar_venda, euro, desemprego
-
 ### datasaude
 
 Consulta indicadores de saúde servidos pelo SIDRA do IBGE (alguns originalmente do DataSUS, ex.: óbitos e nascidos vivos).
@@ -447,10 +428,6 @@ datasaude(indicador="listar")
 - **Calendário**: `servicodados.ibge.gov.br/api/v3/calendario`
 - **Países**: `servicodados.ibge.gov.br/api/v1/paises`
 - **Pesquisas**: `servicodados.ibge.gov.br/api/v1/pesquisas`
-
-### APIs Externas
-
-- **Banco Central (BCB)**: `api.bcb.gov.br/dados/serie/bcdata.sgs` - Taxas de juros, câmbio, inflação
 
 ## Desenvolvimento
 
@@ -513,7 +490,6 @@ ibge-br-mcp/
 │       ├── malhas.ts         # ibge_malhas
 │       ├── malhas-tema.ts    # ibge_malhas_tema
 │       ├── vizinhos.ts       # ibge_vizinhos
-│       ├── bcb.ts            # bcb
 │       ├── datasaude.ts      # datasaude
 │       ├── pesquisas.ts      # ibge_pesquisas
 │       ├── nomes.ts          # ibge_nomes

@@ -50,8 +50,6 @@ import {
   ibgeMalhasTema,
   vizinhosSchema,
   ibgeVizinhos,
-  bcbSchema,
-  ibgeBcb,
   datasaudeSchema,
   datasaudeOutputSchema,
   ibgeDatasaude,
@@ -68,7 +66,7 @@ import { registerPrompts } from "./prompts.js";
 
 // Server metadata
 export const SERVER_NAME = "ibge-br-mcp";
-export const SERVER_VERSION = "1.10.0";
+export const SERVER_VERSION = "2.0.0";
 
 /**
  * Every tool here is a read-only query against a public REST API: it never
@@ -90,7 +88,7 @@ const READ_ONLY: ToolAnnotations = {
  * is safe to import and call from tests. `index.ts` wraps it with STDIO.
  *
  * Provides tools to access the IBGE (Brazilian Institute of Geography and
- * Statistics) and Banco Central APIs (health data is served via IBGE's SIDRA).
+ * Statistics) APIs (health data is served via IBGE's SIDRA).
  */
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -523,11 +521,9 @@ Examples:
 - List indicators: indicador="listar"
 
 Use a different tool when:
-- Interest/exchange rates (SELIC, dollar, euro, CDI, TR) → bcb
 - Comparing/ranking localities → ibge_comparar
 - Census themes → ibge_censo
-- One municipality's panel → ibge_cidades
-Note: IPCA/INPC here come from IBGE (primary source); bcb also exposes them via the Central Bank's SGS.`,
+- One municipality's panel → ibge_cidades`,
       inputSchema: indicadoresSchema.shape,
       outputSchema: indicadoresOutputSchema.shape,
       annotations: READ_ONLY,
@@ -738,51 +734,6 @@ For listing/searching municipalities, use ibge_municipios.`,
     READ_ONLY,
     async (args) => {
       const result = await ibgeVizinhos(args);
-      return { content: [{ type: "text", text: result }] };
-    }
-  );
-
-  // Register bcb tool (Phase 3)
-  server.tool(
-    "bcb",
-    `Queries Central Bank of Brazil (BCB) data.
-
-Interest Rate Indicators:
-- selic: Accumulated SELIC rate
-- cdi: CDI rate
-- tr: Reference Rate
-
-Inflation Indicators:
-- ipca: Monthly IPCA
-- ipca_acum: 12-month accumulated IPCA
-- igpm: IGP-M
-- inpc: INPC
-
-Exchange Rate Indicators:
-- dolar_compra/dolar_venda: Commercial dollar
-- euro: Euro
-
-Macroeconomic Indicators:
-- desemprego: Unemployment rate
-- divida_pib: Public debt/GDP
-- reservas: International reserves
-
-Also accepts numeric codes from BCB's SGS System.
-
-Examples:
-- SELIC last 12 months: indicador="selic", ultimos=12
-- IPCA for 2023: indicador="ipca", dataInicio="01/01/2023", dataFim="31/12/2023"
-- Recent dollar: indicador="dolar_venda", ultimos=30
-- List indicators: indicador="listar"
-
-Use a different tool when:
-- IPCA/INPC from the primary source (IBGE) → ibge_indicadores
-- Locality-level economic/social indicators → ibge_indicadores or ibge_comparar
-bcb is the right tool for interest rates (SELIC, CDI, TR) and exchange rates (dollar, euro), which IBGE does not provide.`,
-    bcbSchema.shape,
-    READ_ONLY,
-    async (args) => {
-      const result = await ibgeBcb(args);
       return { content: [{ type: "text", text: result }] };
     }
   );

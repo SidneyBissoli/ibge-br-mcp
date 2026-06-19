@@ -41,12 +41,6 @@ export const API_ENDPOINTS = {
     PESQUISAS: "https://servicodados.ibge.gov.br/api/v1/pesquisas",
   },
   SIDRA: "https://apisidra.ibge.gov.br/values",
-  // External APIs
-  BCB: {
-    SGS: "https://api.bcb.gov.br/dados/serie/bcdata.sgs",
-    PTAX: "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata",
-    EXPECTATIVAS: "https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata",
-  },
 } as const;
 
 // ============================================================================

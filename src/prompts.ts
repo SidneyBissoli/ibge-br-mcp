@@ -2,9 +2,9 @@
  * Ready-made analysis templates exposed as MCP prompts (roadmap 1.6).
  *
  * Each prompt expands into a user message that steers the model through a
- * real analysis using this server's tools — comparing municipalities, building
- * a demographic profile, or cross-referencing IBGE with Banco Central data —
- * so users don't have to remember which tools to chain.
+ * real analysis using this server's tools — comparing municipalities or
+ * building a demographic profile — so users don't have to remember which tools
+ * to chain.
  */
 
 import { z } from "zod";
@@ -83,34 +83,5 @@ Passos:
 4. Para indicadores de saúde (mortalidade infantil, esperança de vida), use datasaude.
 5. Sintetize em um perfil curto e estruturado (tabela + 1 parágrafo), citando o ano de cada dado e usando apenas valores retornados pelas tools.`
       )
-  );
-
-  // Cross-reference IBGE indicators with Banco Central series.
-  server.registerPrompt(
-    "cruzar-ibge-bcb",
-    {
-      title: "Cruzar IBGE + Banco Central",
-      description:
-        "Cruza um indicador macroeconômico do IBGE com séries do Banco Central (juros, câmbio) no mesmo período.",
-      argsSchema: {
-        tema: z
-          .string()
-          .optional()
-          .describe("Tema macroeconômico (ex.: inflacao, atividade, emprego). Padrão: inflacao"),
-      },
-    },
-    ({ tema }) => {
-      const t = tema?.trim() || "inflacao";
-      return userMessage(
-        `Faça uma leitura macroeconômica cruzando dados do IBGE e do Banco Central sobre o tema "${t}".
-
-Passos:
-1. Pelo IBGE, use ibge_indicadores para o lado real/preços do tema (ex.: ipca, desemprego, pib).
-2. Pelo Banco Central, use bcb para as séries financeiras relacionadas (ex.: selic, cdi, dolar_venda) no mesmo intervalo de tempo.
-3. Alinhe os períodos e apresente uma tabela comparativa.
-4. Comente a relação entre as séries (ex.: inflação vs. juros) de forma factual, baseada apenas nos valores retornados.
-Observação: IPCA/INPC têm o IBGE como fonte primária; o BCB também os expõe via SGS.`
-      );
-    }
   );
 }

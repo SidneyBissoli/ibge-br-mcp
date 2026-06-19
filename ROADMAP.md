@@ -14,12 +14,12 @@ manchete aproximada.
 3. **Vivo e exato.** Nada de modo offline ou dado estático — é a proposta de valor.
 4. **Especialista em IBGE.** Sem scope creep para outras fontes no núcleo.
 
-## ✅ Status atual (v1.9.x)
+## ✅ Status atual (v2.0.x)
 
-- [x] 23 tools cobrindo as principais APIs do IBGE
+- [x] 22 tools cobrindo as principais APIs do IBGE (foco 100% IBGE)
 - [x] Cache automático com TTL configurável
 - [x] Retry com backoff exponencial
-- [x] 227 testes automatizados
+- [x] 456 testes automatizados
 - [x] Documentação bilíngue (EN / PT-BR)
 - [x] CI/CD (lint, format, build, matriz Node 18/20/22, coverage, type-check, audit)
 - [x] Publicado no npm e no MCP Registry
@@ -158,7 +158,7 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 - [x] **Resources**: expor catálogos de referência (tabelas SIDRA, níveis
       territoriais, códigos de UF/região) como recursos legíveis
 - [x] **Prompts**: templates de análise prontos (comparar municípios, montar
-      perfil demográfico, cruzar IBGE + BCB)
+      perfil demográfico)
 - [x] **Annotations**: marcar todas as tools como read-only
 
 > Resolução:
@@ -174,9 +174,10 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 >   — `ufs`, `regioes`, `niveis-territoriais`, `tabelas-sidra`, `biomas` —
 >   derivados de `config.ts` (fonte única). Dão ao agente as tabelas de lookup
 >   sem gastar round-trip de tool nem chutar código.
-> - **Prompts** (`src/prompts.ts`): 3 templates — `comparar-municipios`,
->   `perfil-demografico`, `cruzar-ibge-bcb` — que orientam o encadeamento das
->   tools certas, com argumentos validados por zod.
+> - **Prompts** (`src/prompts.ts`): templates — `comparar-municipios` e
+>   `perfil-demografico` — que orientam o encadeamento das tools certas, com
+>   argumentos validados por zod. (Havia um terceiro, `cruzar-ibge-bcb`,
+>   removido na v2.0.0 junto com a tool `bcb`.)
 > - +7 testes (`tests/server.test.ts`) exercendo annotations, leitura de
 >   resources e expansão de prompts via client real. Suíte: 453→460. Confirmado
 >   que `node dist/index.js` ainda sobe normalmente.
@@ -195,12 +196,11 @@ Só faz sentido divulgar depois que a experiência justifica a adoção.
 > Progresso (2.1 + 2.4):
 > - **README diferencial:** abertura dos dois READMEs (EN/PT-BR) reescrita com o
 >   pitch "dado ao vivo/exato/com procedência vs. só perguntar à IA", com exemplo
->   concreto (população de BH no Censo 2022) e citando as três fontes (IBGE,
->   Banco Central, DataSUS).
+>   concreto (população de BH no Censo 2022) e citando a fonte (IBGE).
 > - **SEO de metadados:** `package.json` ganhou descrição orientada a valor +
->   ~11 keywords novas (`mcp-server`, `datasus`, `bcb`, `banco-central`, `ipca`,
->   `selic`, `cidades`, `demografia`, `geografia`, `estatistica`, `dados-abertos`,
->   `open-data`); `server.json` teve a descrição alinhada e a indentação quebrada
+>   keywords novas (`mcp-server`, `datasus`, `ipca`, `cidades`, `demografia`,
+>   `geografia`, `estatistica`, `dados-abertos`, `open-data`); `server.json` teve
+>   a descrição alinhada e a indentação quebrada
 >   da linha corrigida (≤100 chars p/ o schema do registry).
 > - **Pendente:** demo (2.2) e exemplos práticos (2.3) dependem de gravar/redigir
 >   sessões reais; presença em listagens (2.5) depende de ações externas.
@@ -215,4 +215,8 @@ Só faz sentido divulgar depois que a experiência justifica a adoção.
 - **Batch / streaming**: escala prematura.
 - **OpenAPI/Swagger**: abstração errada para um servidor MCP.
 - **Integração com outras fontes (INEP/ANS/Receita)**: seria outro produto.
+- **Dados do Banco Central (BCB)**: a tool `bcb` foi **removida na v2.0.0**. Era
+  a única fonte não-IBGE, contrariava o princípio "especialista em IBGE", e há
+  MCPs dedicados ao BCB que fazem melhor. IPCA/INPC continuam via
+  `ibge_indicadores` (IBGE é a fonte primária). Não readicionar.
 - **Viz helpers / modo offline**: camada errada e contra a proposta de valor.
