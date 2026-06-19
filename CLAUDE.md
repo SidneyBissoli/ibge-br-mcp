@@ -52,13 +52,17 @@ Three edits, but the tool's user-facing description lives in exactly ONE place:
 2. `src/tools/index.ts` — re-export the schema and the function.
 3. `src/index.ts` — a `server.tool(...)` registration block. This **English** description is the ONLY description the MCP client sees; put tool-selection / disambiguation guidance here.
 
-Note `SERVER_VERSION` in `src/index.ts` is hardcoded and must be bumped to match `version` in `package.json` (and `server.json`) on release — they drift easily.
+Note `SERVER_VERSION` in `src/index.ts` is hardcoded and must be bumped to match `version` in `package.json` and `server.json` on release — all three drift easily. Add a `CHANGELOG.md` entry for the release too.
 
 ## Conventions
 
 - ESM with `NodeNext` resolution: **all relative imports must use the `.js` extension** (e.g. `import { cache } from "./cache.js"`) even though the source is `.ts`. TypeScript is in `strict` mode with `noUnusedLocals`/`noUnusedParameters`/`noImplicitReturns` on.
 - All input validation is zod schemas with `.describe(...)` on each field (descriptions are in Portuguese and surface to the MCP client). Reuse `validation.ts` helpers for cross-cutting checks.
 - Two-language split is intentional: tool descriptions and error messages shown to end users are Portuguese; code, comments, and the registrations in `index.ts` are English.
+
+## Planning
+
+`ROADMAP.md` is the actively-maintained plan of record (in Portuguese): it tracks current status, prioritized work items, and the guiding principles (depth over breadth, LLM usability as the product, live/exact data only, IBGE-focused — no scope creep). Check it before proposing new tools or features, and update item status when work lands.
 
 ## Tests
 
