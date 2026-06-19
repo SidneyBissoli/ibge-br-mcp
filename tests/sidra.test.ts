@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ibgeSidra, listSidraTables } from "../src/tools/sidra.js";
+import { ibgeSidra, listSidraTables, sidraOutputSchema } from "../src/tools/sidra.js";
 import { cache } from "../src/cache.js";
 import { mockResponse, sidraResponse } from "./helpers.js";
 
@@ -11,6 +11,13 @@ const popByUf = sidraResponse(
   { D1N: "São Paulo", D2N: "2022", V: "44411238" },
   { D1N: "Rio de Janeiro", D2N: "2022", V: "16055174" }
 );
+
+/** Builds a SIDRA response with `n` data rows after the header. */
+function bigSidra(n: number) {
+  const header = { D1N: "Município", V: "Valor" };
+  const rows = Array.from({ length: n }, (_, i) => ({ D1N: `Mun ${i + 1}`, V: String(1000 + i) }));
+  return sidraResponse(header, ...rows);
+}
 
 function lastUrl(): string {
   return String(mockFetch.mock.calls.at(-1)?.[0]);
@@ -47,22 +54,65 @@ describe("ibge_sidra", () => {
   it("renders a Markdown table using the header row labels and known table name", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(popByUf));
 
-    const result = await ibgeSidra({ tabela: "6579", nivel_territorial: "3" });
+    const { markdown } = await ibgeSidra({ tabela: "6579", nivel_territorial: "3" });
 
-    expect(result).toContain("SIDRA - Estimativas de população");
-    expect(result).toContain("Unidade da Federação");
-    expect(result).toContain("São Paulo");
+    expect(markdown).toContain("SIDRA - Estimativas de população");
+    expect(markdown).toContain("Unidade da Federação");
+    expect(markdown).toContain("São Paulo");
     // value formatted with thousand separators
-    expect(result).toContain("44.411.238");
+    expect(markdown).toContain("44.411.238");
   });
 
-  it("returns raw JSON when formato='json'", async () => {
+  it("returns a typed structured payload alongside the markdown", async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(popByUf));
+
+    const result = await ibgeSidra({ tabela: "6579", nivel_territorial: "3" });
+
+    expect(result.isError).toBeFalsy();
+    expect(result.structured).toBeDefined();
+    const s = result.structured as Record<string, unknown>;
+    expect(s.tabela).toBe("6579");
+    expect(s.nome).toBe("Estimativas de população");
+    expect(s.totalRegistros).toBe(2);
+    expect(s.colunas).toEqual(["Unidade da Federação", "Ano", "Valor"]);
+    const registros = s.registros as Record<string, string>[];
+    expect(registros[0]).toEqual({
+      "Unidade da Federação": "São Paulo",
+      Ano: "2022",
+      Valor: "44411238",
+    });
+    expect(s.paginacao).toEqual({ pagina: 1, porPagina: 100, totalPaginas: 1, temMais: false });
+    // The payload must satisfy the declared outputSchema (what the MCP SDK validates).
+    expect(sidraOutputSchema.safeParse(result.structured).success).toBe(true);
+  });
+
+  it("paginates large results (100 rows per page) with continuation guidance", async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(bigSidra(150)));
+
+    const page1 = await ibgeSidra({ tabela: "6579", pagina: 1 });
+    const s1 = page1.structured as Record<string, unknown>;
+    expect(s1.totalRegistros).toBe(150);
+    expect((s1.registros as unknown[]).length).toBe(100);
+    expect(s1.paginacao).toMatchObject({ pagina: 1, totalPaginas: 2, temMais: true });
+    expect(page1.markdown).toContain("Use pagina=2");
+
+    cache.clear();
+    mockFetch.mockResolvedValueOnce(mockResponse(bigSidra(150)));
+    const page2 = await ibgeSidra({ tabela: "6579", pagina: 2 });
+    const s2 = page2.structured as Record<string, unknown>;
+    expect((s2.registros as unknown[]).length).toBe(50);
+    expect(s2.paginacao).toMatchObject({ pagina: 2, temMais: false });
+  });
+
+  it("formato='json' returns the structured payload as JSON text plus structured", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(popByUf));
 
     const result = await ibgeSidra({ tabela: "6579", formato: "json" });
 
-    expect(result.trim().startsWith("[")).toBe(true);
-    expect(JSON.parse(result)).toHaveLength(popByUf.length);
+    expect(result.markdown.trim().startsWith("{")).toBe(true);
+    const parsed = JSON.parse(result.markdown);
+    expect(parsed.registros).toHaveLength(2);
+    expect(result.structured).toBeDefined();
   });
 
   it("appends classification path from 'id[categorias]'", async () => {
@@ -76,24 +126,31 @@ describe("ibge_sidra", () => {
   it("rejects an invalid territorial level without calling the API", async () => {
     const result = await ibgeSidra({ tabela: "6579", nivel_territorial: "999" });
 
-    expect(result).toContain("Nível territorial inválido");
+    expect(result.isError).toBe(true);
+    expect(result.markdown).toContain("Nível territorial inválido");
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("rejects an invalid period without calling the API", async () => {
     const result = await ibgeSidra({ tabela: "6579", periodos: "não-é-período" });
 
-    expect(result).toContain("periodos");
+    expect(result.isError).toBe(true);
+    expect(result.markdown).toContain("periodos");
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("reports an empty result distinctly from a failure", async () => {
+  it("treats an empty result as success-empty (structured, not error)", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse([]));
 
     const result = await ibgeSidra({ tabela: "6579" });
 
-    expect(result).toContain("Nenhum dado encontrado");
-    expect(result).not.toContain("Código HTTP");
+    expect(result.isError).toBeFalsy();
+    expect(result.markdown).toContain("Nenhum dado encontrado");
+    const s = result.structured as Record<string, unknown>;
+    expect(s.totalRegistros).toBe(0);
+    expect(s.registros).toEqual([]);
+    // Empty is success (not error), so the structured payload must still validate.
+    expect(sidraOutputSchema.safeParse(result.structured).success).toBe(true);
   });
 
   it("handles a header-only response (no data rows)", async () => {
@@ -101,16 +158,18 @@ describe("ibge_sidra", () => {
 
     const result = await ibgeSidra({ tabela: "6579" });
 
-    expect(result).toContain("Nenhum dado encontrado para os filtros aplicados");
+    expect(result.markdown).toContain("Nenhum dado encontrado para os filtros aplicados");
+    expect((result.structured as Record<string, unknown>).totalRegistros).toBe(0);
   });
 
-  it("surfaces an upstream HTTP error with related tools", async () => {
+  it("surfaces an upstream HTTP error with isError and related tools", async () => {
     mockFetch.mockRejectedValueOnce(new Error("HTTP 500: Internal Server Error"));
 
     const result = await ibgeSidra({ tabela: "6579" });
 
-    expect(result).toContain("Erro");
-    expect(result).toContain("ibge_sidra_metadados");
+    expect(result.isError).toBe(true);
+    expect(result.markdown).toContain("Erro");
+    expect(result.markdown).toContain("ibge_sidra_metadados");
   });
 });
 

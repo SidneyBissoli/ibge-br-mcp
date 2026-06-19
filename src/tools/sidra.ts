@@ -6,6 +6,10 @@ import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidPeriod, isValidTerritorialLevel, formatValidationError } from "../validation.js";
 import { territorialLevelHint, territorialLevelList, ALL_TERRITORIAL_LEVELS } from "../config.js";
+import type { StructuredToolResult } from "../structured.js";
+
+/** Data rows returned per page in the structured payload and Markdown table. */
+const PAGE_SIZE = 100;
 
 // Schema for the tool input
 export const sidraSchema = z.object({
@@ -45,9 +49,38 @@ export const sidraSchema = z.object({
     .optional()
     .default("tabela")
     .describe("Formato de saída: 'json' para dados brutos ou 'tabela' para formato legível"),
+  pagina: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .default(1)
+    .describe(`Página de resultados (${PAGE_SIZE} registros por página)`),
 });
 
 export type SidraInput = z.infer<typeof sidraSchema>;
+
+/**
+ * Structured output payload (validated by the MCP SDK against the declared
+ * outputSchema). Lets agents consume typed data instead of parsing Markdown.
+ */
+export const sidraOutputSchema = z.object({
+  tabela: z.string().describe("Código da tabela SIDRA consultada"),
+  nome: z.string().describe("Nome da tabela (quando conhecido)"),
+  totalRegistros: z.number().describe("Total de registros de dados disponíveis (todas as páginas)"),
+  colunas: z.array(z.string()).describe("Rótulos das colunas, na ordem"),
+  registros: z
+    .array(z.record(z.string()))
+    .describe("Registros da página atual: cada um mapeia rótulo da coluna -> valor"),
+  paginacao: z
+    .object({
+      pagina: z.number(),
+      porPagina: z.number(),
+      totalPaginas: z.number(),
+      temMais: z.boolean(),
+    })
+    .describe("Metadados de paginação para continuação"),
+});
 
 // Common SIDRA tables reference
 const TABELAS_COMUNS: Record<string, string> = {
@@ -65,25 +98,31 @@ const TABELAS_COMUNS: Record<string, string> = {
 /**
  * Fetches data from IBGE SIDRA API
  */
-export async function ibgeSidra(input: SidraInput): Promise<string> {
+export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_sidra", "sidra", async () => {
     try {
       // Validate territorial level
       if (input.nivel_territorial && !isValidTerritorialLevel(input.nivel_territorial)) {
-        return ValidationErrors.invalidTerritory(
-          input.nivel_territorial,
-          "ibge_sidra",
-          territorialLevelList(ALL_TERRITORIAL_LEVELS)
-        );
+        return {
+          markdown: ValidationErrors.invalidTerritory(
+            input.nivel_territorial,
+            "ibge_sidra",
+            territorialLevelList(ALL_TERRITORIAL_LEVELS)
+          ),
+          isError: true,
+        };
       }
 
       // Validate period format
       if (input.periodos && !isValidPeriod(input.periodos)) {
-        return formatValidationError(
-          "periodos",
-          input.periodos,
-          "'last', 'all', ano (YYYY), intervalo (YYYY-YYYY), ou múltiplos separados por vírgula"
-        );
+        return {
+          markdown: formatValidationError(
+            "periodos",
+            input.periodos,
+            "'last', 'all', ano (YYYY), intervalo (YYYY-YYYY), ou múltiplos separados por vírgula"
+          ),
+          isError: true,
+        };
       }
 
       // Build the SIDRA API URL
@@ -111,46 +150,47 @@ export async function ibgeSidra(input: SidraInput): Promise<string> {
         data = await cachedFetch<SidraRecord[]>(url, key, CACHE_TTL.SHORT);
       } catch (error) {
         if (error instanceof Error) {
-          return parseHttpError(
-            error,
-            "ibge_sidra",
-            {
-              tabela: input.tabela,
-              nivel_territorial: input.nivel_territorial,
-              localidades: input.localidades,
-              periodos: input.periodos,
-            },
-            ["ibge_sidra_metadados", "ibge_sidra_tabelas"]
-          );
+          return {
+            markdown: parseHttpError(
+              error,
+              "ibge_sidra",
+              {
+                tabela: input.tabela,
+                nivel_territorial: input.nivel_territorial,
+                localidades: input.localidades,
+                periodos: input.periodos,
+              },
+              ["ibge_sidra_metadados", "ibge_sidra_tabelas"]
+            ),
+            isError: true,
+          };
         }
         throw error;
       }
 
+      // No data is a valid (empty) result, not a failure: return an empty
+      // structured payload plus guidance, without isError.
       if (!data || data.length === 0) {
-        return ValidationErrors.emptyResult(
-          "ibge_sidra",
-          "Verifique se a tabela e parâmetros estão corretos. Use ibge_sidra_metadados para consultar os níveis e períodos disponíveis."
-        );
+        return {
+          markdown: ValidationErrors.emptyResult(
+            "ibge_sidra",
+            "Verifique se a tabela e parâmetros estão corretos. Use ibge_sidra_metadados para consultar os níveis e períodos disponíveis."
+          ),
+          structured: emptyStructured(input.tabela),
+        };
       }
 
-      // Return based on format
-      if (input.formato === "json") {
-        return JSON.stringify(data, null, 2);
-      }
-
-      return formatSidraResponse(data, input.tabela);
+      return buildSidraResult(data, input.tabela, input.pagina ?? 1, input.formato ?? "tabela");
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(
-          error,
-          "ibge_sidra",
-          {
-            tabela: input.tabela,
-          },
-          ["ibge_sidra_metadados"]
-        );
+        return {
+          markdown: parseHttpError(error, "ibge_sidra", { tabela: input.tabela }, [
+            "ibge_sidra_metadados",
+          ]),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_sidra");
+      return { markdown: ValidationErrors.emptyResult("ibge_sidra"), isError: true };
     }
   });
 }
@@ -159,32 +199,79 @@ interface SidraRecord {
   [key: string]: string;
 }
 
-function formatSidraResponse(data: SidraRecord[], tabela: string): string {
-  if (data.length === 0) {
-    return "Nenhum dado encontrado.";
-  }
+/** Structured payload for a table that returned no data rows. */
+function emptyStructured(tabela: string): Record<string, unknown> {
+  return {
+    tabela,
+    nome: TABELAS_COMUNS[tabela] || `Tabela ${tabela}`,
+    totalRegistros: 0,
+    colunas: [],
+    registros: [],
+    paginacao: { pagina: 1, porPagina: PAGE_SIZE, totalPaginas: 0, temMais: false },
+  };
+}
 
-  // First row contains headers
+/**
+ * Builds both the structured payload and the Markdown text for a SIDRA result,
+ * paginating the data rows (PAGE_SIZE per page). The first row of `data` is the
+ * SIDRA header/label row; the rest are data rows.
+ */
+function buildSidraResult(
+  data: SidraRecord[],
+  tabela: string,
+  pagina: number,
+  formato: string
+): StructuredToolResult {
+  const tabelaNome = TABELAS_COMUNS[tabela] || `Tabela ${tabela}`;
   const headerRow = data[0];
   const dataRows = data.slice(1);
+  const columns = Object.keys(headerRow);
+  const colLabels = columns.map((col) => headerRow[col] || col);
 
-  const tabelaNome = TABELAS_COMUNS[tabela] || `Tabela ${tabela}`;
-  let output = `## SIDRA - ${tabelaNome}\n\n`;
-  output += `Total de registros: ${dataRows.length}\n\n`;
+  const total = dataRows.length;
+  const totalPaginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Math.min(Math.max(1, pagina), totalPaginas);
+  const start = (page - 1) * PAGE_SIZE;
+  const pageRows = dataRows.slice(start, start + PAGE_SIZE);
 
-  if (dataRows.length === 0) {
-    return output + "Nenhum dado encontrado para os filtros aplicados.";
+  const registros = pageRows.map((row) => {
+    const obj: Record<string, string> = {};
+    columns.forEach((col, i) => {
+      obj[colLabels[i]] = row[col] ?? "";
+    });
+    return obj;
+  });
+
+  const paginacao = {
+    pagina: page,
+    porPagina: PAGE_SIZE,
+    totalPaginas,
+    temMais: page < totalPaginas,
+  };
+
+  const structured = {
+    tabela,
+    nome: tabelaNome,
+    totalRegistros: total,
+    colunas: colLabels,
+    registros,
+    paginacao,
+  };
+
+  if (formato === "json") {
+    return { markdown: JSON.stringify(structured, null, 2), structured };
   }
 
-  // Get column names from headers
-  const columns = Object.keys(headerRow);
-  const headers = columns.map((col) => headerRow[col] || col);
+  let output = `## SIDRA - ${tabelaNome}\n\n`;
+  output += `Total de registros: ${total}\n\n`;
 
-  // Build rows with formatted values
-  const rows = dataRows.map((row) =>
+  if (total === 0) {
+    return { markdown: output + "Nenhum dado encontrado para os filtros aplicados.", structured };
+  }
+
+  const rows = pageRows.map((row) =>
     columns.map((col) => {
       const value = row[col];
-      // Format numbers with thousand separators
       if (value && !isNaN(Number(value)) && value.length > 3) {
         return formatNumber(Number(value));
       }
@@ -192,16 +279,13 @@ function formatSidraResponse(data: SidraRecord[], tabela: string): string {
     })
   );
 
-  output += createMarkdownTable(headers, rows, {
-    maxRows: 50,
-    showRowCount: true,
-  });
+  output += createMarkdownTable(colLabels, rows, { showRowCount: true });
 
-  if (dataRows.length > 50) {
-    output += `_Use formato 'json' para dados completos._\n`;
+  if (paginacao.temMais) {
+    output += `\n_Página ${page} de ${totalPaginas}. Use pagina=${page + 1} para a próxima página (ou formato='json' para os dados completos)._\n`;
   }
 
-  return output;
+  return { markdown: output, structured };
 }
 
 /**

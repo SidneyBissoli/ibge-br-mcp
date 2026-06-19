@@ -3,6 +3,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
+import { toMcpResult } from "./structured.js";
+
 import {
   estadosSchema,
   ibgeEstados,
@@ -13,6 +15,7 @@ import {
   populacaoSchema,
   ibgePopulacao,
   sidraSchema,
+  sidraOutputSchema,
   ibgeSidra,
   nomesSchema,
   ibgeNomes,
@@ -185,9 +188,10 @@ Use a different tool when:
   );
 
   // Register ibge_sidra tool
-  server.tool(
+  server.registerTool(
     "ibge_sidra",
-    `Queries SIDRA tables (IBGE's Automatic Recovery System).
+    {
+      description: `Queries SIDRA tables (IBGE's Automatic Recovery System).
 
 SIDRA contains data from IBGE surveys like Census, PNAD, GDP, etc.
 
@@ -218,10 +222,11 @@ ibge_sidra is the low-level engine. Prefer a friendlier wrapper when it fits:
 - Rank/compare 2–10 localities → ibge_comparar
 - One municipality's panel → ibge_cidades
 Use ibge_sidra_tabelas and ibge_sidra_metadados to find a table code and its structure before querying.`,
-    sidraSchema.shape,
+      inputSchema: sidraSchema.shape,
+      outputSchema: sidraOutputSchema.shape,
+    },
     async (args) => {
-      const result = await ibgeSidra(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeSidra(args));
     }
   );
 

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Structured output for `ibge_sidra`** (roadmap item 1.2, first slice). The
+  tool now declares an `outputSchema` and returns a typed `structuredContent`
+  payload (`tabela`, `nome`, `totalRegistros`, `colunas`, `registros`,
+  `paginacao`) alongside the Markdown text, so agents can consume data without
+  parsing Markdown. Large results are **paginated** (100 rows/page) via a new
+  `pagina` input, with continuation guidance in the text channel. A reusable
+  `StructuredToolResult` + `toMcpResult` pattern (`src/structured.ts`) is in
+  place to propagate this to the other data tools. Note: `formato="json"` now
+  returns the structured payload as JSON (was the raw SIDRA array); empty
+  results are reported as success-with-empty-payload rather than as errors.
+
 ### Changed
 - **Standardized territorial-level (`nivel_territorial`) nomenclature** across
   `ibge_sidra`, `ibge_censo`, `ibge_datasaude` and `ibge_indicadores`. A single
