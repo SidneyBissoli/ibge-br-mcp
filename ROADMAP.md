@@ -96,11 +96,29 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 >   níveis que de fato suportam e **validam** a entrada (antes os três últimos
 >   repassavam nível inválido direto à API SIDRA).
 
-### 1.4 Erros que ensinam
-- [ ] Mensagens de erro que sugerem a correção e a tool correta
-- [ ] Mensagens claras para "combinação sem dado" (vs. falha real)
+### 1.4 Erros que ensinam ✅
+- [x] Mensagens de erro que sugerem a correção e a tool correta
+- [x] Mensagens claras para "combinação sem dado" (vs. falha real)
 - [x] Timeout de requisição configurável
 
+> Resolução do item "sugerir a tool correta":
+> - Auditados os 20 pontos `catch → parseHttpError` das tools. Só ~5 passavam o
+>   4º argumento `relatedTools`; agora todas as tools com uma irmã natural o
+>   passam (14 call sites preenchidos), seguindo o mapa de desambiguação das
+>   descrições em `index.ts`: ex. `bcb`→`ibge_indicadores`,
+>   `ibge_municipios`→`ibge_geocodigo`/`ibge_localidade`,
+>   `ibge_malhas`↔`ibge_malhas_tema`, `ibge_pesquisas`→`ibge_sidra_tabelas`/`ibge_sidra`.
+> - **Decisão deliberada:** tools genuinamente sem irmã (`ibge_cnae`,
+>   `ibge_nomes`, `ibge_paises`) ficam sem `relatedTools` — apontar uma tool
+>   não-relacionada seria ruído, não ajuda.
+> - +3 testes (`integration.test.ts`) confirmam que a falha de `ibge_estados` e
+>   `ibge_municipios` rende o bloco "Ferramentas relacionadas".
+>
+> Resolução do item "sem dado vs falha real":
+> - Verificado que **todas** as tools já distinguem os dois caminhos: erro real →
+>   `parseHttpError`; resultado vazio/combinação sem dado → `ValidationErrors.emptyResult`
+>   (mensagem própria, sem sinalizar falha de API). Confirmado nos 20 catch sites.
+>
 > Resolução do item de timeout:
 > - Cada requisição agora tem um teto de tempo real: `fetchWithRetry` arma um
 >   `AbortController` por tentativa (`createTimeoutSignal` em `retry.ts`), então

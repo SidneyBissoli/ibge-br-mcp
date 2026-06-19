@@ -81,7 +81,7 @@ export async function ibgeNoticias(input: NoticiasInput): Promise<string> {
       return formatNoticiasResponse(data, input);
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_noticias", { busca: input.busca });
+        return parseHttpError(error, "ibge_noticias", { busca: input.busca }, ["ibge_calendario"]);
       }
       return ValidationErrors.emptyResult("ibge_noticias");
     }
@@ -157,4 +157,3 @@ function formatNoticia(noticia: Noticia): string {
 
   return output;
 }
-

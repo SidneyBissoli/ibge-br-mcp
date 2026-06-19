@@ -95,10 +95,15 @@ export async function ibgeSidraTabelas(input: SidraTabelasInput): Promise<string
       return formatTabelasResponse(limited, allAgregados.length, input);
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_sidra_tabelas", {
-          busca: input.busca,
-          pesquisa: input.pesquisa,
-        });
+        return parseHttpError(
+          error,
+          "ibge_sidra_tabelas",
+          {
+            busca: input.busca,
+            pesquisa: input.pesquisa,
+          },
+          ["ibge_sidra_metadados", "ibge_sidra"]
+        );
       }
       return ValidationErrors.emptyResult("ibge_sidra_tabelas");
     }
@@ -154,4 +159,3 @@ function formatTabelasResponse(
 
   return output;
 }
-

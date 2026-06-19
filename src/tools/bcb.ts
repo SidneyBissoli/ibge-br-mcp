@@ -204,7 +204,7 @@ export async function ibgeBcb(input: BcbInput): Promise<string> {
       return formatResponse(data, nome, unidade, input);
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "bcb", { indicador: input.indicador });
+        return parseHttpError(error, "bcb", { indicador: input.indicador }, ["ibge_indicadores"]);
       }
       return ValidationErrors.emptyResult("bcb");
     }
@@ -348,4 +348,3 @@ function formatResponse(
 
   return output;
 }
-

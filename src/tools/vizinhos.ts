@@ -127,10 +127,15 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<string> {
       return formatResponse(municipioNome, municipioId, vizinhosData, input);
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_vizinhos", {
-          municipio: input.municipio,
-          uf: input.uf,
-        });
+        return parseHttpError(
+          error,
+          "ibge_vizinhos",
+          {
+            municipio: input.municipio,
+            uf: input.uf,
+          },
+          ["ibge_municipios", "ibge_geocodigo"]
+        );
       }
       return ValidationErrors.emptyResult("ibge_vizinhos");
     }
@@ -321,4 +326,3 @@ function formatNoNeighborsFound(municipioNome: string, municipioId: string): str
 
   return output;
 }
-

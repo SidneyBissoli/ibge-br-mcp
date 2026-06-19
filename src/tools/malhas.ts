@@ -127,10 +127,15 @@ export async function ibgeMalhas(input: MalhasInput): Promise<string> {
       return formatMalhasResponse(data, fullUrl, input);
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_malhas", {
-          localidade: input.localidade,
-          formato: input.formato,
-        });
+        return parseHttpError(
+          error,
+          "ibge_malhas",
+          {
+            localidade: input.localidade,
+            formato: input.formato,
+          },
+          ["ibge_malhas_tema"]
+        );
       }
       return ValidationErrors.emptyResult("ibge_malhas");
     }
@@ -297,4 +302,3 @@ interface GeoJSONFeatureCollection {
   type: "FeatureCollection";
   features: GeoJSONFeature[];
 }
-

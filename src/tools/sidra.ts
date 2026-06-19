@@ -297,9 +297,11 @@ export async function listSidraTables(pesquisaId?: string): Promise<string> {
     return JSON.stringify(data, null, 2);
   } catch (error) {
     if (error instanceof Error) {
-      return parseHttpError(error, "ibge_sidra", { pesquisaId });
+      return parseHttpError(error, "ibge_sidra", { pesquisaId }, [
+        "ibge_sidra_tabelas",
+        "ibge_sidra_metadados",
+      ]);
     }
     return ValidationErrors.emptyResult("ibge_sidra");
   }
 }
-

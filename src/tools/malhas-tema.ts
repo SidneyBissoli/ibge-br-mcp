@@ -136,10 +136,15 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<string> {
       return formatResponse(data, fullUrl, input);
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_malhas_tema", {
-          tema: input.tema,
-          codigo: input.codigo,
-        });
+        return parseHttpError(
+          error,
+          "ibge_malhas_tema",
+          {
+            tema: input.tema,
+            codigo: input.codigo,
+          },
+          ["ibge_malhas"]
+        );
       }
       return ValidationErrors.emptyResult("ibge_malhas_tema");
     }
@@ -315,4 +320,3 @@ interface GeoJSONFeatureCollection {
 }
 
 type GeoJSONData = GeoJSONFeature | GeoJSONFeatureCollection;
-

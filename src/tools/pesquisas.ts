@@ -74,7 +74,10 @@ export async function ibgePesquisas(input: PesquisasInput): Promise<string> {
       return formatPesquisasLista(filtered, input);
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_pesquisas", { busca: input.busca });
+        return parseHttpError(error, "ibge_pesquisas", { busca: input.busca }, [
+          "ibge_sidra_tabelas",
+          "ibge_sidra",
+        ]);
       }
       return ValidationErrors.emptyResult("ibge_pesquisas");
     }
@@ -183,4 +186,3 @@ function categorizarPesquisas(pesquisas: PesquisaCompleta[]): Record<string, Pes
 
   return categorias;
 }
-

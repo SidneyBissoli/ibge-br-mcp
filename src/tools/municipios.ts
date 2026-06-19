@@ -111,10 +111,12 @@ export async function ibgeMunicipios(input: MunicipiosInput): Promise<string> {
       return output;
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_municipios", { uf: input.uf, busca: input.busca });
+        return parseHttpError(error, "ibge_municipios", { uf: input.uf, busca: input.busca }, [
+          "ibge_geocodigo",
+          "ibge_localidade",
+        ]);
       }
       return ValidationErrors.emptyResult("ibge_municipios");
     }
   });
 }
-

@@ -86,7 +86,10 @@ export async function ibgePopulacao(input: PopulacaoInput): Promise<StructuredTo
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_populacao", { localidade: input.localidade }),
+          markdown: parseHttpError(error, "ibge_populacao", { localidade: input.localidade }, [
+            "ibge_cidades",
+            "ibge_censo",
+          ]),
           isError: true,
         };
       }
@@ -119,7 +122,9 @@ export async function ibgePopulacaoSidra(
     return JSON.stringify(data, null, 2);
   } catch (error) {
     if (error instanceof Error) {
-      return parseHttpError(error, "ibge_populacao_sidra", { tabela, localidade, periodo });
+      return parseHttpError(error, "ibge_populacao_sidra", { tabela, localidade, periodo }, [
+        "ibge_sidra",
+      ]);
     }
     return ValidationErrors.emptyResult("ibge_populacao_sidra");
   }
@@ -138,4 +143,3 @@ function formatSeconds(seconds: number): string {
   const remainingMinutes = minutes % 60;
   return `${hours}h ${remainingMinutes}min`;
 }
-

@@ -80,7 +80,10 @@ export async function ibgeEstados(input: EstadosInput): Promise<string> {
       return output;
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_estados", { regiao: input.regiao });
+        return parseHttpError(error, "ibge_estados", { regiao: input.regiao }, [
+          "ibge_municipios",
+          "ibge_localidade",
+        ]);
       }
       return ValidationErrors.emptyResult("ibge_estados");
     }
@@ -97,4 +100,3 @@ function getRegiaoNome(sigla: string): string {
   };
   return nomes[sigla] || sigla;
 }
-

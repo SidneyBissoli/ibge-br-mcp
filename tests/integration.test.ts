@@ -275,6 +275,25 @@ describe("Error handling", () => {
     expect(result).toContain("Erro");
   });
 
+  it("should point to related tools on a failure (errors that teach)", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("500 Internal Server Error"));
+
+    const result = await ibgeEstados({});
+
+    expect(result).toContain("Ferramentas relacionadas");
+    expect(result).toContain("ibge_municipios");
+    expect(result).toContain("ibge_localidade");
+  });
+
+  it("should suggest related tools when ibge_municipios fails", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("500 Internal Server Error"));
+
+    const result = await ibgeMunicipios({ uf: "SP" });
+
+    expect(result).toContain("Ferramentas relacionadas");
+    expect(result).toContain("ibge_geocodigo");
+  });
+
   it("should handle malformed JSON", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,

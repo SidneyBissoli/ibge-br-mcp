@@ -118,11 +118,16 @@ export async function ibgeCidades(input: CidadesInput): Promise<StructuredToolRe
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_cidades", {
-            tipo: input.tipo,
-            municipio: input.municipio,
-            indicador: input.indicador,
-          }),
+          markdown: parseHttpError(
+            error,
+            "ibge_cidades",
+            {
+              tipo: input.tipo,
+              municipio: input.municipio,
+              indicador: input.indicador,
+            },
+            ["ibge_comparar", "ibge_censo"]
+          ),
           isError: true,
         };
       }
@@ -375,7 +380,10 @@ async function listarPesquisas(pesquisaId?: string): Promise<StructuredToolResul
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_cidades", { pesquisa: pesquisaId }),
+          markdown: parseHttpError(error, "ibge_cidades", { pesquisa: pesquisaId }, [
+            "ibge_comparar",
+            "ibge_censo",
+          ]),
           isError: true,
         };
       }
@@ -484,4 +492,3 @@ function listarIndicadoresDisponiveis(): StructuredToolResult {
 
   return { markdown: output, structured: listingPayload("indicador") };
 }
-
