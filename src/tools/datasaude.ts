@@ -137,7 +137,8 @@ function emptyMeta(): Record<string, unknown> {
 }
 
 /**
- * Fetches health data from IBGE and DataSUS
+ * Fetches Brazilian health indicators from IBGE's SIDRA (some are originally
+ * produced by DataSUS, e.g. mortality/births, but are read here via SIDRA).
  */
 export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_datasaude", "sidra", async () => {

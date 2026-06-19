@@ -89,8 +89,8 @@ const READ_ONLY: ToolAnnotations = {
  * prompts registered. Side-effect-free: it does NOT connect a transport, so it
  * is safe to import and call from tests. `index.ts` wraps it with STDIO.
  *
- * Provides tools to access IBGE (Brazilian Institute of Geography and
- * Statistics) APIs and adjacent public sources (Banco Central, DataSUS).
+ * Provides tools to access the IBGE (Brazilian Institute of Geography and
+ * Statistics) and Banco Central APIs (health data is served via IBGE's SIDRA).
  */
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -791,7 +791,7 @@ bcb is the right tool for interest rates (SELIC, CDI, TR) and exchange rates (do
   server.registerTool(
     "datasaude",
     {
-      description: `Queries Brazil health indicators via IBGE/DataSUS.
+      description: `Queries Brazil health indicators, served through IBGE's SIDRA (some originally produced by DataSUS, e.g. mortality and births).
 
 Mortality and Birth:
 - mortalidade_infantil: Infant mortality rate
