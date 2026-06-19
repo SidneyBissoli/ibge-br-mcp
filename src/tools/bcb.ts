@@ -4,6 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, createKeyValueTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
+import { parseUserDate, toBcbDate } from "../validation.js";
 
 // Known series codes
 const SERIES_CONHECIDAS: Record<
@@ -118,8 +119,14 @@ export const bcbSchema = z.object({
 - tr: Taxa Referencial
 - listar: Lista indicadores disponíveis
 - Ou código numérico da série SGS`),
-  dataInicio: z.string().optional().describe("Data inicial no formato DD/MM/AAAA"),
-  dataFim: z.string().optional().describe("Data final no formato DD/MM/AAAA"),
+  dataInicio: z
+    .string()
+    .optional()
+    .describe("Data inicial no formato DD/MM/AAAA (também aceita AAAA-MM-DD)"),
+  dataFim: z
+    .string()
+    .optional()
+    .describe("Data final no formato DD/MM/AAAA (também aceita AAAA-MM-DD)"),
   ultimos: z.number().optional().describe("Retornar apenas os últimos N valores"),
   formato: z.enum(["tabela", "json"]).optional().default("tabela").describe("Formato de saída"),
 });
@@ -163,10 +170,18 @@ export async function ibgeBcb(input: BcbInput): Promise<string> {
       const params: string[] = [];
 
       if (input.dataInicio) {
-        params.push(`dataInicial=${encodeURIComponent(input.dataInicio)}`);
+        const parsed = parseUserDate(input.dataInicio);
+        if (!parsed) {
+          return ValidationErrors.invalidDate(input.dataInicio, "bcb");
+        }
+        params.push(`dataInicial=${encodeURIComponent(toBcbDate(parsed))}`);
       }
       if (input.dataFim) {
-        params.push(`dataFinal=${encodeURIComponent(input.dataFim)}`);
+        const parsed = parseUserDate(input.dataFim);
+        if (!parsed) {
+          return ValidationErrors.invalidDate(input.dataFim, "bcb");
+        }
+        params.push(`dataFinal=${encodeURIComponent(toBcbDate(parsed))}`);
       }
       if (input.ultimos) {
         params.push(`ultimos=${input.ultimos}`);

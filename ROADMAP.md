@@ -46,14 +46,21 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 - [ ] Seleção de campos onde fizer sentido reduzir volume
 
 ### 1.3 Consistência de parâmetros
-- [ ] Unificar formatos de data entre todas as tools (IBGE e BCB)
+- [x] Unificar formatos de data entre todas as tools (IBGE e BCB)
 - [ ] Normalizar entrada de localidade (sigla, nome ou código intercambiáveis)
 - [ ] Padronizar nomenclatura de níveis territoriais
 
-> Notas de descoberta (do trabalho do 1.1):
-> - **Datas divergem hoje:** `bcb` usa `dd/mm/yyyy`; `ibge_noticias` e
->   `ibge_calendario` usam `dd-mm-yyyy` (verificar também o exemplo do README
->   que parecia `mm-dd-yyyy`). Escolher um formato canônico e aceitar os demais.
+> Resolução do item de datas:
+> - Formato canônico adotado: **`DD/MM/AAAA`** (brasileiro), aceitando também
+>   `DD-MM-AAAA` e ISO `AAAA-MM-DD`. Helpers `parseUserDate` / `toBcbDate` /
+>   `toIbgeApiDate` em `src/validation.ts` convertem para o formato de cada API.
+> - **Confirmado empiricamente** que as APIs `noticias` e `calendario` do IBGE
+>   exigem `MM-DD-AAAA` (mês primeiro) — a conversão é interna; o usuário só vê
+>   o formato brasileiro. A ordem mês-primeiro deixou de ser aceita na entrada.
+> - Bônus: corrigido bug em `ibge_calendario` que lia campos inexistentes
+>   (`data_inicio`/`produto`) e renderizava `NaN`.
+>
+> Notas de descoberta restantes (do trabalho do 1.1):
 > - **Localidade:** já existe `normalizeUf` em `src/validation.ts`, mas a
 >   intercambialidade sigla/nome/código não é uniforme entre as tools — partir
 >   daí para um helper único de resolução de localidade.

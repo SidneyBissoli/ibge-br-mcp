@@ -8,6 +8,7 @@ import {
   buildQueryString,
 } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
+import { parseUserDate, toIbgeApiDate } from "../validation.js";
 
 // Schema for the tool input
 export const noticiasSchema = z.object({
@@ -20,8 +21,8 @@ export const noticiasSchema = z.object({
     .default(10)
     .describe("Quantidade de notícias a retornar (padrão: 10, máximo: 100)"),
   pagina: z.number().min(1).optional().default(1).describe("Número da página para paginação"),
-  de: z.string().optional().describe("Data inicial no formato MM-DD-AAAA (ex: 01-01-2024)"),
-  ate: z.string().optional().describe("Data final no formato MM-DD-AAAA (ex: 12-31-2024)"),
+  de: z.string().optional().describe("Data inicial no formato DD/MM/AAAA (ex: 01/01/2024)"),
+  ate: z.string().optional().describe("Data final no formato DD/MM/AAAA (ex: 31/12/2024)"),
   tipo: z
     .enum(["release", "noticia"])
     .optional()
@@ -37,12 +38,30 @@ export type NoticiasInput = z.infer<typeof noticiasSchema>;
 export async function ibgeNoticias(input: NoticiasInput): Promise<string> {
   return withMetrics("ibge_noticias", "noticias", async () => {
     try {
+      let de: string | undefined;
+      if (input.de) {
+        const parsed = parseUserDate(input.de);
+        if (!parsed) {
+          return ValidationErrors.invalidDate(input.de, "ibge_noticias");
+        }
+        de = toIbgeApiDate(parsed);
+      }
+
+      let ate: string | undefined;
+      if (input.ate) {
+        const parsed = parseUserDate(input.ate);
+        if (!parsed) {
+          return ValidationErrors.invalidDate(input.ate, "ibge_noticias");
+        }
+        ate = toIbgeApiDate(parsed);
+      }
+
       const queryString = buildQueryString({
         qtd: input.quantidade || 10,
         page: input.pagina || 1,
         busca: input.busca,
-        de: input.de,
-        ate: input.ate,
+        de,
+        ate,
         tipo: input.tipo,
         destaque: input.destaque !== undefined ? (input.destaque ? "1" : "0") : undefined,
       });

@@ -123,6 +123,14 @@ export const ValidationErrors = {
       suggestion: suggestion || "Tente ajustar os parâmetros de busca.",
     }),
 
+  invalidDate: (value: string, tool: string): string =>
+    formatError({
+      message: `Data inválida: "${value}"`,
+      tool,
+      suggestion: `Use o formato brasileiro DD/MM/AAAA (ex: 31/12/2024).
+Também são aceitos DD-MM-AAAA e o formato ISO AAAA-MM-DD.`,
+    }),
+
   invalidPeriod: (period: string, tool: string, validPeriods?: string): string =>
     formatError({
       message: `Período inválido: "${period}"`,

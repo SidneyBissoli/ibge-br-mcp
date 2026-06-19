@@ -3,20 +3,19 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate, buildQueryString } from "../utils/index.js";
+import { parseUserDate, toIbgeApiDate } from "../validation.js";
+import { ValidationErrors } from "../errors.js";
 
-// Types for calendar data
+// Types for calendar data — field names match the IBGE v3 /calendario API response.
 interface CalendarioItem {
   id: number;
   titulo: string;
   descricao: string;
-  data_inicio: string;
-  data_fim: string;
+  data_divulgacao: string; // "DD/MM/AAAA HH:MM:SS"
   tipo_id: number;
   tipo: string;
   produto_id: number;
-  produto: string;
-  periodicidade_id: number;
-  periodicidade: string;
+  nome_produto: string;
   link: string;
 }
 
@@ -28,8 +27,8 @@ interface CalendarioResponse {
 }
 
 export const calendarioSchema = z.object({
-  de: z.string().optional().describe("Data inicial no formato MM-DD-AAAA (ex: '01-01-2024')"),
-  ate: z.string().optional().describe("Data final no formato MM-DD-AAAA (ex: '12-31-2024')"),
+  de: z.string().optional().describe("Data inicial no formato DD/MM/AAAA (ex: '01/01/2024')"),
+  ate: z.string().optional().describe("Data final no formato DD/MM/AAAA (ex: '31/12/2024')"),
   produto: z
     .string()
     .optional()
@@ -65,9 +64,27 @@ export async function ibgeCalendario(input: CalendarioInput): Promise<string> {
             : "2"
           : undefined;
 
+      let de: string | undefined;
+      if (input.de) {
+        const parsed = parseUserDate(input.de);
+        if (!parsed) {
+          return ValidationErrors.invalidDate(input.de, "ibge_calendario");
+        }
+        de = toIbgeApiDate(parsed);
+      }
+
+      let ate: string | undefined;
+      if (input.ate) {
+        const parsed = parseUserDate(input.ate);
+        if (!parsed) {
+          return ValidationErrors.invalidDate(input.ate, "ibge_calendario");
+        }
+        ate = toIbgeApiDate(parsed);
+      }
+
       const queryString = buildQueryString({
-        de: input.de,
-        ate: input.ate,
+        de,
+        ate,
         busca: input.produto,
         tipo: tipoValue,
         page: input.pagina || 1,
@@ -99,6 +116,16 @@ export async function ibgeCalendario(input: CalendarioInput): Promise<string> {
   });
 }
 
+/**
+ * Splits an IBGE "DD/MM/AAAA HH:MM:SS" divulgation timestamp into zero-padded
+ * day/month/year string parts.
+ */
+function splitDivulgacao(value: string): { day: string; month: string; year: string } {
+  const datePart = (value || "").split(" ")[0] ?? "";
+  const [day = "00", month = "00", year = "0000"] = datePart.split("/");
+  return { day, month, year };
+}
+
 function formatCalendarioResponse(data: CalendarioResponse, input: CalendarioInput): string {
   let output = "## Calendário de Divulgações do IBGE\n\n";
 
@@ -110,12 +137,14 @@ function formatCalendarioResponse(data: CalendarioResponse, input: CalendarioInp
   }
   output += `**Total:** ${data.count} eventos | Página ${data.page} de ${data.totalPages}\n\n`;
 
-  // Group by month for better readability
+  // Group by month for better readability.
+  // data_divulgacao comes as "DD/MM/AAAA HH:MM:SS" — parse it directly rather
+  // than via new Date(), which does not reliably parse that non-ISO format.
   const byMonth: Record<string, CalendarioItem[]> = {};
 
   for (const item of data.items) {
-    const date = new Date(item.data_inicio);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const { month, year } = splitDivulgacao(item.data_divulgacao);
+    const monthKey = `${year}-${month}`;
     if (!byMonth[monthKey]) {
       byMonth[monthKey] = [];
     }
@@ -142,11 +171,12 @@ function formatCalendarioResponse(data: CalendarioResponse, input: CalendarioInp
     output += `### ${monthNames[month]} ${year}\n\n`;
 
     const rows = items.map((item) => {
-      const startDate = new Date(item.data_inicio);
-      const dateStr = `${String(startDate.getDate()).padStart(2, "0")}/${String(startDate.getMonth() + 1).padStart(2, "0")}`;
+      const { day, month } = splitDivulgacao(item.data_divulgacao);
+      const dateStr = `${day}/${month}`;
       const titulo = truncate(item.titulo, 40);
-      const produto = item.produto || "-";
-      const tipo = item.tipo === "Divulgação" ? "📊" : "📋";
+      const produto = item.nome_produto || "-";
+      // tipo_id 1 = divulgação de indicadores, 2 = coleta de campo
+      const tipo = item.tipo_id === 2 ? "📋" : "📊";
       return [dateStr, produto, titulo, tipo];
     });
 
@@ -171,7 +201,7 @@ function formatNoResults(_input: CalendarioInput): string {
   output += "Nenhum evento encontrado para os critérios informados.\n\n";
 
   output += "### Sugestões\n\n";
-  output += "- Verifique o formato das datas (MM-DD-AAAA)\n";
+  output += "- Verifique o formato das datas (DD/MM/AAAA)\n";
   output += "- Tente um período maior\n";
   output += "- Remova o filtro de produto\n\n";
 
@@ -182,7 +212,7 @@ function formatNoResults(_input: CalendarioInput): string {
   output += "# Divulgações do IPCA\n";
   output += 'ibge_calendario(produto="IPCA")\n\n';
   output += "# Calendário de 2024\n";
-  output += 'ibge_calendario(de="01-01-2024", ate="12-31-2024")\n\n';
+  output += 'ibge_calendario(de="01/01/2024", ate="31/12/2024")\n\n';
   output += "# Apenas coletas de campo\n";
   output += 'ibge_calendario(tipo="coleta")\n';
   output += "```\n";
@@ -195,7 +225,7 @@ function formatCalendarioError(message: string, input: CalendarioInput): string 
   output += `**Erro:** ${message}\n\n`;
 
   if (input.de || input.ate) {
-    output += "**Dica:** Verifique se as datas estão no formato MM-DD-AAAA.\n";
+    output += "**Dica:** Verifique se as datas estão no formato DD/MM/AAAA.\n";
   }
 
   return output;

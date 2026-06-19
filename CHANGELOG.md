@@ -5,6 +5,24 @@ All notable changes to the IBGE MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Unified date input format** across all date-taking tools (`bcb`, `ibge_noticias`,
+  `ibge_calendario`). All now accept the canonical Brazilian `DD/MM/AAAA` (plus
+  `DD-MM-AAAA` and ISO `AAAA-MM-DD`) and convert internally to each upstream API's
+  required format. Previously `ibge_noticias`/`ibge_calendario` required the
+  ambiguous month-first `MM-DD-AAAA`, which silently produced wrong or empty
+  results. New helpers `parseUserDate` / `toBcbDate` / `toIbgeApiDate` in
+  `validation.ts` centralize this (roadmap item 1.3).
+
+### Fixed
+- `ibge_calendario` now reads the real IBGE API fields (`data_divulgacao`,
+  `nome_produto`): month grouping and the date column previously rendered `NaN`
+  because the code referenced non-existent `data_inicio`/`produto` fields.
+- Invalid dates now return a clear "Data inválida" message with the accepted
+  formats instead of being passed raw to the upstream API.
+
 ## [1.9.0] - 2024
 
 ### Added

@@ -119,18 +119,71 @@ export function normalizeUf(input: string): number | null {
 }
 
 /**
- * Validates date format (MM-DD-YYYY)
+ * A user-supplied date broken into its components.
  */
-export function isValidDateFormat(date: string): boolean {
-  const regex = /^\d{2}-\d{2}-\d{4}$/;
-  if (!regex.test(date)) return false;
+export interface ParsedDate {
+  day: number;
+  month: number;
+  year: number;
+}
 
-  const [month, day, year] = date.split("-").map(Number);
-  if (month < 1 || month > 12) return false;
-  if (day < 1 || day > 31) return false;
-  if (year < 1970 || year > 2100) return false;
+/**
+ * Parses a user-supplied date into its components.
+ *
+ * The canonical, recommended format is Brazilian `DD/MM/AAAA`. For convenience
+ * we also accept `DD-MM-AAAA` (same day-first order) and ISO `AAAA-MM-DD`.
+ * Month-first ordering (the old `MM-DD-AAAA`) is intentionally NOT accepted — it
+ * is ambiguous for Brazilian users and silently produced wrong results. Each
+ * tool re-emits the parsed date in whatever its upstream API requires; see
+ * `toBcbDate` (DD/MM/AAAA) and `toIbgeApiDate` (MM-DD-AAAA).
+ *
+ * Returns null if the input does not match a supported format or is out of range.
+ */
+export function parseUserDate(input: string): ParsedDate | null {
+  const s = input.trim();
+  let day: number, month: number, year: number;
 
-  return true;
+  // ISO: AAAA-MM-DD
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  // Brazilian day-first: DD/MM/AAAA or DD-MM-AAAA
+  const br = /^(\d{2})[/-](\d{2})[/-](\d{4})$/.exec(s);
+
+  if (iso) {
+    year = Number(iso[1]);
+    month = Number(iso[2]);
+    day = Number(iso[3]);
+  } else if (br) {
+    day = Number(br[1]);
+    month = Number(br[2]);
+    year = Number(br[3]);
+  } else {
+    return null;
+  }
+
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+  if (year < 1970 || year > 2100) return null;
+
+  return { day, month, year };
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/**
+ * Formats a parsed date as `DD/MM/AAAA` — the format the BCB SGS API expects.
+ */
+export function toBcbDate(d: ParsedDate): string {
+  return `${pad2(d.day)}/${pad2(d.month)}/${d.year}`;
+}
+
+/**
+ * Formats a parsed date as `MM-DD-AAAA` — the (month-first) format the IBGE
+ * notícias and calendário APIs expect. Confirmed empirically against the live API.
+ */
+export function toIbgeApiDate(d: ParsedDate): string {
+  return `${pad2(d.month)}-${pad2(d.day)}-${d.year}`;
 }
 
 /**

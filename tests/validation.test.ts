@@ -2,7 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   isValidIbgeCode,
   normalizeUf,
-  isValidDateFormat,
+  parseUserDate,
+  toBcbDate,
+  toIbgeApiDate,
   isValidPeriod,
   isValidTerritorialLevel,
   parseLocalidades,
@@ -120,35 +122,59 @@ describe("normalizeUf", () => {
   });
 });
 
-describe("isValidDateFormat", () => {
-  it("should accept valid MM-DD-YYYY dates", () => {
-    expect(isValidDateFormat("01-15-2024")).toBe(true);
-    expect(isValidDateFormat("12-31-2023")).toBe(true);
-    expect(isValidDateFormat("06-01-2000")).toBe(true);
+describe("parseUserDate", () => {
+  it("should parse Brazilian DD/MM/AAAA (day-first)", () => {
+    expect(parseUserDate("15/01/2024")).toEqual({ day: 15, month: 1, year: 2024 });
+    expect(parseUserDate("31/12/2023")).toEqual({ day: 31, month: 12, year: 2023 });
   });
 
-  it("should reject invalid month values", () => {
-    expect(isValidDateFormat("00-15-2024")).toBe(false);
-    expect(isValidDateFormat("13-15-2024")).toBe(false);
-    expect(isValidDateFormat("99-15-2024")).toBe(false);
+  it("should parse DD-MM-AAAA (day-first, dashes)", () => {
+    expect(parseUserDate("01-03-2026")).toEqual({ day: 1, month: 3, year: 2026 });
   });
 
-  it("should reject invalid day values", () => {
-    expect(isValidDateFormat("01-00-2024")).toBe(false);
-    expect(isValidDateFormat("01-32-2024")).toBe(false);
-    expect(isValidDateFormat("01-99-2024")).toBe(false);
+  it("should parse ISO AAAA-MM-DD", () => {
+    expect(parseUserDate("2024-01-15")).toEqual({ day: 15, month: 1, year: 2024 });
   });
 
-  it("should reject invalid year values", () => {
-    expect(isValidDateFormat("01-15-1969")).toBe(false);
-    expect(isValidDateFormat("01-15-2101")).toBe(false);
+  it("should trim surrounding whitespace", () => {
+    expect(parseUserDate("  15/01/2024  ")).toEqual({ day: 15, month: 1, year: 2024 });
   });
 
-  it("should reject invalid formats", () => {
-    expect(isValidDateFormat("2024-01-15")).toBe(false);
-    expect(isValidDateFormat("15/01/2024")).toBe(false);
-    expect(isValidDateFormat("01/15/2024")).toBe(false);
-    expect(isValidDateFormat("invalid")).toBe(false);
+  it("should reject month-first ordering (former MM-DD-AAAA)", () => {
+    // "12-31-2024" would be day 12, month 31 → invalid month
+    expect(parseUserDate("12-31-2024")).toBeNull();
+    expect(parseUserDate("01-15-2024")).toBeNull(); // month 15
+  });
+
+  it("should reject invalid month/day/year ranges", () => {
+    expect(parseUserDate("01/13/2024")).toBeNull(); // month 13
+    expect(parseUserDate("32/01/2024")).toBeNull(); // day 32
+    expect(parseUserDate("01/01/1969")).toBeNull(); // year < 1970
+    expect(parseUserDate("01/01/2101")).toBeNull(); // year > 2100
+  });
+
+  it("should reject malformed input", () => {
+    expect(parseUserDate("invalid")).toBeNull();
+    expect(parseUserDate("1/1/2024")).toBeNull(); // not zero-padded
+    expect(parseUserDate("2024/01/15")).toBeNull();
+  });
+});
+
+describe("toBcbDate / toIbgeApiDate", () => {
+  it("toBcbDate emits DD/MM/AAAA", () => {
+    expect(toBcbDate({ day: 1, month: 3, year: 2026 })).toBe("01/03/2026");
+    expect(toBcbDate({ day: 31, month: 12, year: 2024 })).toBe("31/12/2024");
+  });
+
+  it("toIbgeApiDate emits MM-DD-AAAA (month-first, what the IBGE API expects)", () => {
+    expect(toIbgeApiDate({ day: 1, month: 3, year: 2026 })).toBe("03-01-2026");
+    expect(toIbgeApiDate({ day: 31, month: 12, year: 2024 })).toBe("12-31-2024");
+  });
+
+  it("round-trips a canonical user date to each API format", () => {
+    const parsed = parseUserDate("15/06/2026")!;
+    expect(toBcbDate(parsed)).toBe("15/06/2026");
+    expect(toIbgeApiDate(parsed)).toBe("06-15-2026");
   });
 });
 

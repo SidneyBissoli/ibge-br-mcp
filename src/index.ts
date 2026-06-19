@@ -270,7 +270,7 @@ Features:
 Examples:
 - Latest 10 news: (no parameters)
 - Search census: busca="censo"
-- 2024 news: de="01-01-2024", ate="12-31-2024"
+- 2024 news: de="01/01/2024", ate="31/12/2024"
 - Releases only: tipo="release"
 
 Use a different tool when:
@@ -579,7 +579,7 @@ Event types:
 Examples:
 - Upcoming releases: (no parameters)
 - IPCA releases: produto="IPCA"
-- 2024 calendar: de="01-01-2024", ate="12-31-2024"
+- 2024 calendar: de="01/01/2024", ate="31/12/2024"
 - Field collections: tipo="coleta"
 
 Use a different tool when:
