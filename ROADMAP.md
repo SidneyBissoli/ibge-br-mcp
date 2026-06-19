@@ -92,16 +92,17 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 
 > Resolução:
 > - Tools prioritários muito acima do alvo: `sidra` 0→86%, `malhas` 0→95%,
->   `indicadores` 53→87%, `censo` 51→81%; bônus `datasaude` 16→88% (tocado nesta
->   fase). Suíte: 253→290 testes. Helper de mock compartilhado em `tests/helpers.ts`.
+>   `indicadores` 53→87%, `censo` 51→81%; bônus `datasaude` 16→88%.
 > - Testes afirmam o tratamento gracioso já existente: distinção "sem dado" vs
 >   falha real, `parseHttpError` com tools relacionadas, e rejeição de input
 >   inválido sem chamar a API.
-> - **Cauda longa em aberto** (não bloqueante): vários tools seguem com baixa/zero
->   cobertura — `geocodigo`, `vizinhos`, `cnae`, `comparar`, `nomes`, `populacao`,
->   `pesquisas`, `sidra-metadados`, `sidra-tabelas`, `malhas-tema`, `cidades`,
->   `paises`. Candidatos a uma 2ª passada de cobertura. `geocodigo`/`vizinhos`
->   foram alterados na fase 1.3 e merecem testes de tool em breve.
+> - **Cauda longa fechada (2ª passada):** todo tool agora ≥50% — `cnae` 99%,
+>   `geocodigo` 99%, `sidra-tabelas` 98%, `noticias` 33→98%, `comparar` 97%,
+>   `paises` 2→96%, `nomes` 94%, `malhas-tema` 93%, `populacao` 92%, `pesquisas`
+>   92%, `vizinhos` 92%, `cidades` 2→89%, `sidra-metadados` 88%. Pasta `tools`:
+>   ~32%→**89%**. Suíte: 253→436 testes. Helper de mock em `tests/helpers.ts`;
+>   `cidades`/`paises` tinham testes só de schema — adicionados testes de
+>   invocação de função.
 
 ### 1.6 Capacidades do protocolo MCP (estado da arte)
 - [ ] **Resources**: expor catálogos de referência (tabelas SIDRA, níveis

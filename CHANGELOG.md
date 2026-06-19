@@ -37,8 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`sidra` 0→86%, `malhas` 0→95%, `indicadores` 53→87%, `censo` 51→81%, plus
   `datasaude` 16→88%): URL building, table/JSON formatting, number formatting,
   parameter validation, and graceful handling of empty results vs upstream
-  failures. Adds a shared `tests/helpers.ts` mock helper. Suite: 253 → 290 tests
-  (roadmap item 1.5).
+  failures. Adds a shared `tests/helpers.ts` mock helper (roadmap item 1.5).
+- Closed the remaining coverage long tail — every tool is now ≥50%, with the
+  `src/tools` directory at ~89% (`cnae`, `geocodigo`, `sidra-tabelas`,
+  `noticias`, `comparar`, `paises`, `nomes`, `malhas-tema`, `populacao`,
+  `pesquisas`, `vizinhos`, `cidades`, `sidra-metadados`). `cidades`/`paises`
+  previously had schema-only tests and now exercise the tool functions. Suite:
+  290 → 436 tests, all green.
 
 ### Fixed
 - `ibge_censo`, `ibge_datasaude` and `ibge_indicadores` now **validate**
