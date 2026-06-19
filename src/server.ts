@@ -308,15 +308,18 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Nomes 
   // Register ibge_noticias tool
   server.tool(
     "ibge_noticias",
-    `Searches IBGE news and press releases.
+    `Searches and lists already-published IBGE news articles and press releases.
 
-Features:
-- Latest news and releases
-- Search by specific term
-- Filter by period (start and end date)
-- Filter by type (release or news)
-- Filter featured news
-- Pagination support
+Use this to find recent IBGE publications or announcements about a survey or topic — when an indicator was released, or news mentioning a term like "censo". Results are sorted newest-first; with no parameters it returns the 10 most recent items.
+
+Parameters:
+- busca: free-text term to match (e.g. "PIB", "censo")
+- tipo: "release" (official publication of survey results) or "noticia" (general news); omit for both
+- de / ate: date range, format DD/MM/AAAA (e.g. de="01/01/2024", ate="31/12/2024")
+- destaque: true to return only featured items
+- quantidade: how many to return (default 10, max 100); pagina: page number to page through more
+
+Each item returns: title, type (release/news), publication date, editoria (section), related products/surveys, a featured flag, a plain-text summary, and a link to the full article. The header reports the total count and current page.
 
 Examples:
 - Latest 10 news: (no parameters)
@@ -325,7 +328,7 @@ Examples:
 - Releases only: tipo="release"
 
 Use a different tool when:
-- Scheduled/upcoming release dates (not published news) → ibge_calendario
+- Scheduled/upcoming release dates (not yet published) → ibge_calendario
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Notícias API. Returns a Markdown list.`,
     noticiasSchema.shape,
