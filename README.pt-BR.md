@@ -12,11 +12,11 @@
 
 **Dados públicos brasileiros ao vivo e exatos para o seu assistente de IA — com procedência, não chute.**
 
-Pergunte a um LLM _"qual era a população de Belo Horizonte no Censo 2022?"_ e você recebe um número plausível, tirado do treino: talvez certo, talvez desatualizado, sem fonte. O `ibge-br-mcp` faz o seu assistente consultar as APIs oficiais do **IBGE**, **Banco Central** e **DataSUS** em tempo real — devolvendo o valor exato junto com a tabela e o período de onde ele veio.
+Pergunte a um LLM _"qual era a população de Belo Horizonte no Censo 2022?"_ e você recebe um número plausível, tirado do treino: talvez certo, talvez desatualizado, sem fonte. O `ibge-br-mcp` faz o seu assistente consultar as APIs oficiais do **IBGE** e do **Banco Central** em tempo real — devolvendo o valor exato junto com a tabela e o período de onde ele veio.
 
 🇺🇸 [Read in English](README.md)
 
-Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) para dar aos assistentes de IA acesso ao vivo e estruturado aos dados públicos geográficos, demográficos, econômicos e de saúde do Brasil.
+Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) para dar aos assistentes de IA acesso ao vivo e estruturado aos dados públicos geográficos, demográficos, econômicos e de saúde do Brasil — vindos das APIs do IBGE (inclusive os indicadores de saúde, servidos pelo SIDRA do IBGE) e do sistema SGS do Banco Central.
 
 ## Recursos
 
@@ -86,7 +86,7 @@ Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextpr
 | Ferramenta | Descrição |
 |:-----------|:----------|
 | `bcb` | Dados do Banco Central (SELIC, IPCA, câmbio) |
-| `datasaude` | Indicadores de saúde via IBGE/DataSUS |
+| `datasaude` | Indicadores de saúde via SIDRA do IBGE |
 
 ### Notícias e Calendário
 | Ferramenta | Descrição |
@@ -417,7 +417,7 @@ bcb(indicador="dolar_venda", ultimos=30)
 
 ### datasaude
 
-Consulta indicadores de saúde via IBGE/DataSUS.
+Consulta indicadores de saúde servidos pelo SIDRA do IBGE (alguns originalmente do DataSUS, ex.: óbitos e nascidos vivos).
 
 ```
 # Mortalidade infantil no Brasil

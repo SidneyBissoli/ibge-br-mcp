@@ -12,11 +12,11 @@
 
 **Live, exact Brazilian public data for your AI assistant — with provenance, not guesswork.**
 
-Ask an LLM _"what was Belo Horizonte's population in the 2022 Census?"_ and you get a plausible number from its training data: maybe right, maybe outdated, with no source. `ibge-br-mcp` instead has your assistant query the official **IBGE**, **Banco Central** and **DataSUS** APIs in real time — returning the exact figure together with the table and period it came from.
+Ask an LLM _"what was Belo Horizonte's population in the 2022 Census?"_ and you get a plausible number from its training data: maybe right, maybe outdated, with no source. `ibge-br-mcp` instead has your assistant query the official **IBGE** and **Banco Central** APIs in real time — returning the exact figure together with the table and period it came from.
 
 🇧🇷 [Leia em Português](README.pt-BR.md)
 
-This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to give AI assistants live, structured access to Brazil's public geographic, demographic, economic, and health data.
+This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to give AI assistants live, structured access to Brazil's public geographic, demographic, economic, and health data — sourced from the IBGE APIs (including health indicators served through IBGE's SIDRA system) and the Central Bank's SGS.
 
 ## Features
 
@@ -86,7 +86,7 @@ This server implements the [Model Context Protocol (MCP)](https://modelcontextpr
 | Tool | Description |
 |:-----|:------------|
 | `bcb` | Central Bank data (SELIC, IPCA, exchange rates) |
-| `datasaude` | Health indicators via IBGE/DataSUS |
+| `datasaude` | Health indicators via IBGE's SIDRA |
 
 ### News & Calendar
 | Tool | Description |
@@ -417,7 +417,7 @@ bcb(indicador="dolar_venda", ultimos=30)
 
 ### datasaude
 
-Query health indicators via IBGE/DataSUS.
+Query Brazilian health indicators served through IBGE's SIDRA (some originally produced by DataSUS, e.g. mortality and births).
 
 ```
 # Infant mortality in Brazil
