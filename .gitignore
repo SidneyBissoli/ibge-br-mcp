@@ -34,3 +34,6 @@ mcp-publisher.exe
 # Internal planning docs (kept local, not published)
 ROADMAP.md
 ROADMAP.html
+
+# R history
+.Rhistory

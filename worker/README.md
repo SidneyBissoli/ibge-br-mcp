@@ -17,7 +17,12 @@ per request, no Durable Object), which fits this read-only, public-data server.
 | `/health` | Liveness probe |
 | `/.well-known/glama.json` | Glama connector descriptor |
 
-## Deploy
+## Status
+
+**Live in production** at `https://ibge.sidneybissoli.com/mcp` (custom domain,
+DNS + TLS provisioned) and at `https://ibge-br-mcp.sidneybissoli.workers.dev`.
+
+## Deploy / redeploy
 
 ```bash
 # 1. Build the parent package (produces ../dist, which this Worker imports).
@@ -31,14 +36,12 @@ npm install
 npx wrangler deploy
 ```
 
-Then expose it at the subdomain — either uncomment the `[[routes]]` block in
-`wrangler.toml`, or in the dashboard: **Workers & Pages → ibge-br-mcp →
-Settings → Domains & Routes → Add Custom Domain → `ibge.sidneybissoli.com`**.
-Cloudflare provisions DNS + TLS automatically. Final URL:
-
-```
-https://ibge.sidneybissoli.com/mcp
-```
+Run the same steps to redeploy after a code change. The custom domain
+`ibge.sidneybissoli.com` is already attached, so no further DNS setup is needed.
+To re-add it from scratch (e.g. on a fresh account): in the dashboard, **Workers
+& Pages → ibge-br-mcp → Settings → Domains & Routes → Add Custom Domain →
+`ibge.sidneybissoli.com`** (Cloudflare provisions DNS + TLS automatically), or
+uncomment the `[[routes]]` block in `wrangler.toml`.
 
 ## Local dev
 
