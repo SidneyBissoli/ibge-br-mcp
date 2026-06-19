@@ -5,7 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
-import { type StructuredToolResult, sidraRecords } from "../structured.js";
+import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
 
 // Census data is published by SIDRA down to the municipality level.
 const CENSO_NIVEIS = ["1", "2", "3", "6"];
@@ -197,6 +197,12 @@ export const censoSchema = z.object({
     .describe(territorialLevelHint(CENSO_NIVEIS)),
   localidades: z.string().optional().default("all").describe("Códigos das localidades ou 'all'"),
   formato: z.enum(["tabela", "json"]).optional().default("tabela").describe("Formato de saída"),
+  campos: z
+    .string()
+    .optional()
+    .describe(
+      "Selecionar apenas algumas colunas por rótulo, separadas por vírgula (ex: 'Valor,Ano'). Reduz o volume da resposta."
+    ),
 });
 
 export type CensoInput = z.infer<typeof censoSchema>;
@@ -320,20 +326,26 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
         };
       }
 
+      // Apply optional field selection (1.2) to both channels.
+      const filtered = selectSidraColumns(data, input.campos);
+
       // Format output
       let output = `## Censo Demográfico - ${tema.charAt(0).toUpperCase() + tema.slice(1).replace("_", " ")}\n\n`;
       output += `**Tabela SIDRA:** ${tabelaInfo.tabela}\n`;
       output += `**Descrição:** ${tabelaInfo.descricao}\n`;
       output += `**Ano(s):** ${input.ano || "Série histórica"}\n\n`;
 
-      const structured = { ...meta, ...sidraRecords(data) };
+      const structured = { ...meta, ...sidraRecords(filtered) };
 
       if (input.formato === "json") {
-        return { markdown: output + "```json\n" + JSON.stringify(data, null, 2) + "\n```", structured };
+        return {
+          markdown: output + "```json\n" + JSON.stringify(filtered, null, 2) + "\n```",
+          structured,
+        };
       }
 
       // Format as table
-      output += formatCensoTable(data);
+      output += formatCensoTable(filtered);
 
       return { markdown: output, structured };
     } catch (error) {

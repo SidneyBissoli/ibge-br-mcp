@@ -6,7 +6,7 @@ import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { fetchWithRetry } from "../retry.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
-import { type StructuredToolResult, sidraRecords } from "../structured.js";
+import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
 
 // Health data is published by SIDRA down to the municipality level.
 const DATASAUDE_NIVEIS = ["1", "2", "3", "6"];
@@ -109,6 +109,12 @@ export const datasaudeSchema = z.object({
     .default("last")
     .describe("Período: 'last', 'all', ou ano específico"),
   formato: z.enum(["tabela", "json"]).optional().default("tabela").describe("Formato de saída"),
+  campos: z
+    .string()
+    .optional()
+    .describe(
+      "Selecionar apenas algumas colunas por rótulo, separadas por vírgula (ex: 'Valor,Ano'). Reduz o volume da resposta."
+    ),
 });
 
 export type DatasaudeInput = z.infer<typeof datasaudeSchema>;
@@ -200,9 +206,11 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
         };
       }
 
+      // Apply optional field selection (1.2) to both channels.
+      const filtered = selectSidraColumns(data, input.campos);
       return {
-        markdown: formatResponse(data, indicadorInfo, input),
-        structured: { ...meta, ...sidraRecords(data) },
+        markdown: formatResponse(filtered, indicadorInfo, input),
+        structured: { ...meta, ...sidraRecords(filtered) },
       };
     } catch (error) {
       if (error instanceof Error) {

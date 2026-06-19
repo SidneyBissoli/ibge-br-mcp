@@ -10,6 +10,7 @@
  */
 
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { normalizeText } from "./config.js";
 
 export interface StructuredToolResult {
   /** Always present: the Markdown text channel. */
@@ -72,4 +73,48 @@ export function sidraRecords(data: Record<string, string>[]): SidraRecords {
   });
 
   return { colunas, registros, totalRegistros: dataRows.length };
+}
+
+/**
+ * Field selection for SIDRA-style data (roadmap 1.2): keeps only the columns
+ * whose header label matches one of the comma-separated `campos` tokens
+ * (accent/case-insensitive substring match). Filters the header and every data
+ * row, so both the structured payload and the Markdown table shrink together.
+ *
+ * Returns the data unchanged when `campos` is empty or matches no column (so a
+ * mistaken filter never blanks out the result).
+ */
+export function selectSidraColumns(
+  data: Record<string, string>[],
+  campos?: string
+): Record<string, string>[] {
+  if (!campos || !campos.trim() || !data || data.length === 0) {
+    return data;
+  }
+
+  const wanted = campos
+    .split(",")
+    .map((c) => normalizeText(c))
+    .filter(Boolean);
+  if (wanted.length === 0) {
+    return data;
+  }
+
+  const header = data[0];
+  const keepKeys = Object.keys(header).filter((key) => {
+    const label = normalizeText(header[key] || key);
+    return wanted.some((w) => label.includes(w) || w.includes(label));
+  });
+
+  if (keepKeys.length === 0) {
+    return data;
+  }
+
+  return data.map((row) => {
+    const filtered: Record<string, string> = {};
+    for (const key of keepKeys) {
+      filtered[key] = row[key];
+    }
+    return filtered;
+  });
 }

@@ -115,6 +115,19 @@ describe("ibge_sidra", () => {
     expect(result.structured).toBeDefined();
   });
 
+  it("field selection (campos) trims columns in both channels", async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse(popByUf));
+
+    const result = await ibgeSidra({ tabela: "6579", campos: "Valor" });
+
+    const s = result.structured as Record<string, unknown>;
+    expect(s.colunas).toEqual(["Valor"]);
+    expect((s.registros as Record<string, string>[])[0]).toEqual({ Valor: "44411238" });
+    // dropped columns absent from the Markdown table too
+    expect(result.markdown).not.toContain("Unidade da Federação");
+    expect(sidraOutputSchema.safeParse(result.structured).success).toBe(true);
+  });
+
   it("appends classification path from 'id[categorias]'", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(popByUf));
 

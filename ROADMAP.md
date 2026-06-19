@@ -40,11 +40,12 @@ receba uma resposta que ele consiga usar sem desperdiçar contexto.
 - [x] Bônus: removida a duplicação morta de descrições (array `tools` +
       objetos `xxxTool`) → fonte única em `src/index.ts`
 
-### 1.2 Saída estruturada e compacta (em andamento)
+### 1.2 Saída estruturada e compacta ✅
 - [x] Adicionar `outputSchema` + `structuredContent` (JSON tipado) às tools de dado
       — todos os 7 tools de dado migrados
 - [x] Limitar/paginar respostas grandes (ex.: SIDRA) com orientação de continuação
-- [ ] Seleção de campos onde fizer sentido reduzir volume
+- [x] Seleção de campos onde fizer sentido reduzir volume — input `campos` nos
+      4 tools tabulares (`sidra`, `censo`, `indicadores`, `datasaude`)
 
 > Progresso:
 > - Padrão reutilizável em `src/structured.ts` (`StructuredToolResult` +

@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   data tools can adopt it the same way.
   - `ibge_sidra` paginates large results (100 rows/page) via a new `pagina`
     input, with continuation guidance in the text channel.
+  - **Field selection**: the tabular tools (`ibge_sidra`, `ibge_censo`,
+    `ibge_indicadores`, `datasaude`) accept a `campos` input to keep only
+    matching columns (accent/case-insensitive), shrinking both the structured
+    payload and the Markdown table. Completes roadmap item 1.2.
   - Convention: success returns `structuredContent`; errors return `isError`
     (the SDK skips output validation); an empty result is success-with-empty
     payload, not an error; non-data responses (e.g. `listar` catalogs) return a

@@ -5,7 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
-import { type StructuredToolResult, sidraRecords } from "../structured.js";
+import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
 
 // These aggregates are published down to UF level (no municipal breakdown).
 const INDICADORES_NIVEIS = ["1", "2", "3"];
@@ -179,6 +179,12 @@ Use "listar" para ver todos os indicadores disponíveis.`),
     .default("last")
     .describe("Períodos (ex: '2023', 'last', 'last 4')"),
   formato: z.enum(["tabela", "json"]).optional().default("tabela").describe("Formato de saída"),
+  campos: z
+    .string()
+    .optional()
+    .describe(
+      "Selecionar apenas algumas colunas por rótulo, separadas por vírgula (ex: 'Valor,Ano'). Reduz o volume da resposta."
+    ),
 });
 
 export type IndicadoresInput = z.infer<typeof indicadoresSchema>;
@@ -301,13 +307,18 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
       output += `**Periodicidade:** ${indicador.periodicidade}\n`;
       output += `**Tabela SIDRA:** ${indicador.tabela}\n\n`;
 
-      const structured = { ...meta, ...sidraRecords(data) };
+      // Apply optional field selection (1.2) to both channels.
+      const filtered = selectSidraColumns(data, input.campos);
+      const structured = { ...meta, ...sidraRecords(filtered) };
 
       if (input.formato === "json") {
-        return { markdown: output + "```json\n" + JSON.stringify(data, null, 2) + "\n```", structured };
+        return {
+          markdown: output + "```json\n" + JSON.stringify(filtered, null, 2) + "\n```",
+          structured,
+        };
       }
 
-      output += formatIndicadorTable(data);
+      output += formatIndicadorTable(filtered);
       return { markdown: output, structured };
     } catch (error) {
       if (error instanceof Error) {

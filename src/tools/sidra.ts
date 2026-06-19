@@ -6,7 +6,7 @@ import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidPeriod, isValidTerritorialLevel, formatValidationError } from "../validation.js";
 import { territorialLevelHint, territorialLevelList, ALL_TERRITORIAL_LEVELS } from "../config.js";
-import { type StructuredToolResult, sidraRecords } from "../structured.js";
+import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
 
 /** Data rows returned per page in the structured payload and Markdown table. */
 const PAGE_SIZE = 100;
@@ -56,6 +56,12 @@ export const sidraSchema = z.object({
     .optional()
     .default(1)
     .describe(`Página de resultados (${PAGE_SIZE} registros por página)`),
+  campos: z
+    .string()
+    .optional()
+    .describe(
+      "Selecionar apenas algumas colunas por rótulo, separadas por vírgula (ex: 'Valor,Ano'). Reduz o volume da resposta. Omitir traz todas."
+    ),
 });
 
 export type SidraInput = z.infer<typeof sidraSchema>;
@@ -180,7 +186,12 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
         };
       }
 
-      return buildSidraResult(data, input.tabela, input.pagina ?? 1, input.formato ?? "tabela");
+      return buildSidraResult(
+        selectSidraColumns(data, input.campos),
+        input.tabela,
+        input.pagina ?? 1,
+        input.formato ?? "tabela"
+      );
     } catch (error) {
       if (error instanceof Error) {
         return {
