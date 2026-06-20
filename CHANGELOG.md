@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-06-20
+
+Naming consistency, structured output everywhere, and a hosted HTTP transport
+(roadmap Phase 2 discoverability).
+
+### Changed (BREAKING)
+- **Renamed the `datasaude` tool to `ibge_datasaude`.** All 22 tools now share
+  the `ibge_` prefix (the lone exception is gone), which improves naming
+  consistency in directories/registries and for tool selection. Update any
+  client configuration or calls that referenced `datasaude`. The function,
+  schema, and behavior are unchanged — only the registered tool name.
+
+### Added
+- **Structured output for every tool.** The 15 catalog/locality/listing tools
+  now declare an `outputSchema` and return a typed `structuredContent` payload
+  alongside the Markdown (previously only the 7 tabular tools did). All 22 tools
+  now expose structured output. Additive and non-breaking — clients that ignore
+  `structuredContent` still receive the same Markdown. `malhas`/`malhas_tema`
+  expose lightweight metadata only (the geometry stays in the Markdown channel).
+- **Hosted HTTP transport.** An optional Cloudflare Worker serves the same
+  surface over Streamable HTTP at `https://ibge.sidneybissoli.com/mcp`, declared
+  as a `remotes` entry in `server.json` and advertised via
+  `/.well-known/mcp/server-card.json`. STDIO remains the default.
+- **`SECURITY.md`** (read-only security model + disclosure policy) and **npm
+  publish provenance** (`--provenance`) for supply-chain attestation.
+- A concise **"Behavior:" line** in every tool description stating it is
+  read-only/idempotent, the IBGE API it calls, and its output shape.
+
+### Fixed
+- **`ibge_paises` was broken against the live IBGE API.** The code assumed the
+  wrong response shapes: `nome` is an object (`{ abreviado }`), country `id` is
+  keyed `ISO-3166-1-ALPHA-2/3`, currency `id` is an object, and
+  `localizacao.regiao.id` is `{ M49 }`. As a result `tipo="buscar"` threw,
+  region filtering always returned empty, and names/codes rendered as
+  `[object Object]`/`-`. The `Pais`/`PaisLocalizacao` types and every accessor
+  were corrected.
+- **`ibge_sidra_metadados`**: the table code is returned as a number by the API;
+  it is now coerced to a string so the structured payload validates.
+- Repointed the Glama badge to its canonical URL and fixed the dead MseeP badge
+  link in both READMEs.
+
 ## [2.0.0] - 2026-06-19
 
 Refocus on the project's stated principle — **IBGE specialist, no scope creep

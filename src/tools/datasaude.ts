@@ -216,14 +216,14 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "datasaude", { indicador: input.indicador }, [
+          markdown: parseHttpError(error, "ibge_datasaude", { indicador: input.indicador }, [
             "ibge_sidra",
             "ibge_sidra_metadados",
           ]),
           isError: true,
         };
       }
-      return { markdown: ValidationErrors.emptyResult("datasaude"), isError: true };
+      return { markdown: ValidationErrors.emptyResult("ibge_datasaude"), isError: true };
     }
   });
 }
@@ -337,13 +337,13 @@ function listHealthIndicators(): string {
   output += "\n### Exemplos de Uso\n\n";
   output += "```\n";
   output += "# Mortalidade infantil no Brasil\n";
-  output += 'datasaude(indicador="mortalidade_infantil")\n\n';
+  output += 'ibge_datasaude(indicador="mortalidade_infantil")\n\n';
   output += "# Esperança de vida por UF\n";
-  output += 'datasaude(indicador="esperanca_vida", nivel_territorial="3")\n\n';
+  output += 'ibge_datasaude(indicador="esperanca_vida", nivel_territorial="3")\n\n';
   output += "# Óbitos em São Paulo (código 35)\n";
-  output += 'datasaude(indicador="obitos", nivel_territorial="3", localidade="35")\n\n';
+  output += 'ibge_datasaude(indicador="obitos", nivel_territorial="3", localidade="35")\n\n';
   output += "# Série histórica de nascidos vivos\n";
-  output += 'datasaude(indicador="nascidos_vivos", periodo="all")\n';
+  output += 'ibge_datasaude(indicador="nascidos_vivos", periodo="all")\n';
   output += "```\n";
 
   return output;

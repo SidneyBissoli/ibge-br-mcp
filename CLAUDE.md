@@ -50,7 +50,7 @@ The Worker intentionally does **not** list `@modelcontextprotocol/sdk` or `zod` 
 
 **Two registration shapes — pick by whether the tool returns tabular data:**
 - **Markdown-only tools** (catalog / localidade / listing — the majority) register with `server.tool(name, description, schema.shape, handler)`; the handler returns `{ content: [{ type: "text", text: result }] }` and the tool's impl returns a **Markdown string**.
-- **Data tools** (the 7 tabular ones: `ibge_sidra`, `ibge_censo`, `ibge_indicadores`, `datasaude`, `ibge_populacao`, `ibge_comparar`, `ibge_cidades`) register with `server.registerTool(name, { description, inputSchema, outputSchema }, handler)`. Their impl returns a `StructuredToolResult` (`{ markdown, structured?, isError? }`) and the handler converts it via `toMcpResult(...)` from `structured.ts`, attaching a typed `structuredContent` payload validated against `outputSchema`.
+- **Data tools** (the 7 tabular ones: `ibge_sidra`, `ibge_censo`, `ibge_indicadores`, `ibge_datasaude`, `ibge_populacao`, `ibge_comparar`, `ibge_cidades`) register with `server.registerTool(name, { description, inputSchema, outputSchema }, handler)`. Their impl returns a `StructuredToolResult` (`{ markdown, structured?, isError? }`) and the handler converts it via `toMcpResult(...)` from `structured.ts`, attaching a typed `structuredContent` payload validated against `outputSchema`.
 
 **Shared infrastructure (`src/`), used by every tool — reuse these, don't reinvent:**
 - `config.ts` — single source of truth for API endpoints, UF/region code maps, SIDRA territorial levels, biome codes, common SIDRA table codes, validation regexes, and helpers (`getUfCode`, `validateIbgeCode`, etc.). Add new constants/mappings here.

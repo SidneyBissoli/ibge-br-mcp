@@ -85,7 +85,7 @@ This server implements the [Model Context Protocol (MCP)](https://modelcontextpr
 ### Health
 | Tool | Description |
 |:-----|:------------|
-| `datasaude` | Health indicators via IBGE's SIDRA |
+| `ibge_datasaude` | Health indicators via IBGE's SIDRA |
 
 ### News & Calendar
 | Tool | Description |
@@ -396,19 +396,19 @@ ibge_malhas(localidade="BR", formato="svg")
 | 2 | States |
 | 5 | Municipalities |
 
-### datasaude
+### ibge_datasaude
 
 Query Brazilian health indicators served through IBGE's SIDRA (some originally produced by DataSUS, e.g. mortality and births).
 
 ```
 # Infant mortality in Brazil
-datasaude(indicador="mortalidade_infantil")
+ibge_datasaude(indicador="mortalidade_infantil")
 
 # Life expectancy by state
-datasaude(indicador="esperanca_vida", nivel_territorial="3")
+ibge_datasaude(indicador="esperanca_vida", nivel_territorial="3")
 
 # List indicators
-datasaude(indicador="listar")
+ibge_datasaude(indicador="listar")
 ```
 
 **Available indicators:** mortalidade_infantil, esperanca_vida, nascidos_vivos, obitos, fecundidade, saneamento_agua, saneamento_esgoto, plano_saude
@@ -487,7 +487,7 @@ ibge-br-mcp/
 │       ├── malhas.ts         # ibge_malhas
 │       ├── malhas-tema.ts    # ibge_malhas_tema
 │       ├── vizinhos.ts       # ibge_vizinhos
-│       ├── datasaude.ts      # datasaude
+│       ├── datasaude.ts      # ibge_datasaude
 │       ├── pesquisas.ts      # ibge_pesquisas
 │       ├── nomes.ts          # ibge_nomes
 │       ├── noticias.ts       # ibge_noticias

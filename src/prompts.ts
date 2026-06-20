@@ -80,7 +80,7 @@ Passos:
 1. Se vier por nome, resolva o código IBGE com ibge_geocodigo.
 2. Para um município, use ibge_cidades (tipo="panorama") para população, área, densidade, PIB per capita, IDH e escolarização.
 3. Complemente com o censo mais recente via ibge_censo (tema="populacao" e, se útil, "idade_sexo", "cor_raca", "alfabetizacao").
-4. Para indicadores de saúde (mortalidade infantil, esperança de vida), use datasaude.
+4. Para indicadores de saúde (mortalidade infantil, esperança de vida), use ibge_datasaude.
 5. Sintetize em um perfil curto e estruturado (tabela + 1 parágrafo), citando o ano de cada dado e usando apenas valores retornados pelas tools.`
       )
   );

@@ -85,7 +85,7 @@ Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextpr
 ### Saúde
 | Ferramenta | Descrição |
 |:-----------|:----------|
-| `datasaude` | Indicadores de saúde via SIDRA do IBGE |
+| `ibge_datasaude` | Indicadores de saúde via SIDRA do IBGE |
 
 ### Notícias e Calendário
 | Ferramenta | Descrição |
@@ -396,19 +396,19 @@ ibge_malhas(localidade="BR", formato="svg")
 | 2 | Estados |
 | 5 | Municípios |
 
-### datasaude
+### ibge_datasaude
 
 Consulta indicadores de saúde servidos pelo SIDRA do IBGE (alguns originalmente do DataSUS, ex.: óbitos e nascidos vivos).
 
 ```
 # Mortalidade infantil no Brasil
-datasaude(indicador="mortalidade_infantil")
+ibge_datasaude(indicador="mortalidade_infantil")
 
 # Expectativa de vida por estado
-datasaude(indicador="esperanca_vida", nivel_territorial="3")
+ibge_datasaude(indicador="esperanca_vida", nivel_territorial="3")
 
 # Listar indicadores
-datasaude(indicador="listar")
+ibge_datasaude(indicador="listar")
 ```
 
 **Indicadores disponíveis:** mortalidade_infantil, esperanca_vida, nascidos_vivos, obitos, fecundidade, saneamento_agua, saneamento_esgoto, plano_saude
@@ -490,7 +490,7 @@ ibge-br-mcp/
 │       ├── malhas.ts         # ibge_malhas
 │       ├── malhas-tema.ts    # ibge_malhas_tema
 │       ├── vizinhos.ts       # ibge_vizinhos
-│       ├── datasaude.ts      # datasaude
+│       ├── datasaude.ts      # ibge_datasaude
 │       ├── pesquisas.ts      # ibge_pesquisas
 │       ├── nomes.ts          # ibge_nomes
 │       ├── noticias.ts       # ibge_noticias

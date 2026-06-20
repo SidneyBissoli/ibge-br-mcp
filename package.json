@@ -1,6 +1,6 @@
 {
   "name": "ibge-br-mcp",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "mcpName": "io.github.SidneyBissoli/ibge-br-mcp",
   "description": "MCP server giving AI assistants live, sourced access to Brazilian public data — geography, census, economy and health — from the official IBGE APIs. Exact figures with provenance, not approximations.",
   "type": "module",
