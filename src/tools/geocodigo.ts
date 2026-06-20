@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { resolveUf } from "../config.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Map of state codes to names
 const ESTADOS_MAP: Record<number, { sigla: string; nome: string; regiao: string }> = {
@@ -67,10 +68,69 @@ Formatos aceitos:
 
 export type GeocodigoInput = z.infer<typeof geocodigoSchema>;
 
+/** One level of a geographic hierarchy (região → UF → ... → município/distrito). */
+const hierarquiaNivelSchema = z.object({
+  nivel: z.string().describe("Nome do nível territorial (Região, UF, Município, etc.)"),
+  codigo: z.number().describe("Código IBGE do nível"),
+  nome: z.string().describe("Nome da localidade neste nível"),
+});
+
+/** A single municipality match in a name search. */
+const municipioMatchSchema = z.object({
+  codigo: z.number().describe("Código IBGE (7 dígitos) do município"),
+  nome: z.string().describe("Nome do município"),
+});
+
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const geocodigoOutputSchema = z.object({
+  tipo: z
+    .enum(["regiao", "uf", "municipio", "distrito", "lista"])
+    .describe(
+      "Tipo do resultado: localidade decodificada (regiao/uf/municipio/distrito) ou lista de municípios encontrados (lista)"
+    ),
+  codigo: z
+    .number()
+    .optional()
+    .describe("Código IBGE da localidade resolvida (ausente em resultados do tipo lista)"),
+  nome: z.string().optional().describe("Nome da localidade resolvida"),
+  sigla: z.string().optional().describe("Sigla da região ou UF, quando aplicável"),
+  regiao: z.string().optional().describe("Nome da região à qual a UF pertence (apenas tipo uf)"),
+  regiaoCodigo: z
+    .number()
+    .optional()
+    .describe("Código IBGE da região à qual a UF pertence (apenas tipo uf)"),
+  hierarquia: z
+    .array(hierarquiaNivelSchema)
+    .optional()
+    .describe("Hierarquia geográfica completa, da região ao município/distrito (tipo municipio/distrito)"),
+  codigoSidra: z
+    .string()
+    .optional()
+    .describe("Código SIDRA de 6 dígitos do município (apenas tipo municipio)"),
+  estados: z
+    .array(
+      z.object({
+        codigo: z.number().describe("Código IBGE da UF"),
+        sigla: z.string().describe("Sigla da UF"),
+        nome: z.string().describe("Nome da UF"),
+      })
+    )
+    .optional()
+    .describe("Estados pertencentes à região (apenas tipo regiao)"),
+  matches: z
+    .array(municipioMatchSchema)
+    .optional()
+    .describe("Municípios encontrados na busca por nome (apenas tipo lista)"),
+  total: z
+    .number()
+    .optional()
+    .describe("Quantidade de municípios encontrados na busca por nome (apenas tipo lista)"),
+});
+
 /**
  * Reverse lookup for IBGE codes
  */
-export async function ibgeGeocodigo(input: GeocodigoInput): Promise<string> {
+export async function ibgeGeocodigo(input: GeocodigoInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_geocodigo", "localidades", async () => {
     try {
       // Decode a code
@@ -84,32 +144,38 @@ export async function ibgeGeocodigo(input: GeocodigoInput): Promise<string> {
       }
 
       // Show help
-      return showGeocodigoHelp();
+      return { markdown: showGeocodigoHelp(), isError: true };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(
-          error,
-          "ibge_geocodigo",
-          {
-            codigo: input.codigo,
-            nome: input.nome,
-          },
-          ["ibge_municipios", "ibge_estados"]
-        );
+        return {
+          markdown: parseHttpError(
+            error,
+            "ibge_geocodigo",
+            {
+              codigo: input.codigo,
+              nome: input.nome,
+            },
+            ["ibge_municipios", "ibge_estados"]
+          ),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_geocodigo");
+      return { markdown: ValidationErrors.emptyResult("ibge_geocodigo"), isError: true };
     }
   });
 }
 
-async function decodeIbgeCode(codigo: string): Promise<string> {
+async function decodeIbgeCode(codigo: string): Promise<StructuredToolResult> {
   const normalized = codigo.replace(/\D/g, "");
 
   if (normalized.length === 1) {
     // Region code
     const regiao = REGIOES_MAP[parseInt(normalized)];
     if (!regiao) {
-      return `Código de região inválido: "${codigo}"\n\nRegiões válidas: 1 (Norte), 2 (Nordeste), 3 (Sudeste), 4 (Sul), 5 (Centro-Oeste)`;
+      return {
+        markdown: `Código de região inválido: "${codigo}"\n\nRegiões válidas: 1 (Norte), 2 (Nordeste), 3 (Sudeste), 4 (Sul), 5 (Centro-Oeste)`,
+        isError: true,
+      };
     }
     return formatRegiaoInfo(parseInt(normalized), regiao);
   }
@@ -118,7 +184,10 @@ async function decodeIbgeCode(codigo: string): Promise<string> {
     // State code
     const estado = ESTADOS_MAP[parseInt(normalized)];
     if (!estado) {
-      return `Código de UF inválido: "${codigo}"\n\nUse ibge_estados() para ver a lista de estados.`;
+      return {
+        markdown: `Código de UF inválido: "${codigo}"\n\nUse ibge_estados() para ver a lista de estados.`,
+        isError: true,
+      };
     }
     return formatEstadoInfo(parseInt(normalized), estado);
   }
@@ -133,18 +202,20 @@ async function decodeIbgeCode(codigo: string): Promise<string> {
     return await decodeDistrito(normalized);
   }
 
-  return (
-    `Código IBGE inválido: "${codigo}"\n\n` +
-    `Formatos aceitos:\n` +
-    `- 1 dígito: Região (1-5)\n` +
-    `- 2 dígitos: UF (11-53)\n` +
-    `- 7 dígitos: Município\n` +
-    `- 9 dígitos: Distrito\n\n` +
-    `Use ibge_geocodigo(nome="...") para buscar por nome.`
-  );
+  return {
+    markdown:
+      `Código IBGE inválido: "${codigo}"\n\n` +
+      `Formatos aceitos:\n` +
+      `- 1 dígito: Região (1-5)\n` +
+      `- 2 dígitos: UF (11-53)\n` +
+      `- 7 dígitos: Município\n` +
+      `- 9 dígitos: Distrito\n\n` +
+      `Use ibge_geocodigo(nome="...") para buscar por nome.`,
+    isError: true,
+  };
 }
 
-async function decodeMunicipio(codigo: string): Promise<string> {
+async function decodeMunicipio(codigo: string): Promise<StructuredToolResult> {
   const endpoint = `${IBGE_API.LOCALIDADES}/municipios/${codigo}`;
   const key = cacheKey("municipio", { codigo });
 
@@ -170,22 +241,56 @@ async function decodeMunicipio(codigo: string): Promise<string> {
       ["Microrregião", String(data.microrregiao.id), data.microrregiao.nome],
     ];
 
+    const hierarquia = [
+      {
+        nivel: "Região",
+        codigo: data.microrregiao.mesorregiao.UF.regiao.id,
+        nome: data.microrregiao.mesorregiao.UF.regiao.nome,
+      },
+      {
+        nivel: "UF",
+        codigo: data.microrregiao.mesorregiao.UF.id,
+        nome: data.microrregiao.mesorregiao.UF.nome,
+      },
+      {
+        nivel: "Mesorregião",
+        codigo: data.microrregiao.mesorregiao.id,
+        nome: data.microrregiao.mesorregiao.nome,
+      },
+      {
+        nivel: "Microrregião",
+        codigo: data.microrregiao.id,
+        nome: data.microrregiao.nome,
+      },
+    ];
+
     if (data["regiao-imediata"]) {
       rows.push([
         "Região Imediata",
         String(data["regiao-imediata"].id),
         data["regiao-imediata"].nome,
       ]);
+      hierarquia.push({
+        nivel: "Região Imediata",
+        codigo: data["regiao-imediata"].id,
+        nome: data["regiao-imediata"].nome,
+      });
       if (data["regiao-imediata"]["regiao-intermediaria"]) {
         rows.push([
           "Região Intermediária",
           String(data["regiao-imediata"]["regiao-intermediaria"].id),
           data["regiao-imediata"]["regiao-intermediaria"].nome,
         ]);
+        hierarquia.push({
+          nivel: "Região Intermediária",
+          codigo: data["regiao-imediata"]["regiao-intermediaria"].id,
+          nome: data["regiao-imediata"]["regiao-intermediaria"].nome,
+        });
       }
     }
 
     rows.push(["Município", String(data.id), data.nome]);
+    hierarquia.push({ nivel: "Município", codigo: data.id, nome: data.nome });
 
     output += createMarkdownTable(["Nível", "Código", "Nome"], rows, {
       alignment: ["left", "right", "left"],
@@ -195,16 +300,27 @@ async function decodeMunicipio(codigo: string): Promise<string> {
     output += `- **Código SIDRA (6 dígitos):** ${codigo.substring(0, 6)}\n`;
     output += `- **Código completo (7 dígitos):** ${codigo}\n`;
 
-    return output;
+    return {
+      markdown: output,
+      structured: {
+        tipo: "municipio",
+        codigo: data.id,
+        nome: data.nome,
+        hierarquia,
+        codigoSidra: codigo.substring(0, 6),
+      },
+    };
   } catch {
-    return (
-      `Município não encontrado para o código: ${codigo}\n\n` +
-      `Use ibge_municipios(busca="nome") para buscar municípios.`
-    );
+    return {
+      markdown:
+        `Município não encontrado para o código: ${codigo}\n\n` +
+        `Use ibge_municipios(busca="nome") para buscar municípios.`,
+      isError: true,
+    };
   }
 }
 
-async function decodeDistrito(codigo: string): Promise<string> {
+async function decodeDistrito(codigo: string): Promise<StructuredToolResult> {
   const endpoint = `${IBGE_API.LOCALIDADES}/distritos/${codigo}`;
   const key = cacheKey("distrito", { codigo });
 
@@ -240,16 +356,39 @@ async function decodeDistrito(codigo: string): Promise<string> {
       }
     );
 
-    return output;
+    return {
+      markdown: output,
+      structured: {
+        tipo: "distrito",
+        codigo: data.id,
+        nome: data.nome,
+        hierarquia: [
+          {
+            nivel: "Região",
+            codigo: data.municipio.microrregiao.mesorregiao.UF.regiao.id,
+            nome: data.municipio.microrregiao.mesorregiao.UF.regiao.nome,
+          },
+          {
+            nivel: "UF",
+            codigo: data.municipio.microrregiao.mesorregiao.UF.id,
+            nome: data.municipio.microrregiao.mesorregiao.UF.nome,
+          },
+          { nivel: "Município", codigo: data.municipio.id, nome: data.municipio.nome },
+          { nivel: "Distrito", codigo: data.id, nome: data.nome },
+        ],
+      },
+    };
   } catch {
-    return (
-      `Distrito não encontrado para o código: ${codigo}\n\n` +
-      `Verifique se o código possui 9 dígitos.`
-    );
+    return {
+      markdown:
+        `Distrito não encontrado para o código: ${codigo}\n\n` +
+        `Verifique se o código possui 9 dígitos.`,
+      isError: true,
+    };
   }
 }
 
-async function searchByName(nome: string, uf?: string): Promise<string> {
+async function searchByName(nome: string, uf?: string): Promise<StructuredToolResult> {
   const nomeNormalized = nome.toLowerCase().trim();
 
   // First, check if it's a state name or abbreviation
@@ -295,13 +434,15 @@ async function searchByName(nome: string, uf?: string): Promise<string> {
     .slice(0, 20);
 
   if (matches.length === 0) {
-    return (
-      `Nenhuma localidade encontrada para "${nome}"${uf ? ` em ${uf.toUpperCase()}` : ""}.\n\n` +
-      `Dicas:\n` +
-      `- Verifique a grafia do nome\n` +
-      `- Tente um termo mais específico\n` +
-      `- Use ibge_municipios(busca="...") para busca mais detalhada`
-    );
+    return {
+      markdown:
+        `Nenhuma localidade encontrada para "${nome}"${uf ? ` em ${uf.toUpperCase()}` : ""}.\n\n` +
+        `Dicas:\n` +
+        `- Verifique a grafia do nome\n` +
+        `- Tente um termo mais específico\n` +
+        `- Use ibge_municipios(busca="...") para busca mais detalhada`,
+      isError: true,
+    };
   }
 
   if (matches.length === 1) {
@@ -320,10 +461,20 @@ async function searchByName(nome: string, uf?: string): Promise<string> {
 
   output += `\nUse ibge_geocodigo(codigo="XXXXXXX") para ver detalhes de um município específico.`;
 
-  return output;
+  return {
+    markdown: output,
+    structured: {
+      tipo: "lista",
+      matches: matches.map((mun) => ({ codigo: mun.id, nome: mun.nome })),
+      total: matches.length,
+    },
+  };
 }
 
-function formatRegiaoInfo(codigo: number, regiao: { sigla: string; nome: string }): string {
+function formatRegiaoInfo(
+  codigo: number,
+  regiao: { sigla: string; nome: string }
+): StructuredToolResult {
   const estadosRegiao = Object.entries(ESTADOS_MAP)
     .filter(([, info]) => info.regiao === regiao.nome)
     .map(([cod, info]) => ({ codigo: parseInt(cod), ...info }));
@@ -338,13 +489,26 @@ function formatRegiaoInfo(codigo: number, regiao: { sigla: string; nome: string 
     alignment: ["right", "center", "left"],
   });
 
-  return output;
+  return {
+    markdown: output,
+    structured: {
+      tipo: "regiao",
+      codigo,
+      nome: regiao.nome,
+      sigla: regiao.sigla,
+      estados: estadosRegiao.map((estado) => ({
+        codigo: estado.codigo,
+        sigla: estado.sigla,
+        nome: estado.nome,
+      })),
+    },
+  };
 }
 
 function formatEstadoInfo(
   codigo: number,
   estado: { sigla: string; nome: string; regiao: string }
-): string {
+): StructuredToolResult {
   const regiaoCode = Object.entries(REGIOES_MAP).find(([, r]) => r.nome === estado.regiao)?.[0];
 
   let output = `## Estado: ${estado.nome}\n\n`;
@@ -356,7 +520,17 @@ function formatEstadoInfo(
   output += `- Use ibge_municipios(uf="${estado.sigla}") para listar municípios\n`;
   output += `- Use ibge_sidra com nivel_territorial="3", localidades="${codigo}" para dados do estado\n`;
 
-  return output;
+  return {
+    markdown: output,
+    structured: {
+      tipo: "uf",
+      codigo,
+      nome: estado.nome,
+      sigla: estado.sigla,
+      regiao: estado.regiao,
+      ...(regiaoCode ? { regiaoCodigo: parseInt(regiaoCode) } : {}),
+    },
+  };
 }
 
 function showGeocodigoHelp(): string {

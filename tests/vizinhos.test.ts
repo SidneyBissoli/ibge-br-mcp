@@ -47,7 +47,7 @@ describe("ibge_vizinhos", () => {
         .mockResolvedValueOnce(mockResponse(stateMunicipios))
         .mockResolvedValueOnce(mockResponse(malhaFeature));
 
-      const result = await ibgeVizinhos({ municipio: "3550308", incluir_dados: false });
+      const { markdown: result } = await ibgeVizinhos({ municipio: "3550308", incluir_dados: false });
 
       expect(result).toContain("Municípios Próximos: São Paulo");
       expect(result).toContain("**Código IBGE:** 3550308");
@@ -67,7 +67,7 @@ describe("ibge_vizinhos", () => {
         .mockResolvedValueOnce(mockResponse([{ V: "Valor" }, { V: "10000" }]))
         .mockResolvedValueOnce(mockResponse([{ V: "Valor" }, { V: "20000" }]));
 
-      const result = await ibgeVizinhos({ municipio: "3550308", incluir_dados: true });
+      const { markdown: result } = await ibgeVizinhos({ municipio: "3550308", incluir_dados: true });
 
       expect(result).toContain("População");
       expect(result).toContain("10.000");
@@ -80,7 +80,7 @@ describe("ibge_vizinhos", () => {
         .mockResolvedValueOnce(mockResponse(stateMunicipios))
         .mockRejectedValueOnce(new Error("HTTP 500: boom"));
 
-      const result = await ibgeVizinhos({ municipio: "3550308" });
+      const { markdown: result } = await ibgeVizinhos({ municipio: "3550308" });
 
       expect(result).toContain("Municípios Vizinhos: São Paulo");
       expect(result).toContain("Não foi possível determinar os municípios vizinhos");
@@ -90,12 +90,12 @@ describe("ibge_vizinhos", () => {
       // Code with a valid UF prefix (35) so it passes isValidIbgeCode, but the
       // lookup 404s -> getMunicipioInfo swallows the error and returns null.
       mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
-      const result = await ibgeVizinhos({ municipio: "3599999" });
+      const { markdown: result } = await ibgeVizinhos({ municipio: "3599999" });
       expect(result).toContain("não encontrado");
     });
 
     it("rejects a 7-digit code with an invalid UF prefix", async () => {
-      const result = await ibgeVizinhos({ municipio: "9999999" });
+      const { markdown: result } = await ibgeVizinhos({ municipio: "9999999" });
       expect(result).toContain("inválido");
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -103,13 +103,13 @@ describe("ibge_vizinhos", () => {
 
   describe("by name + uf", () => {
     it("requires uf when searching by name", async () => {
-      const result = await ibgeVizinhos({ municipio: "Campinas" });
+      const { markdown: result } = await ibgeVizinhos({ municipio: "Campinas" });
       expect(result).toContain("uf");
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("rejects an unrecognizable uf", async () => {
-      const result = await ibgeVizinhos({ municipio: "Campinas", uf: "ZZ" });
+      const { markdown: result } = await ibgeVizinhos({ municipio: "Campinas", uf: "ZZ" });
       expect(result).toContain("uf");
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -122,7 +122,7 @@ describe("ibge_vizinhos", () => {
         .mockResolvedValueOnce(mockResponse(stateMunicipios))
         .mockResolvedValueOnce(mockResponse(malhaFeature));
 
-      const result = await ibgeVizinhos({ municipio: "São Paulo", uf: "SP" });
+      const { markdown: result } = await ibgeVizinhos({ municipio: "São Paulo", uf: "SP" });
 
       expect(result).toContain("Municípios Próximos: São Paulo");
       expect(result).toContain("São Pedro");
@@ -157,7 +157,7 @@ describe("ibge_vizinhos", () => {
 
     it("reports not-found when the named municipality is absent", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(stateMunicipios));
-      const result = await ibgeVizinhos({ municipio: "Xyzqqq", uf: "SP" });
+      const { markdown: result } = await ibgeVizinhos({ municipio: "Xyzqqq", uf: "SP" });
       expect(result).toContain("não encontrado");
     });
   });

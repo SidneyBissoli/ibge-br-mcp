@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { normalizeUf, formatValidationError } from "../validation.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for the tool input
 export const municipiosSchema = z.object({
@@ -26,10 +27,25 @@ export const municipiosSchema = z.object({
 
 export type MunicipiosInput = z.infer<typeof municipiosSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const municipiosOutputSchema = z.object({
+  municipios: z
+    .array(
+      z.object({
+        id: z.number().describe("Código IBGE do município"),
+        nome: z.string().describe("Nome do município"),
+      })
+    )
+    .describe("Lista de municípios retornados (após filtro e limite)"),
+  total: z.number().describe("Total de municípios encontrados antes do limite"),
+  uf: z.string().optional().describe("UF informada no filtro (como recebida na entrada)"),
+  busca: z.string().optional().describe("Termo de busca aplicado ao nome do município"),
+});
+
 /**
  * Fetches municipalities from IBGE API
  */
-export async function ibgeMunicipios(input: MunicipiosInput): Promise<string> {
+export async function ibgeMunicipios(input: MunicipiosInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_municipios", "localidades", async () => {
     try {
       let url: string;
@@ -38,11 +54,14 @@ export async function ibgeMunicipios(input: MunicipiosInput): Promise<string> {
         const ufCode = normalizeUf(input.uf);
 
         if (!ufCode) {
-          return formatValidationError(
-            "uf",
-            input.uf,
-            "Estado por sigla (SP), nome (São Paulo) ou código IBGE (35)"
-          );
+          return {
+            markdown: formatValidationError(
+              "uf",
+              input.uf,
+              "Estado por sigla (SP), nome (São Paulo) ou código IBGE (35)"
+            ),
+            isError: true,
+          };
         }
 
         url = `${IBGE_API.LOCALIDADES}/estados/${ufCode}/municipios`;
@@ -83,9 +102,12 @@ export async function ibgeMunicipios(input: MunicipiosInput): Promise<string> {
       }
 
       if (municipios.length === 0) {
-        return input.busca
-          ? `Nenhum município encontrado com o termo "${input.busca}"${input.uf ? ` em ${input.uf.toUpperCase()}` : ""}.`
-          : "Nenhum município encontrado.";
+        return {
+          markdown: input.busca
+            ? `Nenhum município encontrado com o termo "${input.busca}"${input.uf ? ` em ${input.uf.toUpperCase()}` : ""}.`
+            : "Nenhum município encontrado.",
+          isError: true,
+        };
       }
 
       // Format the response using createMarkdownTable
@@ -108,15 +130,29 @@ export async function ibgeMunicipios(input: MunicipiosInput): Promise<string> {
         output += `\n_Resultados limitados a ${input.limite}. Use o parâmetro 'limite' para ver mais._\n`;
       }
 
-      return output;
+      const structured: Record<string, unknown> = {
+        municipios: municipios.map((m) => ({ id: m.id, nome: m.nome })),
+        total,
+      };
+      if (input.uf) {
+        structured.uf = input.uf;
+      }
+      if (input.busca) {
+        structured.busca = input.busca;
+      }
+
+      return { markdown: output, structured };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_municipios", { uf: input.uf, busca: input.busca }, [
-          "ibge_geocodigo",
-          "ibge_localidade",
-        ]);
+        return {
+          markdown: parseHttpError(error, "ibge_municipios", { uf: input.uf, busca: input.busca }, [
+            "ibge_geocodigo",
+            "ibge_localidade",
+          ]),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_municipios");
+      return { markdown: ValidationErrors.emptyResult("ibge_municipios"), isError: true };
     }
   });
 }

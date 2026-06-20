@@ -152,19 +152,19 @@ describe("ibgeNomes (router)", () => {
 
   it("routes tipo='frequencia' to the frequency handler", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(mariaFrequencia));
-    const result = await ibgeNomes({ tipo: "frequencia", nomes: "Maria", limite: 20 });
+    const { markdown: result } = await ibgeNomes({ tipo: "frequencia", nomes: "Maria", limite: 20 });
     expect(result).toContain("Frequência de Nomes no Brasil");
   });
 
   it("requires nomes for tipo='frequencia'", async () => {
-    const result = await ibgeNomes({ tipo: "frequencia", limite: 20 });
+    const { markdown: result } = await ibgeNomes({ tipo: "frequencia", limite: 20 });
     expect(result).toContain("informe o(s) nome(s)");
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("routes tipo='ranking' to the ranking handler", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(ranking));
-    const result = await ibgeNomes({ tipo: "ranking", decada: 2010, limite: 20 });
+    const { markdown: result } = await ibgeNomes({ tipo: "ranking", decada: 2010, limite: 20 });
     expect(result).toContain("Ranking de Nomes mais Frequentes");
   });
 });

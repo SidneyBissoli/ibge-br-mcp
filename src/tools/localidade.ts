@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createKeyValueTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidIbgeCode, formatValidationError } from "../validation.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for the tool input
 export const localidadeSchema = z.object({
@@ -21,21 +22,85 @@ export const localidadeSchema = z.object({
 
 export type LocalidadeInput = z.infer<typeof localidadeSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const localidadeOutputSchema = z.object({
+  tipo: z
+    .enum(["estado", "municipio", "distrito"])
+    .describe("Tipo da localidade retornada"),
+  id: z.number().describe("Código IBGE da localidade"),
+  nome: z.string().describe("Nome da localidade"),
+  sigla: z.string().optional().describe("Sigla da UF (apenas para estados)"),
+  regiao: z
+    .object({
+      id: z.number().describe("Código IBGE da região"),
+      sigla: z.string().describe("Sigla da região"),
+      nome: z.string().describe("Nome da região"),
+    })
+    .optional()
+    .describe("Região do estado (apenas para estados)"),
+  mesorregiao: z
+    .object({
+      id: z.number().describe("Código IBGE da mesorregião"),
+      nome: z.string().describe("Nome da mesorregião"),
+    })
+    .optional()
+    .describe("Mesorregião do município"),
+  microrregiao: z
+    .object({
+      id: z.number().describe("Código IBGE da microrregião"),
+      nome: z.string().describe("Nome da microrregião"),
+    })
+    .optional()
+    .describe("Microrregião do município"),
+  regiaoImediata: z
+    .object({
+      id: z.number().describe("Código IBGE da região imediata"),
+      nome: z.string().describe("Nome da região imediata"),
+    })
+    .optional()
+    .describe("Região imediata do município"),
+  regiaoIntermediaria: z
+    .object({
+      id: z.number().describe("Código IBGE da região intermediária"),
+      nome: z.string().describe("Nome da região intermediária"),
+    })
+    .optional()
+    .describe("Região intermediária do município"),
+  municipio: z
+    .object({
+      id: z.number().describe("Código IBGE do município"),
+      nome: z.string().describe("Nome do município"),
+    })
+    .optional()
+    .describe("Município ao qual o distrito pertence (apenas para distritos)"),
+  estado: z
+    .object({
+      id: z.number().describe("Código IBGE do estado"),
+      sigla: z.string().describe("Sigla da UF"),
+      nome: z.string().describe("Nome do estado"),
+    })
+    .optional()
+    .describe("Estado da localidade (município ou distrito)"),
+});
+
 /**
  * Fetches details of a specific location from IBGE API
  */
-export async function ibgeLocalidade(input: LocalidadeInput): Promise<string> {
+export async function ibgeLocalidade(input: LocalidadeInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_localidade", "localidades", async () => {
     try {
       const codigoStr = input.codigo.toString();
 
       // Validate IBGE code format
       if (!isValidIbgeCode(codigoStr)) {
-        return formatValidationError(
-          "codigo",
-          codigoStr,
-          "Código IBGE válido: 2 dígitos (UF), 7 dígitos (município) ou 9 dígitos (distrito)"
-        );
+        return {
+          markdown: formatValidationError(
+            "codigo",
+            codigoStr,
+            "Código IBGE válido: 2 dígitos (UF), 7 dígitos (município) ou 9 dígitos (distrito)"
+          ),
+          isError: true,
+        };
       }
 
       let tipo = input.tipo;
@@ -63,7 +128,7 @@ export async function ibgeLocalidade(input: LocalidadeInput): Promise<string> {
           url = `${IBGE_API.LOCALIDADES}/distritos/${input.codigo}`;
           break;
         default:
-          return "Tipo de localidade inválido.";
+          return { markdown: "Tipo de localidade inválido.", isError: true };
       }
 
       // Use cache for static location data (24 hours TTL)
@@ -74,33 +139,42 @@ export async function ibgeLocalidade(input: LocalidadeInput): Promise<string> {
         data = await cachedFetch<unknown>(url, key, CACHE_TTL.STATIC);
       } catch (error) {
         if (error instanceof Error && error.message.includes("404")) {
-          return ValidationErrors.notFound(
-            `Localidade com código ${input.codigo}`,
-            "ibge_localidade",
-            "ibge_municipios ou ibge_estados"
-          );
+          return {
+            markdown: ValidationErrors.notFound(
+              `Localidade com código ${input.codigo}`,
+              "ibge_localidade",
+              "ibge_municipios ou ibge_estados"
+            ),
+            isError: true,
+          };
         }
         throw error;
       }
 
       // Check if empty response
       if (!data || (Array.isArray(data) && data.length === 0)) {
-        return ValidationErrors.notFound(
-          `Localidade com código ${input.codigo}`,
-          "ibge_localidade",
-          "ibge_municipios ou ibge_estados"
-        );
+        return {
+          markdown: ValidationErrors.notFound(
+            `Localidade com código ${input.codigo}`,
+            "ibge_localidade",
+            "ibge_municipios ou ibge_estados"
+          ),
+          isError: true,
+        };
       }
 
       // Handle array response (some endpoints return arrays)
       const localidade = Array.isArray(data) ? data[0] : data;
 
       if (!localidade) {
-        return ValidationErrors.notFound(
-          `Localidade com código ${input.codigo}`,
-          "ibge_localidade",
-          "ibge_municipios ou ibge_estados"
-        );
+        return {
+          markdown: ValidationErrors.notFound(
+            `Localidade com código ${input.codigo}`,
+            "ibge_localidade",
+            "ibge_municipios ou ibge_estados"
+          ),
+          isError: true,
+        };
       }
 
       // Format response based on type
@@ -112,21 +186,24 @@ export async function ibgeLocalidade(input: LocalidadeInput): Promise<string> {
         case "distrito":
           return formatDistrito(localidade as Distrito);
         default:
-          return "Tipo de localidade não suportado.";
+          return { markdown: "Tipo de localidade não suportado.", isError: true };
       }
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_localidade", { codigo: input.codigo }, [
-          "ibge_municipios",
-          "ibge_estados",
-        ]);
+        return {
+          markdown: parseHttpError(error, "ibge_localidade", { codigo: input.codigo }, [
+            "ibge_municipios",
+            "ibge_estados",
+          ]),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_localidade");
+      return { markdown: ValidationErrors.emptyResult("ibge_localidade"), isError: true };
     }
   });
 }
 
-function formatEstado(estado: UF): string {
+function formatEstado(estado: UF): StructuredToolResult {
   let output = `## Estado: ${estado.nome}\n\n`;
 
   output += createKeyValueTable({
@@ -136,10 +213,23 @@ function formatEstado(estado: UF): string {
     "**Região**": `${estado.regiao.nome} (${estado.regiao.sigla})`,
   });
 
-  return output;
+  return {
+    markdown: output,
+    structured: {
+      tipo: "estado",
+      id: estado.id,
+      nome: estado.nome,
+      sigla: estado.sigla,
+      regiao: {
+        id: estado.regiao.id,
+        sigla: estado.regiao.sigla,
+        nome: estado.regiao.nome,
+      },
+    },
+  };
 }
 
-function formatMunicipio(municipio: Municipio): string {
+function formatMunicipio(municipio: Municipio): StructuredToolResult {
   let output = `## Município: ${municipio.nome}\n\n`;
 
   const data: Record<string, string | number | undefined> = {
@@ -147,34 +237,58 @@ function formatMunicipio(municipio: Municipio): string {
     "**Nome**": municipio.nome,
   };
 
+  const structured: Record<string, unknown> = {
+    tipo: "municipio",
+    id: municipio.id,
+    nome: municipio.nome,
+  };
+
   if (municipio.microrregiao) {
     data["**Microrregião**"] = municipio.microrregiao.nome;
+    structured.microrregiao = {
+      id: municipio.microrregiao.id,
+      nome: municipio.microrregiao.nome,
+    };
 
     if (municipio.microrregiao.mesorregiao) {
       data["**Mesorregião**"] = municipio.microrregiao.mesorregiao.nome;
+      structured.mesorregiao = {
+        id: municipio.microrregiao.mesorregiao.id,
+        nome: municipio.microrregiao.mesorregiao.nome,
+      };
 
       if (municipio.microrregiao.mesorregiao.UF) {
         const uf = municipio.microrregiao.mesorregiao.UF;
         data["**Estado**"] = `${uf.nome} (${uf.sigla})`;
         data["**Região**"] = uf.regiao.nome;
+        structured.estado = { id: uf.id, sigla: uf.sigla, nome: uf.nome };
+        structured.regiao = { id: uf.regiao.id, sigla: uf.regiao.sigla, nome: uf.regiao.nome };
       }
     }
   }
 
   if (municipio["regiao-imediata"]) {
     data["**Região Imediata**"] = municipio["regiao-imediata"].nome;
+    structured.regiaoImediata = {
+      id: municipio["regiao-imediata"].id,
+      nome: municipio["regiao-imediata"].nome,
+    };
 
     if (municipio["regiao-imediata"]["regiao-intermediaria"]) {
       data["**Região Intermediária**"] = municipio["regiao-imediata"]["regiao-intermediaria"].nome;
+      structured.regiaoIntermediaria = {
+        id: municipio["regiao-imediata"]["regiao-intermediaria"].id,
+        nome: municipio["regiao-imediata"]["regiao-intermediaria"].nome,
+      };
     }
   }
 
   output += createKeyValueTable(data);
 
-  return output;
+  return { markdown: output, structured };
 }
 
-function formatDistrito(distrito: Distrito): string {
+function formatDistrito(distrito: Distrito): StructuredToolResult {
   let output = `## Distrito: ${distrito.nome}\n\n`;
 
   const data: Record<string, string | number | undefined> = {
@@ -182,16 +296,24 @@ function formatDistrito(distrito: Distrito): string {
     "**Nome**": distrito.nome,
   };
 
+  const structured: Record<string, unknown> = {
+    tipo: "distrito",
+    id: distrito.id,
+    nome: distrito.nome,
+  };
+
   if (distrito.municipio) {
     data["**Município**"] = distrito.municipio.nome;
+    structured.municipio = { id: distrito.municipio.id, nome: distrito.municipio.nome };
 
     if (distrito.municipio.microrregiao?.mesorregiao?.UF) {
       const uf = distrito.municipio.microrregiao.mesorregiao.UF;
       data["**Estado**"] = `${uf.nome} (${uf.sigla})`;
+      structured.estado = { id: uf.id, sigla: uf.sigla, nome: uf.nome };
     }
   }
 
   output += createKeyValueTable(data);
 
-  return output;
+  return { markdown: output, structured };
 }

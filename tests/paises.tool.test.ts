@@ -49,7 +49,7 @@ describe("ibge_paises", () => {
     it("lists all countries in a table", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse([brasil, argentina, franca]));
 
-      const result = await ibgePaises({ tipo: "listar" });
+      const { markdown: result } = await ibgePaises({ tipo: "listar" });
 
       expect(result).toContain("Países");
       expect(result).toContain("Total:** 3 países");
@@ -60,14 +60,14 @@ describe("ibge_paises", () => {
 
     it("reports empty result when the API returns nothing", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse([]));
-      const result = await ibgePaises({ tipo: "listar" });
+      const { markdown: result } = await ibgePaises({ tipo: "listar" });
       expect(result).toContain("Nenhum");
     });
 
     it("filters by regiao (americas keeps only id 19)", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse([brasil, argentina, franca]));
 
-      const result = await ibgePaises({ tipo: "listar", regiao: "americas" });
+      const { markdown: result } = await ibgePaises({ tipo: "listar", regiao: "americas" });
 
       expect(result).toContain("Região: americas");
       expect(result).toContain("Brasil");
@@ -78,7 +78,7 @@ describe("ibge_paises", () => {
     it("filters by busca substring (case-insensitive)", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse([brasil, argentina, franca]));
 
-      const result = await ibgePaises({ tipo: "listar", busca: "bras" });
+      const { markdown: result } = await ibgePaises({ tipo: "listar", busca: "bras" });
 
       expect(result).toContain('Busca: "bras"');
       expect(result).toContain("Brasil");
@@ -87,21 +87,21 @@ describe("ibge_paises", () => {
 
     it("reports empty result when busca matches nothing", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse([brasil, argentina, franca]));
-      const result = await ibgePaises({ tipo: "listar", busca: "zzzzz" });
+      const { markdown: result } = await ibgePaises({ tipo: "listar", busca: "zzzzz" });
       expect(result).toContain('Nenhum país encontrado para "zzzzz"');
     });
   });
 
   describe("buscar", () => {
     it("requires a busca term", async () => {
-      const result = await ibgePaises({ tipo: "buscar" });
+      const { markdown: result } = await ibgePaises({ tipo: "buscar" });
       expect(result).toContain("termo de busca");
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("delegates to listing with the search filter", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse([brasil, argentina, franca]));
-      const result = await ibgePaises({ tipo: "buscar", busca: "argent" });
+      const { markdown: result } = await ibgePaises({ tipo: "buscar", busca: "argent" });
       expect(result).toContain("Argentina");
       expect(result).not.toContain("Brasil");
     });
@@ -109,7 +109,7 @@ describe("ibge_paises", () => {
 
   describe("detalhes", () => {
     it("requires a pais code", async () => {
-      const result = await ibgePaises({ tipo: "detalhes" });
+      const { markdown: result } = await ibgePaises({ tipo: "detalhes" });
       expect(result).toContain("ISO-ALPHA-2");
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -127,7 +127,7 @@ describe("ibge_paises", () => {
         ])
       );
 
-      const result = await ibgePaises({ tipo: "detalhes", pais: "br" });
+      const { markdown: result } = await ibgePaises({ tipo: "detalhes", pais: "br" });
 
       expect(lastUrl()).toContain("/indicadores/");
       expect(result).toContain("## Brasil");
@@ -146,7 +146,7 @@ describe("ibge_paises", () => {
       mockFetch.mockResolvedValueOnce(mockResponse([brasil]));
       mockFetch.mockRejectedValueOnce(new Error("HTTP 500: Internal Server Error"));
 
-      const result = await ibgePaises({ tipo: "detalhes", pais: "BR" });
+      const { markdown: result } = await ibgePaises({ tipo: "detalhes", pais: "BR" });
 
       expect(result).toContain("## Brasil");
       expect(result).toContain("Ferramentas Relacionadas");
@@ -154,14 +154,14 @@ describe("ibge_paises", () => {
 
     it("returns notFound for an unknown country", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse([]));
-      const result = await ibgePaises({ tipo: "detalhes", pais: "ZZ" });
+      const { markdown: result } = await ibgePaises({ tipo: "detalhes", pais: "ZZ" });
       expect(result).toContain("não encontrado");
     });
   });
 
   describe("indicadores", () => {
     it("lists available indicators without calling the API", async () => {
-      const result = await ibgePaises({ tipo: "indicadores" });
+      const { markdown: result } = await ibgePaises({ tipo: "indicadores" });
       expect(result).toContain("Indicadores de Países Disponíveis");
       expect(result).toContain("População total");
       expect(result).toContain("pib_per_capita");
@@ -172,7 +172,7 @@ describe("ibge_paises", () => {
   describe("errors", () => {
     it("surfaces upstream HTTP errors for listing", async () => {
       mockFetch.mockRejectedValueOnce(new Error("HTTP 500: Internal Server Error"));
-      const result = await ibgePaises({ tipo: "listar" });
+      const { markdown: result } = await ibgePaises({ tipo: "listar" });
       expect(result).toContain("Erro");
     });
   });

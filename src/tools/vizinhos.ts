@@ -7,6 +7,7 @@ import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidIbgeCode, formatValidationError } from "../validation.js";
 import { resolveUf } from "../config.js";
 import { fetchWithRetry, RETRY_PRESETS } from "../retry.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for the tool input
 export const vizinhosSchema = z.object({
@@ -30,10 +31,34 @@ export const vizinhosSchema = z.object({
 
 export type VizinhosInput = z.infer<typeof vizinhosSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const vizinhosOutputSchema = z.object({
+  municipio: z
+    .object({
+      codigo: z.string().describe("Código IBGE do município consultado"),
+      nome: z.string().describe("Nome do município consultado"),
+    })
+    .describe("Município de referência da consulta"),
+  vizinhos: z
+    .array(
+      z.object({
+        codigo: z.string().describe("Código IBGE do município vizinho"),
+        nome: z.string().describe("Nome do município vizinho"),
+        uf: z.string().optional().describe("Sigla da UF do município vizinho"),
+        populacao: z
+          .number()
+          .optional()
+          .describe("População do município vizinho (apenas quando incluir_dados=true)"),
+      })
+    )
+    .describe("Lista de municípios próximos (mesma mesorregião)"),
+  total: z.number().describe("Quantidade de municípios próximos encontrados"),
+});
+
 /**
  * Gets neighboring municipalities
  */
-export async function ibgeVizinhos(input: VizinhosInput): Promise<string> {
+export async function ibgeVizinhos(input: VizinhosInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_vizinhos", "localidades", async () => {
     try {
       // Get municipality code
@@ -43,47 +68,62 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<string> {
       if (/^\d{7}$/.test(input.municipio)) {
         // Validate IBGE code format
         if (!isValidIbgeCode(input.municipio)) {
-          return formatValidationError(
-            "municipio",
-            input.municipio,
-            "Código IBGE de município com 7 dígitos"
-          );
+          return {
+            markdown: formatValidationError(
+              "municipio",
+              input.municipio,
+              "Código IBGE de município com 7 dígitos"
+            ),
+            isError: true,
+          };
         }
         municipioId = input.municipio;
         // Get municipality name
         const munInfo = await getMunicipioInfo(municipioId);
         if (!munInfo) {
-          return ValidationErrors.notFound(
-            `Município com código ${municipioId}`,
-            "ibge_vizinhos",
-            "ibge_municipios"
-          );
+          return {
+            markdown: ValidationErrors.notFound(
+              `Município com código ${municipioId}`,
+              "ibge_vizinhos",
+              "ibge_municipios"
+            ),
+            isError: true,
+          };
         }
         municipioNome = munInfo.nome;
       } else {
         // Search by name
         if (!input.uf) {
-          return formatValidationError(
-            "uf",
-            "(não informado)",
-            "Estado (sigla, nome ou código) é obrigatório ao buscar por nome de município"
-          );
+          return {
+            markdown: formatValidationError(
+              "uf",
+              "(não informado)",
+              "Estado (sigla, nome ou código) é obrigatório ao buscar por nome de município"
+            ),
+            isError: true,
+          };
         }
         const ufResolved = resolveUf(input.uf);
         if (!ufResolved) {
-          return formatValidationError(
-            "uf",
-            input.uf,
-            "Estado por sigla (SP), nome (São Paulo) ou código IBGE (35)"
-          );
+          return {
+            markdown: formatValidationError(
+              "uf",
+              input.uf,
+              "Estado por sigla (SP), nome (São Paulo) ou código IBGE (35)"
+            ),
+            isError: true,
+          };
         }
         const munInfo = await findMunicipioByName(input.municipio, ufResolved.code);
         if (!munInfo) {
-          return ValidationErrors.notFound(
-            `Município "${input.municipio}" em ${ufResolved.sigla}`,
-            "ibge_vizinhos",
-            "ibge_municipios"
-          );
+          return {
+            markdown: ValidationErrors.notFound(
+              `Município "${input.municipio}" em ${ufResolved.sigla}`,
+              "ibge_vizinhos",
+              "ibge_municipios"
+            ),
+            isError: true,
+          };
         }
         municipioId = String(munInfo.id);
         municipioNome = munInfo.nome;
@@ -96,7 +136,10 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<string> {
       const allMunicipios = await getMunicipiosByUf(ufCode);
 
       if (!allMunicipios || allMunicipios.length === 0) {
-        return "Não foi possível obter a lista de municípios do estado.";
+        return {
+          markdown: "Não foi possível obter a lista de municípios do estado.",
+          isError: true,
+        };
       }
 
       // Get neighboring municipalities using mesh data
@@ -104,7 +147,10 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<string> {
 
       if (vizinhos.length === 0) {
         // Fallback: try to find municipalities that might be neighbors based on code proximity
-        return formatNoNeighborsFound(municipioNome, municipioId);
+        return {
+          markdown: formatNoNeighborsFound(municipioNome, municipioId),
+          isError: true,
+        };
       }
 
       // If radius specified, filter by distance
@@ -124,20 +170,36 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<string> {
         vizinhosData = await enrichVizinhosData(vizinhosData);
       }
 
-      return formatResponse(municipioNome, municipioId, vizinhosData, input);
+      const markdown = formatResponse(municipioNome, municipioId, vizinhosData, input);
+      return {
+        markdown,
+        structured: {
+          municipio: { codigo: municipioId, nome: municipioNome },
+          vizinhos: vizinhosData.map((v) => ({
+            codigo: v.codigo,
+            nome: v.nome,
+            ...(v.uf !== undefined ? { uf: v.uf } : {}),
+            ...(v.populacao !== undefined ? { populacao: v.populacao } : {}),
+          })),
+          total: vizinhosData.length,
+        },
+      };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(
-          error,
-          "ibge_vizinhos",
-          {
-            municipio: input.municipio,
-            uf: input.uf,
-          },
-          ["ibge_municipios", "ibge_geocodigo"]
-        );
+        return {
+          markdown: parseHttpError(
+            error,
+            "ibge_vizinhos",
+            {
+              municipio: input.municipio,
+              uf: input.uf,
+            },
+            ["ibge_municipios", "ibge_geocodigo"]
+          ),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_vizinhos");
+      return { markdown: ValidationErrors.emptyResult("ibge_vizinhos"), isError: true };
     }
   });
 }

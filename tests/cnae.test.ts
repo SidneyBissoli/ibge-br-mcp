@@ -46,7 +46,7 @@ describe("ibge_cnae", () => {
 
   describe("default structure overview", () => {
     it("shows the hierarchy overview without calling the API", async () => {
-      const result = await ibgeCnae({ limite: 20 });
+      const { markdown: result } = await ibgeCnae({ limite: 20 });
       expect(result).toContain("CNAE - Classificação Nacional de Atividades Econômicas");
       expect(result).toContain("Estrutura Hierárquica");
       expect(result).toContain("Subclasse");
@@ -58,7 +58,7 @@ describe("ibge_cnae", () => {
     it("filters subclasses by description and renders a table", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(subclasseList));
 
-      const result = await ibgeCnae({ busca: "software", limite: 20 });
+      const { markdown: result } = await ibgeCnae({ busca: "software", limite: 20 });
 
       expect(lastUrl()).toContain("/cnae/subclasses");
       expect(result).toContain('Busca CNAE: "software"');
@@ -78,7 +78,7 @@ describe("ibge_cnae", () => {
     it("returns a no-results message when nothing matches", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(subclasseList));
 
-      const result = await ibgeCnae({ busca: "inexistente-xyz", limite: 20 });
+      const { markdown: result } = await ibgeCnae({ busca: "inexistente-xyz", limite: 20 });
 
       expect(result).toContain("Nenhuma atividade encontrada");
       expect(result).toContain("ibge_cnae(nivel=");
@@ -87,7 +87,7 @@ describe("ibge_cnae", () => {
     it("notes truncation when the result hits the limit", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(subclasseList));
 
-      const result = await ibgeCnae({ busca: "Desenvolvimento", limite: 1 });
+      const { markdown: result } = await ibgeCnae({ busca: "Desenvolvimento", limite: 1 });
 
       expect(result).toContain("Mostrando primeiros 1 resultados");
     });
@@ -97,7 +97,7 @@ describe("ibge_cnae", () => {
     it("resolves a section code (single letter)", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(secao));
 
-      const result = await ibgeCnae({ codigo: "J", limite: 20 });
+      const { markdown: result } = await ibgeCnae({ codigo: "J", limite: 20 });
 
       expect(lastUrl()).toContain("/cnae/secoes/J");
       expect(result).toContain("CNAE J");
@@ -108,7 +108,7 @@ describe("ibge_cnae", () => {
     it("resolves a division code (2 digits)", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(divisao));
 
-      const result = await ibgeCnae({ codigo: "62", limite: 20 });
+      const { markdown: result } = await ibgeCnae({ codigo: "62", limite: 20 });
 
       expect(lastUrl()).toContain("/cnae/divisoes/62");
       expect(result).toContain("Hierarquia");
@@ -118,7 +118,7 @@ describe("ibge_cnae", () => {
     it("resolves a group code (3 digits)", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(grupo));
 
-      const result = await ibgeCnae({ codigo: "620", limite: 20 });
+      const { markdown: result } = await ibgeCnae({ codigo: "620", limite: 20 });
 
       expect(lastUrl()).toContain("/cnae/grupos/620");
       expect(result).toContain("**Grupo:**");
@@ -127,7 +127,7 @@ describe("ibge_cnae", () => {
     it("resolves a class code (uses first 4 digits)", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(classe));
 
-      const result = await ibgeCnae({ codigo: "6201-5", limite: 20 });
+      const { markdown: result } = await ibgeCnae({ codigo: "6201-5", limite: 20 });
 
       expect(lastUrl()).toContain("/cnae/classes/6201");
       expect(result).toContain("**Classe:**");
@@ -136,7 +136,7 @@ describe("ibge_cnae", () => {
     it("resolves a subclass code (7 digits) with full hierarchy", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(subclasse));
 
-      const result = await ibgeCnae({ codigo: "6201-5/01", limite: 20 });
+      const { markdown: result } = await ibgeCnae({ codigo: "6201-5/01", limite: 20 });
 
       expect(lastUrl()).toContain("/cnae/subclasses/6201501");
       expect(result).toContain("**Seção:**");
@@ -144,7 +144,7 @@ describe("ibge_cnae", () => {
     });
 
     it("rejects an invalid code format without calling the API", async () => {
-      const result = await ibgeCnae({ codigo: "123456789", limite: 20 });
+      const { markdown: result } = await ibgeCnae({ codigo: "123456789", limite: 20 });
 
       expect(result).toContain("codigo");
       expect(mockFetch).not.toHaveBeenCalled();
@@ -155,7 +155,7 @@ describe("ibge_cnae", () => {
     it("lists divisoes and reports the total", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse([divisao, { id: "01", descricao: "Agricultura" }]));
 
-      const result = await ibgeCnae({ nivel: "divisoes", limite: 20 });
+      const { markdown: result } = await ibgeCnae({ nivel: "divisoes", limite: 20 });
 
       expect(lastUrl()).toContain("/cnae/divisoes");
       expect(result).toContain("CNAE - Divisões");
@@ -169,7 +169,7 @@ describe("ibge_cnae", () => {
       }));
       mockFetch.mockResolvedValueOnce(mockResponse(many));
 
-      const result = await ibgeCnae({ nivel: "secoes", limite: 2 });
+      const { markdown: result } = await ibgeCnae({ nivel: "secoes", limite: 2 });
 
       expect(result).toContain("Mostrando 2 de 5 registros");
     });
@@ -179,7 +179,7 @@ describe("ibge_cnae", () => {
     it("surfaces an upstream HTTP error", async () => {
       mockFetch.mockRejectedValueOnce(new Error("HTTP 500: Internal Server Error"));
 
-      const result = await ibgeCnae({ codigo: "J", limite: 20 });
+      const { markdown: result } = await ibgeCnae({ codigo: "J", limite: 20 });
 
       expect(result).toContain("Erro");
     });

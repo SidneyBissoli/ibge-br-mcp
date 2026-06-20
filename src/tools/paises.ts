@@ -4,6 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for the tool input
 export const paisesSchema = z.object({
@@ -25,6 +26,77 @@ export const paisesSchema = z.object({
 });
 
 export type PaisesInput = z.infer<typeof paisesSchema>;
+
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const paisesOutputSchema = z.object({
+  tipo: z
+    .enum(["listar", "buscar", "detalhes", "indicadores"])
+    .describe("Modo de consulta que originou este resultado"),
+
+  // Modos listar / buscar
+  paises: z
+    .array(
+      z.object({
+        codigo: z.string().describe("Código ISO-ALPHA-2 do país (ou '-' se ausente)"),
+        nome: z.string().describe("Nome do país"),
+        regiao: z.string().describe("Nome da região/continente (ou '-' se ausente)"),
+        subRegiao: z.string().describe("Nome da sub-região (ou '-' se ausente)"),
+      })
+    )
+    .optional()
+    .describe("Lista de países (modos listar/buscar). Limitada aos 50 primeiros na exibição"),
+  total: z.number().optional().describe("Total de países encontrados (modos listar/buscar)"),
+  busca: z.string().optional().describe("Termo de busca aplicado, se houver"),
+  regiao: z.string().optional().describe("Filtro de região/continente aplicado, se houver"),
+
+  // Modo detalhes
+  pais: z
+    .object({
+      nome: z.string().describe("Nome do país"),
+      m49: z.number().describe("Código M49 do país"),
+      isoAlpha2: z.string().describe("Código ISO-ALPHA-2"),
+      isoAlpha3: z.string().describe("Código ISO-ALPHA-3"),
+      regiao: z.string().optional().describe("Nome da região/continente"),
+      subRegiao: z.string().optional().describe("Nome da sub-região"),
+      regiaoIntermediaria: z.string().optional().describe("Nome da região intermediária"),
+      areaTotalKm2: z.number().optional().describe("Área territorial total em km²"),
+      linguas: z.array(z.string()).optional().describe("Línguas faladas no país"),
+      moedas: z
+        .array(
+          z.object({
+            id: z.string().describe("Código da unidade monetária"),
+            nome: z.string().describe("Nome da unidade monetária"),
+          })
+        )
+        .optional()
+        .describe("Unidades monetárias do país"),
+      historico: z.string().optional().describe("Texto histórico sobre o país"),
+      indicadores: z
+        .array(
+          z.object({
+            indicador: z.string().describe("Nome do indicador"),
+            valor: z.string().describe("Valor mais recente do indicador"),
+            ano: z.string().describe("Ano de referência do valor"),
+          })
+        )
+        .optional()
+        .describe("Indicadores principais com o valor mais recente disponível"),
+    })
+    .optional()
+    .describe("Detalhes de um país específico (modo detalhes)"),
+
+  // Modo indicadores
+  indicadores: z
+    .array(
+      z.object({
+        id: z.number().describe("ID do indicador na API do IBGE"),
+        nome: z.string().describe("Nome do indicador"),
+        alias: z.string().describe("Apelido amigável do indicador"),
+      })
+    )
+    .optional()
+    .describe("Indicadores disponíveis para consulta de países (modo indicadores)"),
+});
 
 // Mapeamento de regiões M49
 const REGIOES_M49: Record<string, number> = {
@@ -50,7 +122,7 @@ const INDICADORES_PAISES: Record<string, { id: number; nome: string }> = {
 /**
  * Consulta dados de países via IBGE API
  */
-export async function ibgePaises(input: PaisesInput): Promise<string> {
+export async function ibgePaises(input: PaisesInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_paises", "paises", async () => {
     try {
       switch (input.tipo) {
@@ -58,21 +130,27 @@ export async function ibgePaises(input: PaisesInput): Promise<string> {
           return await listarPaises(input.busca, input.regiao);
         case "detalhes":
           if (!input.pais) {
-            return ValidationErrors.invalidCode(
-              "",
-              "ibge_paises",
-              "Informe o código ISO-ALPHA-2 do país (ex: BR, US, AR)"
-            );
+            return {
+              markdown: ValidationErrors.invalidCode(
+                "",
+                "ibge_paises",
+                "Informe o código ISO-ALPHA-2 do país (ex: BR, US, AR)"
+              ),
+              isError: true,
+            };
           }
           return await detalhesPais(input.pais);
         case "indicadores":
-          return await listarIndicadores();
+          return listarIndicadores();
         case "buscar":
           if (!input.busca) {
-            return ValidationErrors.emptyResult(
-              "ibge_paises",
-              "Informe um termo de busca para encontrar países"
-            );
+            return {
+              markdown: ValidationErrors.emptyResult(
+                "ibge_paises",
+                "Informe um termo de busca para encontrar países"
+              ),
+              isError: true,
+            };
           }
           return await listarPaises(input.busca, input.regiao);
         default:
@@ -80,25 +158,28 @@ export async function ibgePaises(input: PaisesInput): Promise<string> {
       }
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_paises", {
-          tipo: input.tipo,
-          pais: input.pais,
-          busca: input.busca,
-        });
+        return {
+          markdown: parseHttpError(error, "ibge_paises", {
+            tipo: input.tipo,
+            pais: input.pais,
+            busca: input.busca,
+          }),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_paises");
+      return { markdown: ValidationErrors.emptyResult("ibge_paises"), isError: true };
     }
   });
 }
 
-async function listarPaises(busca?: string, regiao?: string): Promise<string> {
+async function listarPaises(busca?: string, regiao?: string): Promise<StructuredToolResult> {
   const url = `${IBGE_API.PAISES}`;
   const key = cacheKey(url);
 
   const paises = await cachedFetch<Pais[]>(url, key, CACHE_TTL.STATIC);
 
   if (!paises || paises.length === 0) {
-    return ValidationErrors.emptyResult("ibge_paises");
+    return { markdown: ValidationErrors.emptyResult("ibge_paises"), isError: true };
   }
 
   let resultado = paises;
@@ -119,23 +200,28 @@ async function listarPaises(busca?: string, regiao?: string): Promise<string> {
   }
 
   if (resultado.length === 0) {
-    return ValidationErrors.emptyResult(
-      "ibge_paises",
-      busca ? `Nenhum país encontrado para "${busca}"` : "Nenhum país encontrado"
-    );
+    return {
+      markdown: ValidationErrors.emptyResult(
+        "ibge_paises",
+        busca ? `Nenhum país encontrado para "${busca}"` : "Nenhum país encontrado"
+      ),
+      isError: true,
+    };
   }
 
   let output = `## Países${busca ? ` - Busca: "${busca}"` : ""}${regiao ? ` - Região: ${regiao}` : ""}\n\n`;
   output += `**Total:** ${resultado.length} países\n\n`;
 
-  const rows = resultado
+  const paisesEstruturados = resultado.map((p) => ({
+    codigo: p.id["ISO-ALPHA-2"] || "-",
+    nome: p.nome,
+    regiao: p.localizacao?.regiao?.nome || "-",
+    subRegiao: p.localizacao?.["sub-regiao"]?.nome || "-",
+  }));
+
+  const rows = paisesEstruturados
     .slice(0, 50)
-    .map((p) => [
-      p.id["ISO-ALPHA-2"] || "-",
-      p.nome,
-      p.localizacao?.regiao?.nome || "-",
-      p.localizacao?.["sub-regiao"]?.nome || "-",
-    ]);
+    .map((p) => [p.codigo, p.nome, p.regiao, p.subRegiao]);
 
   output += createMarkdownTable(["Código", "País", "Região", "Sub-região"], rows, {
     alignment: ["center", "left", "left", "left"],
@@ -145,24 +231,43 @@ async function listarPaises(busca?: string, regiao?: string): Promise<string> {
     output += `\n_Mostrando 50 de ${resultado.length} países. Use o parâmetro 'busca' para filtrar._\n`;
   }
 
-  return output;
+  return {
+    markdown: output,
+    structured: {
+      tipo: busca ? "buscar" : "listar",
+      paises: paisesEstruturados,
+      total: resultado.length,
+      ...(busca ? { busca } : {}),
+      ...(regiao ? { regiao } : {}),
+    },
+  };
 }
 
-async function detalhesPais(codigoPais: string): Promise<string> {
+async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
   const url = `${IBGE_API.PAISES}/${codigoPais.toUpperCase()}`;
   const key = cacheKey(url);
 
   const paises = await cachedFetch<Pais[]>(url, key, CACHE_TTL.STATIC);
 
   if (!paises || paises.length === 0) {
-    return ValidationErrors.notFound(
-      `País com código "${codigoPais}"`,
-      "ibge_paises",
-      "ibge_paises tipo='listar'"
-    );
+    return {
+      markdown: ValidationErrors.notFound(
+        `País com código "${codigoPais}"`,
+        "ibge_paises",
+        "ibge_paises tipo='listar'"
+      ),
+      isError: true,
+    };
   }
 
   const pais = paises[0];
+
+  const detalhes: Record<string, unknown> = {
+    nome: pais.nome,
+    m49: pais.id.M49,
+    isoAlpha2: pais.id["ISO-ALPHA-2"],
+    isoAlpha3: pais.id["ISO-ALPHA-3"],
+  };
 
   let output = `## ${pais.nome}\n\n`;
 
@@ -174,11 +279,16 @@ async function detalhesPais(codigoPais: string): Promise<string> {
   if (pais.localizacao) {
     output += "### Localização\n\n";
     output += `- **Região:** ${pais.localizacao.regiao?.nome || "-"}\n`;
+    if (pais.localizacao.regiao?.nome) {
+      detalhes.regiao = pais.localizacao.regiao.nome;
+    }
     if (pais.localizacao["sub-regiao"]) {
       output += `- **Sub-região:** ${pais.localizacao["sub-regiao"].nome}\n`;
+      detalhes.subRegiao = pais.localizacao["sub-regiao"].nome;
     }
     if (pais.localizacao["regiao-intermediaria"]) {
       output += `- **Região Intermediária:** ${pais.localizacao["regiao-intermediaria"].nome}\n`;
+      detalhes.regiaoIntermediaria = pais.localizacao["regiao-intermediaria"].nome;
     }
     output += "\n";
   }
@@ -186,6 +296,7 @@ async function detalhesPais(codigoPais: string): Promise<string> {
   if (pais.area?.total) {
     output += "### Área\n\n";
     output += `- **Área total:** ${formatNumber(parseFloat(pais.area.total))} km²\n\n`;
+    detalhes.areaTotalKm2 = parseFloat(pais.area.total);
   }
 
   if (pais.linguas && pais.linguas.length > 0) {
@@ -194,6 +305,7 @@ async function detalhesPais(codigoPais: string): Promise<string> {
       output += `- ${lingua.nome}\n`;
     });
     output += "\n";
+    detalhes.linguas = pais.linguas.map((lingua) => lingua.nome);
   }
 
   if (pais["unidades-monetarias"] && pais["unidades-monetarias"].length > 0) {
@@ -202,11 +314,16 @@ async function detalhesPais(codigoPais: string): Promise<string> {
       output += `- ${moeda.nome} (${moeda.id})\n`;
     });
     output += "\n";
+    detalhes.moedas = pais["unidades-monetarias"].map((moeda) => ({
+      id: moeda.id,
+      nome: moeda.nome,
+    }));
   }
 
   if (pais.historico) {
     output += "### Histórico\n\n";
     output += pais.historico + "\n\n";
+    detalhes.historico = pais.historico;
   }
 
   // Tentar buscar indicadores principais
@@ -221,6 +338,7 @@ async function detalhesPais(codigoPais: string): Promise<string> {
 
     if (indicadores && indicadores.length > 0) {
       output += "### Indicadores\n\n";
+      const indicadoresEstruturados: Array<{ indicador: string; valor: string; ano: string }> = [];
       for (const ind of indicadores) {
         if (ind.series && ind.series.length > 0) {
           const serie = ind.series[0].serie;
@@ -229,10 +347,18 @@ async function detalhesPais(codigoPais: string): Promise<string> {
           const valor = serie[ultimoAno];
           if (valor !== null && valor !== undefined && valor !== "-") {
             output += `- **${ind.indicador}:** ${valor} (${ultimoAno})\n`;
+            indicadoresEstruturados.push({
+              indicador: ind.indicador,
+              valor: String(valor),
+              ano: ultimoAno,
+            });
           }
         }
       }
       output += "\n";
+      if (indicadoresEstruturados.length > 0) {
+        detalhes.indicadores = indicadoresEstruturados;
+      }
     }
   } catch {
     // Ignorar erro ao buscar indicadores
@@ -242,18 +368,20 @@ async function detalhesPais(codigoPais: string): Promise<string> {
   output += "- Use `ibge_paises tipo='indicadores'` para ver indicadores disponíveis\n";
   output += "- Use `ibge_paises tipo='listar' regiao='americas'` para ver países da mesma região\n";
 
-  return output;
+  return { markdown: output, structured: { tipo: "detalhes", pais: detalhes } };
 }
 
-async function listarIndicadores(): Promise<string> {
+function listarIndicadores(): StructuredToolResult {
   let output = "## Indicadores de Países Disponíveis\n\n";
   output += "Os seguintes indicadores podem ser consultados para qualquer país:\n\n";
 
-  const rows = Object.entries(INDICADORES_PAISES).map(([key, info]) => [
-    String(info.id),
-    info.nome,
-    key,
-  ]);
+  const indicadoresEstruturados = Object.entries(INDICADORES_PAISES).map(([key, info]) => ({
+    id: info.id,
+    nome: info.nome,
+    alias: key,
+  }));
+
+  const rows = indicadoresEstruturados.map((info) => [String(info.id), info.nome, info.alias]);
 
   output += createMarkdownTable(["ID", "Indicador", "Alias"], rows, {
     alignment: ["center", "left", "left"],
@@ -266,5 +394,5 @@ async function listarIndicadores(): Promise<string> {
   output += 'ibge_paises tipo="buscar" busca="Argentina"\n';
   output += "```\n";
 
-  return output;
+  return { markdown: output, structured: { tipo: "indicadores", indicadores: indicadoresEstruturados } };
 }

@@ -47,20 +47,20 @@ describe("ibge_geocodigo", () => {
 
   describe("decode by code", () => {
     it("decodes a region code (1 digit) without calling the API", async () => {
-      const result = await ibgeGeocodigo({ codigo: "3" });
+      const { markdown: result } = await ibgeGeocodigo({ codigo: "3" });
       expect(result).toContain("Região: Sudeste");
       expect(result).toContain("São Paulo");
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("rejects an invalid region code", async () => {
-      const result = await ibgeGeocodigo({ codigo: "9" });
+      const { markdown: result } = await ibgeGeocodigo({ codigo: "9" });
       expect(result).toContain("Código de região inválido");
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("decodes a UF code (2 digits) without calling the API", async () => {
-      const result = await ibgeGeocodigo({ codigo: "35" });
+      const { markdown: result } = await ibgeGeocodigo({ codigo: "35" });
       expect(result).toContain("Estado: São Paulo");
       expect(result).toContain("Sigla:");
       expect(result).toContain("SP");
@@ -68,13 +68,13 @@ describe("ibge_geocodigo", () => {
     });
 
     it("rejects an invalid UF code", async () => {
-      const result = await ibgeGeocodigo({ codigo: "99" });
+      const { markdown: result } = await ibgeGeocodigo({ codigo: "99" });
       expect(result).toContain("Código de UF inválido");
     });
 
     it("decodes a municipality code (7 digits) via the localidades API", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(municipioSP));
-      const result = await ibgeGeocodigo({ codigo: "3550308" });
+      const { markdown: result } = await ibgeGeocodigo({ codigo: "3550308" });
       expect(lastUrl()).toContain("/municipios/3550308");
       expect(result).toContain("Município: São Paulo");
       expect(result).toContain("Hierarquia Geográfica");
@@ -84,7 +84,7 @@ describe("ibge_geocodigo", () => {
 
     it("handles a not-found municipality gracefully", async () => {
       mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
-      const result = await ibgeGeocodigo({ codigo: "9999999" });
+      const { markdown: result } = await ibgeGeocodigo({ codigo: "9999999" });
       expect(result).toContain("Município não encontrado");
     });
 
@@ -95,32 +95,32 @@ describe("ibge_geocodigo", () => {
         municipio: municipioSP,
       };
       mockFetch.mockResolvedValueOnce(mockResponse(distrito));
-      const result = await ibgeGeocodigo({ codigo: "355030805" });
+      const { markdown: result } = await ibgeGeocodigo({ codigo: "355030805" });
       expect(lastUrl()).toContain("/distritos/355030805");
       expect(result).toContain("Distrito: Sé");
     });
 
     it("handles a not-found district gracefully", async () => {
       mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
-      const result = await ibgeGeocodigo({ codigo: "999999999" });
+      const { markdown: result } = await ibgeGeocodigo({ codigo: "999999999" });
       expect(result).toContain("Distrito não encontrado");
     });
 
     it("rejects a code with an invalid number of digits", async () => {
-      const result = await ibgeGeocodigo({ codigo: "12345" });
+      const { markdown: result } = await ibgeGeocodigo({ codigo: "12345" });
       expect(result).toContain("Código IBGE inválido");
     });
   });
 
   describe("search by name", () => {
     it("resolves a state name directly without calling the API", async () => {
-      const result = await ibgeGeocodigo({ nome: "Sudeste" });
+      const { markdown: result } = await ibgeGeocodigo({ nome: "Sudeste" });
       expect(result).toContain("Região: Sudeste");
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("resolves a state sigla directly", async () => {
-      const result = await ibgeGeocodigo({ nome: "RJ" });
+      const { markdown: result } = await ibgeGeocodigo({ nome: "RJ" });
       expect(result).toContain("Estado: Rio de Janeiro");
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -131,7 +131,7 @@ describe("ibge_geocodigo", () => {
         { id: 3100203, nome: "Santa Rita de Caldas" },
       ];
       mockFetch.mockResolvedValueOnce(mockResponse(municipios));
-      const result = await ibgeGeocodigo({ nome: "Santa Rita" });
+      const { markdown: result } = await ibgeGeocodigo({ nome: "Santa Rita" });
       expect(result).toContain('Resultados para "Santa Rita"');
       expect(result).toContain("Santa Rita do Sapucaí");
       expect(result).toContain("Encontrados 2 municípios");
@@ -142,7 +142,7 @@ describe("ibge_geocodigo", () => {
       mockFetch
         .mockResolvedValueOnce(mockResponse([{ id: 3550308, nome: "São Paulo" }]))
         .mockResolvedValueOnce(mockResponse(municipioSP));
-      const result = await ibgeGeocodigo({ nome: "São Paulo", uf: "SP" });
+      const { markdown: result } = await ibgeGeocodigo({ nome: "São Paulo", uf: "SP" });
       expect(result).toContain("Município: São Paulo");
       expect(result).toContain("Hierarquia Geográfica");
     });
@@ -172,20 +172,20 @@ describe("ibge_geocodigo", () => {
 
     it("reports no matches when nothing is found", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse([{ id: 3550308, nome: "São Paulo" }]));
-      const result = await ibgeGeocodigo({ nome: "Xyzqqq" });
+      const { markdown: result } = await ibgeGeocodigo({ nome: "Xyzqqq" });
       expect(result).toContain("Nenhuma localidade encontrada");
     });
 
     it("surfaces an upstream error during name search", async () => {
       mockFetch.mockRejectedValueOnce(new Error("HTTP 500: Internal Server Error"));
-      const result = await ibgeGeocodigo({ nome: "Algumacoisa" });
+      const { markdown: result } = await ibgeGeocodigo({ nome: "Algumacoisa" });
       expect(result).toContain("Erro");
     });
   });
 
   describe("help", () => {
     it("shows help when no input is given", async () => {
-      const result = await ibgeGeocodigo({});
+      const { markdown: result } = await ibgeGeocodigo({});
       expect(result).toContain("Decodificador de códigos IBGE");
       expect(result).toContain("Estrutura dos códigos IBGE");
       expect(mockFetch).not.toHaveBeenCalled();

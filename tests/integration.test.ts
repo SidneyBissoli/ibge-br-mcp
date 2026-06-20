@@ -104,7 +104,7 @@ describe("Integration Tests with Mocks", () => {
     it("should list municipalities for a state", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(mockMunicipios));
 
-      const result = await ibgeMunicipios({ uf: "35" });
+      const { markdown: result } = await ibgeMunicipios({ uf: "35" });
 
       expect(result).toContain("Municípios");
       expect(result).toContain("São Paulo");
@@ -116,7 +116,7 @@ describe("Integration Tests with Mocks", () => {
     it("should accept state abbreviation", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(mockMunicipios));
 
-      const result = await ibgeMunicipios({ uf: "SP" });
+      const { markdown: result } = await ibgeMunicipios({ uf: "SP" });
 
       expect(result).toContain("Municípios");
     });
@@ -137,7 +137,7 @@ describe("Integration Tests with Mocks", () => {
     });
 
     it("should reject an unrecognized state without calling the API", async () => {
-      const result = await ibgeMunicipios({ uf: "Pindorama" });
+      const { markdown: result } = await ibgeMunicipios({ uf: "Pindorama" });
 
       expect(result).toContain("uf");
       expect(mockFetch).not.toHaveBeenCalled();
@@ -145,7 +145,7 @@ describe("Integration Tests with Mocks", () => {
 
     it("should handle empty uf parameter", async () => {
       // When uf is empty string, it's still provided but invalid
-      const result = await ibgeMunicipios({ uf: "" });
+      const { markdown: result } = await ibgeMunicipios({ uf: "" });
 
       expect(result).toBeDefined();
     });
@@ -174,7 +174,7 @@ describe("Integration Tests with Mocks", () => {
     it("should get municipality details", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(mockMunicipio));
 
-      const result = await ibgeLocalidade({ codigo: 3550308 });
+      const { markdown: result } = await ibgeLocalidade({ codigo: 3550308 });
 
       expect(result).toContain("Município");
       expect(result).toContain("São Paulo");
@@ -190,7 +190,7 @@ describe("Integration Tests with Mocks", () => {
       };
       mockFetch.mockResolvedValueOnce(mockResponse(mockEstado));
 
-      const result = await ibgeLocalidade({ codigo: 35 });
+      const { markdown: result } = await ibgeLocalidade({ codigo: 35 });
 
       expect(result).toContain("Estado");
       expect(result).toContain("São Paulo");
@@ -201,7 +201,7 @@ describe("Integration Tests with Mocks", () => {
       mockFetch.mockRejectedValueOnce(new Error("404 Not Found"));
 
       // Use a valid IBGE code format (starts with valid state prefix)
-      const result = await ibgeLocalidade({ codigo: 3599999 });
+      const { markdown: result } = await ibgeLocalidade({ codigo: 3599999 });
 
       expect(result).toContain("não encontrad");
     });
@@ -288,7 +288,7 @@ describe("Error handling", () => {
   it("should suggest related tools when ibge_municipios fails", async () => {
     mockFetch.mockRejectedValueOnce(new Error("500 Internal Server Error"));
 
-    const result = await ibgeMunicipios({ uf: "SP" });
+    const { markdown: result } = await ibgeMunicipios({ uf: "SP" });
 
     expect(result).toContain("Ferramentas relacionadas");
     expect(result).toContain("ibge_geocodigo");
@@ -315,7 +315,7 @@ describe("Input validation", () => {
 
   it("should validate IBGE code format", async () => {
     // Invalid code format - 3 digits is not a valid IBGE code length
-    const result = await ibgeLocalidade({ codigo: 123 });
+    const { markdown: result } = await ibgeLocalidade({ codigo: 123 });
     expect(result).toContain("inválido");
   });
 
@@ -328,7 +328,7 @@ describe("Input validation", () => {
     };
     mockFetch.mockResolvedValueOnce(mockResponse(mockEstado));
 
-    const result = await ibgeLocalidade({ codigo: 35 });
+    const { markdown: result } = await ibgeLocalidade({ codigo: 35 });
     expect(result).toContain("Estado");
   });
 
@@ -346,7 +346,7 @@ describe("Input validation", () => {
     };
     mockFetch.mockResolvedValueOnce(mockResponse(mockMunicipio));
 
-    const result = await ibgeLocalidade({ codigo: 3550308 });
+    const { markdown: result } = await ibgeLocalidade({ codigo: 3550308 });
     expect(result).toContain("Município");
   });
 });

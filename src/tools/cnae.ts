@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidCnaeCode, formatValidationError } from "../validation.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Types for CNAE data
 interface CnaeSecao {
@@ -65,10 +66,73 @@ Exemplos:
 
 export type CnaeInput = z.infer<typeof cnaeSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const cnaeOutputSchema = z.object({
+  modo: z
+    .enum(["busca", "codigo", "lista", "estrutura"])
+    .describe("Modo de resposta que gerou os dados"),
+  busca: z
+    .object({
+      termo: z.string().describe("Termo pesquisado"),
+      nivel: z.string().describe("Nível hierárquico pesquisado (ex: subclasses, classes)"),
+      total: z.number().describe("Quantidade de resultados retornados"),
+      resultados: z
+        .array(
+          z.object({
+            id: z.string().describe("Código CNAE da atividade"),
+            descricao: z.string().describe("Descrição da atividade"),
+          })
+        )
+        .describe("Atividades encontradas para o termo"),
+    })
+    .optional()
+    .describe("Presente no modo de busca por termo"),
+  codigo: z
+    .object({
+      id: z.string().describe("Código CNAE consultado"),
+      descricao: z.string().describe("Descrição do código"),
+      nivel: z
+        .string()
+        .describe("Nível do código (secao, divisao, grupo, classe ou subclasse)"),
+      hierarquia: z
+        .array(
+          z.object({
+            nivel: z.string().describe("Nível hierárquico (Seção, Divisão, Grupo, Classe, Subclasse)"),
+            id: z.string().describe("Código do nível"),
+            descricao: z.string().describe("Descrição do nível"),
+          })
+        )
+        .optional()
+        .describe("Cadeia hierárquica do código (do mais geral ao mais específico)"),
+      observacoes: z
+        .array(z.string())
+        .optional()
+        .describe("Observações/notas explicativas do código"),
+    })
+    .optional()
+    .describe("Presente no modo de consulta por código"),
+  lista: z
+    .object({
+      nivel: z.string().describe("Nível hierárquico listado"),
+      total: z.number().describe("Total de registros existentes no nível"),
+      exibidos: z.number().describe("Quantidade de registros exibidos (limitada por 'limite')"),
+      registros: z
+        .array(
+          z.object({
+            id: z.string().describe("Código CNAE do registro"),
+            descricao: z.string().describe("Descrição do registro"),
+          })
+        )
+        .describe("Registros do nível listado"),
+    })
+    .optional()
+    .describe("Presente no modo de listagem por nível"),
+});
+
 /**
  * Fetches CNAE data from IBGE API
  */
-export async function ibgeCnae(input: CnaeInput): Promise<string> {
+export async function ibgeCnae(input: CnaeInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_cnae", "cnae", async () => {
     try {
       // Search by term
@@ -90,27 +154,33 @@ export async function ibgeCnae(input: CnaeInput): Promise<string> {
       return showCnaeStructure();
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_cnae", {
-          codigo: input.codigo,
-          busca: input.busca,
-        });
+        return {
+          markdown: parseHttpError(error, "ibge_cnae", {
+            codigo: input.codigo,
+            busca: input.busca,
+          }),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_cnae");
+      return { markdown: ValidationErrors.emptyResult("ibge_cnae"), isError: true };
     }
   });
 }
 
-async function getCnaeByCode(codigo: string): Promise<string> {
+async function getCnaeByCode(codigo: string): Promise<StructuredToolResult> {
   // Normalize code
   const normalized = codigo.replace(/[.\-/]/g, "").toUpperCase();
 
   // Validate code format using centralized validation
   if (!isValidCnaeCode(codigo)) {
-    return formatValidationError(
-      "codigo",
-      codigo,
-      "Seção (A-U), Divisão (2 dígitos), Grupo (3 dígitos), Classe (4-5 dígitos) ou Subclasse (7 dígitos)"
-    );
+    return {
+      markdown: formatValidationError(
+        "codigo",
+        codigo,
+        "Seção (A-U), Divisão (2 dígitos), Grupo (3 dígitos), Classe (4-5 dígitos) ou Subclasse (7 dígitos)"
+      ),
+      isError: true,
+    };
   }
 
   // Determine the level based on code format
@@ -144,10 +214,70 @@ async function getCnaeByCode(codigo: string): Promise<string> {
     CACHE_TTL.STATIC
   );
 
-  return formatCnaeDetail(data, level);
+  return {
+    markdown: formatCnaeDetail(data, level),
+    structured: { modo: "codigo", codigo: buildCnaeCodeStructured(data, level) },
+  };
 }
 
-async function searchCnae(termo: string, nivel?: string, limite: number = 20): Promise<string> {
+/** Builds the structured payload for a single CNAE code lookup. */
+function buildCnaeCodeStructured(
+  data: CnaeSecao | CnaeDivisao | CnaeGrupo | CnaeClasse | CnaeSubclasse,
+  level: string
+): Record<string, unknown> {
+  const hierarquia: Array<{ nivel: string; id: string; descricao: string }> = [];
+
+  if (level === "subclasse") {
+    const sub = data as CnaeSubclasse;
+    hierarquia.push(
+      { nivel: "Seção", id: sub.classe.grupo.divisao.secao.id, descricao: sub.classe.grupo.divisao.secao.descricao },
+      { nivel: "Divisão", id: sub.classe.grupo.divisao.id, descricao: sub.classe.grupo.divisao.descricao },
+      { nivel: "Grupo", id: sub.classe.grupo.id, descricao: sub.classe.grupo.descricao },
+      { nivel: "Classe", id: sub.classe.id, descricao: sub.classe.descricao },
+      { nivel: "Subclasse", id: sub.id, descricao: sub.descricao }
+    );
+  } else if (level === "classe") {
+    const cls = data as CnaeClasse;
+    hierarquia.push(
+      { nivel: "Seção", id: cls.grupo.divisao.secao.id, descricao: cls.grupo.divisao.secao.descricao },
+      { nivel: "Divisão", id: cls.grupo.divisao.id, descricao: cls.grupo.divisao.descricao },
+      { nivel: "Grupo", id: cls.grupo.id, descricao: cls.grupo.descricao },
+      { nivel: "Classe", id: cls.id, descricao: cls.descricao }
+    );
+  } else if (level === "grupo") {
+    const grp = data as CnaeGrupo;
+    hierarquia.push(
+      { nivel: "Seção", id: grp.divisao.secao.id, descricao: grp.divisao.secao.descricao },
+      { nivel: "Divisão", id: grp.divisao.id, descricao: grp.divisao.descricao },
+      { nivel: "Grupo", id: grp.id, descricao: grp.descricao }
+    );
+  } else if (level === "divisao") {
+    const div = data as CnaeDivisao;
+    hierarquia.push(
+      { nivel: "Seção", id: div.secao.id, descricao: div.secao.descricao },
+      { nivel: "Divisão", id: div.id, descricao: div.descricao }
+    );
+  }
+
+  const codigo: Record<string, unknown> = {
+    id: (data as { id: string }).id,
+    descricao: data.descricao,
+    nivel: level,
+  };
+  if (hierarquia.length > 0) {
+    codigo.hierarquia = hierarquia;
+  }
+  if (data.observacoes && data.observacoes.length > 0) {
+    codigo.observacoes = data.observacoes;
+  }
+  return codigo;
+}
+
+async function searchCnae(
+  termo: string,
+  nivel?: string,
+  limite: number = 20
+): Promise<StructuredToolResult> {
   // Determine which endpoint to use
   const searchLevel = nivel || "subclasses";
   const endpoint = `${IBGE_API.CNAE}/${searchLevel}`;
@@ -164,12 +294,14 @@ async function searchCnae(termo: string, nivel?: string, limite: number = 20): P
     .slice(0, limite);
 
   if (filtered.length === 0) {
-    return (
-      `Nenhuma atividade encontrada para "${termo}".\n\n` +
-      `Dicas:\n` +
-      `- Tente termos mais genéricos\n` +
-      `- Use ibge_cnae(nivel="secoes") para ver as categorias principais`
-    );
+    return {
+      markdown:
+        `Nenhuma atividade encontrada para "${termo}".\n\n` +
+        `Dicas:\n` +
+        `- Tente termos mais genéricos\n` +
+        `- Use ibge_cnae(nivel="secoes") para ver as categorias principais`,
+      isError: true,
+    };
   }
 
   let output = `## Busca CNAE: "${termo}"\n\n`;
@@ -184,10 +316,26 @@ async function searchCnae(termo: string, nivel?: string, limite: number = 20): P
     output += `\n_Mostrando primeiros ${limite} resultados. Use limite maior para ver mais._\n`;
   }
 
-  return output;
+  const resultados = filtered.map((item) => ({
+    id: (item as { id: string }).id,
+    descricao: item.descricao,
+  }));
+
+  return {
+    markdown: output,
+    structured: {
+      modo: "busca",
+      busca: {
+        termo,
+        nivel: searchLevel,
+        total: filtered.length,
+        resultados,
+      },
+    },
+  };
 }
 
-async function listCnaeByLevel(nivel: string, limite: number): Promise<string> {
+async function listCnaeByLevel(nivel: string, limite: number): Promise<StructuredToolResult> {
   const endpoint = `${IBGE_API.CNAE}/${nivel}`;
   const key = cacheKey("cnae-list", { nivel });
 
@@ -218,11 +366,22 @@ async function listCnaeByLevel(nivel: string, limite: number): Promise<string> {
     output += `\n_Mostrando ${limite} de ${data.length} registros._\n`;
   }
 
-  return output;
+  return {
+    markdown: output,
+    structured: {
+      modo: "lista",
+      lista: {
+        nivel,
+        total: data.length,
+        exibidos: display.length,
+        registros: display.map((item) => ({ id: item.id, descricao: item.descricao })),
+      },
+    },
+  };
 }
 
-function showCnaeStructure(): string {
-  return `## CNAE - Classificação Nacional de Atividades Econômicas
+function showCnaeStructure(): StructuredToolResult {
+  const markdown = `## CNAE - Classificação Nacional de Atividades Econômicas
 
 A CNAE é a classificação oficial para identificar atividades econômicas no Brasil.
 
@@ -280,6 +439,8 @@ ibge_cnae(nivel="divisoes", limite=50)
 # Buscar em classes
 ibge_cnae(busca="restaurante", nivel="classes")
 \`\`\``;
+
+  return { markdown, structured: { modo: "estrutura" } };
 }
 
 function formatCnaeDetail(

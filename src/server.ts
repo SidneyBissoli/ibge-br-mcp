@@ -8,8 +8,10 @@ import {
   estadosOutputSchema,
   ibgeEstados,
   municipiosSchema,
+  municipiosOutputSchema,
   ibgeMunicipios,
   localidadeSchema,
+  localidadeOutputSchema,
   ibgeLocalidade,
   populacaoSchema,
   populacaoOutputSchema,
@@ -18,6 +20,7 @@ import {
   sidraOutputSchema,
   ibgeSidra,
   nomesSchema,
+  nomesOutputSchema,
   ibgeNomes,
   noticiasSchema,
   ibgeNoticias,
@@ -37,8 +40,10 @@ import {
   indicadoresOutputSchema,
   ibgeIndicadores,
   cnaeSchema,
+  cnaeOutputSchema,
   ibgeCnae,
   geocodigoSchema,
+  geocodigoOutputSchema,
   ibgeGeocodigo,
   // Phase 2 tools (v1.5.0)
   calendarioSchema,
@@ -50,12 +55,14 @@ import {
   malhasTemaSchema,
   ibgeMalhasTema,
   vizinhosSchema,
+  vizinhosOutputSchema,
   ibgeVizinhos,
   datasaudeSchema,
   datasaudeOutputSchema,
   ibgeDatasaude,
   // Phase 4 tools (v1.9.0)
   paisesSchema,
+  paisesOutputSchema,
   ibgePaises,
   cidadesSchema,
   cidadesOutputSchema,
@@ -138,9 +145,10 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Locali
   );
 
   // Register ibge_municipios tool
-  server.tool(
+  server.registerTool(
     "ibge_municipios",
-    `Lists Brazilian municipalities from IBGE.
+    {
+      description: `Lists Brazilian municipalities from IBGE.
 
 Features:
 - List municipalities by state (using state abbreviation)
@@ -159,18 +167,20 @@ Use a different tool when:
 - Neighboring municipalities → ibge_vizinhos
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown table.`,
-    municipiosSchema.shape,
-    READ_ONLY,
+      inputSchema: municipiosSchema.shape,
+      outputSchema: municipiosOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeMunicipios(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeMunicipios(args));
     }
   );
 
   // Register ibge_localidade tool
-  server.tool(
+  server.registerTool(
     "ibge_localidade",
-    `Returns details of a specific locality by IBGE code.
+    {
+      description: `Returns details of a specific locality by IBGE code.
 
 Features:
 - State information (2-digit code)
@@ -189,11 +199,12 @@ Use a different tool when:
 - You want to decompose/understand a code's structure → ibge_geocodigo
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown record.`,
-    localidadeSchema.shape,
-    READ_ONLY,
+      inputSchema: localidadeSchema.shape,
+      outputSchema: localidadeOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeLocalidade(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeLocalidade(args));
     }
   );
 
@@ -277,9 +288,10 @@ Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA 
   );
 
   // Register ibge_nomes tool
-  server.tool(
+  server.registerTool(
     "ibge_nomes",
-    `Queries name frequency and rankings in Brazil (IBGE).
+    {
+      description: `Queries name frequency and rankings in Brazil (IBGE).
 
 Features:
 1. **Name frequency** (tipo='frequencia'):
@@ -300,11 +312,12 @@ Examples:
 - Female names: tipo="ranking", sexo="F"
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Nomes (Censo) API. Returns a Markdown table.`,
-    nomesSchema.shape,
-    READ_ONLY,
+      inputSchema: nomesSchema.shape,
+      outputSchema: nomesOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeNomes(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeNomes(args));
     }
   );
 
@@ -576,9 +589,10 @@ Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA 
   );
 
   // Register ibge_cnae tool (Phase 1)
-  server.tool(
+  server.registerTool(
     "ibge_cnae",
-    `Queries CNAE (National Classification of Economic Activities) from IBGE.
+    {
+      description: `Queries CNAE (National Classification of Economic Activities) from IBGE.
 
 CNAE is the official classification for economic activities in Brazil.
 
@@ -602,18 +616,20 @@ Examples:
 - List divisions: nivel="divisoes"
 
 Behavior: read-only and idempotent — a live GET against the public IBGE CNAE API. Returns Markdown.`,
-    cnaeSchema.shape,
-    READ_ONLY,
+      inputSchema: cnaeSchema.shape,
+      outputSchema: cnaeOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeCnae(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeCnae(args));
     }
   );
 
   // Register ibge_geocodigo tool (Phase 1)
-  server.tool(
+  server.registerTool(
     "ibge_geocodigo",
-    `Decodes IBGE codes or searches codes by locality name.
+    {
+      description: `Decodes IBGE codes or searches codes by locality name.
 
 Features:
 - Decode region, state, municipality, or district codes
@@ -639,11 +655,12 @@ Use a different tool when:
 - You want the full detailed record of one locality → ibge_localidade
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns Markdown.`,
-    geocodigoSchema.shape,
-    READ_ONLY,
+      inputSchema: geocodigoSchema.shape,
+      outputSchema: geocodigoOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeGeocodigo(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeGeocodigo(args));
     }
   );
 
@@ -763,9 +780,10 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Malhas
   );
 
   // Register ibge_vizinhos tool (Phase 3)
-  server.tool(
+  server.registerTool(
     "ibge_vizinhos",
-    `Finds nearby/neighboring municipalities.
+    {
+      description: `Finds nearby/neighboring municipalities.
 
 Features:
 - Search by IBGE code (7 digits) or municipality name
@@ -784,11 +802,12 @@ Note: proximity is approximated by shared mesoregion (not exact spatial adjacenc
 For listing/searching municipalities, use ibge_municipios.
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown list.`,
-    vizinhosSchema.shape,
-    READ_ONLY,
+      inputSchema: vizinhosSchema.shape,
+      outputSchema: vizinhosOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeVizinhos(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeVizinhos(args));
     }
   );
 
@@ -839,9 +858,10 @@ Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA 
   );
 
   // Register ibge_paises tool (Phase 4)
-  server.tool(
+  server.registerTool(
     "ibge_paises",
-    `Queries international country data via IBGE.
+    {
+      description: `Queries international country data via IBGE.
 
 Features:
 - List all countries (following UN M49 methodology)
@@ -861,11 +881,12 @@ Examples:
 - Available indicators: tipo="indicadores"
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Países API. Returns Markdown.`,
-    paisesSchema.shape,
-    READ_ONLY,
+      inputSchema: paisesSchema.shape,
+      outputSchema: paisesOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgePaises(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgePaises(args));
     }
   );
 

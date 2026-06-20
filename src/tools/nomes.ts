@@ -4,6 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber, buildQueryString } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for frequency search
 export const nomesFrequenciaSchema = z.object({
@@ -219,25 +220,189 @@ export const nomesSchema = z.object({
 
 export type NomesInput = z.infer<typeof nomesSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const nomesOutputSchema = z.object({
+  tipo: z.enum(["frequencia", "ranking"]).describe("Tipo da consulta realizada"),
+  frequencia: z
+    .array(
+      z.object({
+        nome: z.string().describe("Nome consultado"),
+        sexo: z.string().nullable().optional().describe("Sexo do nome: M, F ou nulo"),
+        localidade: z.string().describe("Código IBGE da localidade (ou BR para Brasil)"),
+        periodos: z
+          .array(
+            z.object({
+              periodo: z.string().describe("Período/década (ex: '1930[', '1990,2000[')"),
+              frequencia: z.number().describe("Frequência de registros do nome no período"),
+            })
+          )
+          .describe("Frequência do nome por período"),
+        total: z.number().describe("Soma das frequências de todos os períodos"),
+      })
+    )
+    .optional()
+    .describe("Resultados de frequência (presente quando tipo='frequencia')"),
+  ranking: z
+    .object({
+      localidade: z.string().describe("Código IBGE da localidade (ou BR para Brasil)"),
+      sexo: z.string().nullable().optional().describe("Sexo do ranking: M, F ou nulo"),
+      decada: z.number().optional().describe("Década do ranking, quando informada"),
+      itens: z
+        .array(
+          z.object({
+            ranking: z.number().describe("Posição no ranking"),
+            nome: z.string().describe("Nome"),
+            frequencia: z.number().describe("Frequência de registros do nome"),
+          })
+        )
+        .describe("Itens do ranking, limitados pelo parâmetro 'limite'"),
+    })
+    .optional()
+    .describe("Resultado do ranking (presente quando tipo='ranking')"),
+});
+
 /**
  * Main handler that routes to frequency or ranking
  */
-export async function ibgeNomes(input: NomesInput): Promise<string> {
+export async function ibgeNomes(input: NomesInput): Promise<StructuredToolResult> {
   if (input.tipo === "frequencia") {
     if (!input.nomes) {
-      return "Para consultar a frequência, informe o(s) nome(s) no parâmetro 'nomes'.";
+      return {
+        markdown: "Para consultar a frequência, informe o(s) nome(s) no parâmetro 'nomes'.",
+        isError: true,
+      };
     }
-    return ibgeNomesFrequencia({
+    return ibgeNomesFrequenciaStructured({
       nomes: input.nomes,
       sexo: input.sexo,
       localidade: input.localidade,
     });
   } else {
-    return ibgeNomesRanking({
+    return ibgeNomesRankingStructured({
       decada: input.decada,
       sexo: input.sexo,
       localidade: input.localidade,
       limite: input.limite,
     });
   }
+}
+
+/** Frequency mode: builds the same Markdown as before plus a structured payload. */
+async function ibgeNomesFrequenciaStructured(
+  input: NomesFrequenciaInput
+): Promise<StructuredToolResult> {
+  return withMetrics("ibge_nomes_frequencia", "nomes", async () => {
+    try {
+      const nomes = input.nomes.replace(/\s+/g, "").toUpperCase();
+      const queryString = buildQueryString({
+        sexo: input.sexo,
+        localidade: input.localidade,
+      });
+
+      const url = queryString
+        ? `${IBGE_API.NOMES}/${encodeURIComponent(nomes)}?${queryString}`
+        : `${IBGE_API.NOMES}/${encodeURIComponent(nomes)}`;
+
+      const key = cacheKey(url);
+      let data: NomeFrequencia[];
+
+      try {
+        data = await cachedFetch<NomeFrequencia[]>(url, key, CACHE_TTL.MEDIUM);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("404")) {
+          return {
+            markdown: `Nenhum dado encontrado para o(s) nome(s): ${input.nomes}`,
+            isError: true,
+          };
+        }
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        return {
+          markdown: `Nenhum dado encontrado para o(s) nome(s): ${input.nomes}`,
+          isError: true,
+        };
+      }
+
+      const frequencia = data.map((nome) => ({
+        nome: nome.nome,
+        sexo: nome.sexo,
+        localidade: nome.localidade,
+        periodos: nome.res.map((periodo) => ({
+          periodo: periodo.periodo,
+          frequencia: periodo.frequencia,
+        })),
+        total: nome.res.reduce((sum, periodo) => sum + periodo.frequencia, 0),
+      }));
+
+      return {
+        markdown: formatFrequenciaResponse(data),
+        structured: { tipo: "frequencia", frequencia },
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        return {
+          markdown: parseHttpError(error, "ibge_nomes_frequencia", { nomes: input.nomes }),
+          isError: true,
+        };
+      }
+      return { markdown: ValidationErrors.emptyResult("ibge_nomes_frequencia"), isError: true };
+    }
+  });
+}
+
+/** Ranking mode: builds the same Markdown as before plus a structured payload. */
+async function ibgeNomesRankingStructured(
+  input: NomesRankingInput
+): Promise<StructuredToolResult> {
+  return withMetrics("ibge_nomes_ranking", "nomes", async () => {
+    try {
+      const queryString = buildQueryString({
+        decada: input.decada,
+        sexo: input.sexo,
+        localidade: input.localidade,
+      });
+
+      const url = queryString
+        ? `${IBGE_API.NOMES}/ranking?${queryString}`
+        : `${IBGE_API.NOMES}/ranking`;
+
+      const key = cacheKey(url);
+      const data = await cachedFetch<NomeRanking[]>(url, key, CACHE_TTL.MEDIUM);
+
+      if (!data || data.length === 0) {
+        return { markdown: "Nenhum dado encontrado para o ranking.", isError: true };
+      }
+
+      const ranking = data[0];
+      const limit = input.limite || 20;
+      const itens = ranking.res.slice(0, limit).map((item) => ({
+        ranking: item.ranking,
+        nome: item.nome,
+        frequencia: item.frequencia,
+      }));
+
+      return {
+        markdown: formatRankingResponse(data, input),
+        structured: {
+          tipo: "ranking",
+          ranking: {
+            localidade: ranking.localidade,
+            sexo: ranking.sexo,
+            ...(input.decada !== undefined ? { decada: input.decada } : {}),
+            itens,
+          },
+        },
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        return {
+          markdown: parseHttpError(error, "ibge_nomes_ranking", { decada: input.decada }),
+          isError: true,
+        };
+      }
+      return { markdown: ValidationErrors.emptyResult("ibge_nomes_ranking"), isError: true };
+    }
+  });
 }
