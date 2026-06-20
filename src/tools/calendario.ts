@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate, buildQueryString } from "../utils/index.js";
 import { parseUserDate, toIbgeApiDate } from "../validation.js";
 import { ValidationErrors } from "../errors.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Types for calendar data — field names match the IBGE v3 /calendario API response.
 interface CalendarioItem {
@@ -50,10 +51,33 @@ export const calendarioSchema = z.object({
 
 export type CalendarioInput = z.infer<typeof calendarioSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const calendarioOutputSchema = z.object({
+  eventos: z
+    .array(
+      z.object({
+        id: z.number().describe("Identificador do evento no calendário"),
+        titulo: z.string().describe("Título do evento"),
+        produto: z.string().describe("Nome do produto/pesquisa associado"),
+        dataDivulgacao: z
+          .string()
+          .describe("Data/hora de divulgação no formato 'DD/MM/AAAA HH:MM:SS'"),
+        tipoId: z.number().describe("ID do tipo (1 = divulgação, 2 = coleta)"),
+        tipo: z.string().describe("Descrição do tipo do evento"),
+        link: z.string().optional().describe("Link para mais informações, quando disponível"),
+      })
+    )
+    .describe("Lista de eventos do calendário (divulgações/coletas)"),
+  total: z.number().describe("Total de eventos disponíveis para os critérios"),
+  pagina: z.number().optional().describe("Página atual retornada"),
+  totalPaginas: z.number().optional().describe("Total de páginas disponíveis"),
+  produto: z.string().optional().describe("Filtro de produto aplicado, quando informado"),
+});
+
 /**
  * Fetches IBGE release calendar
  */
-export async function ibgeCalendario(input: CalendarioInput): Promise<string> {
+export async function ibgeCalendario(input: CalendarioInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_calendario", "calendario", async () => {
     try {
       // Build URL with query parameters
@@ -68,7 +92,10 @@ export async function ibgeCalendario(input: CalendarioInput): Promise<string> {
       if (input.de) {
         const parsed = parseUserDate(input.de);
         if (!parsed) {
-          return ValidationErrors.invalidDate(input.de, "ibge_calendario");
+          return {
+            markdown: ValidationErrors.invalidDate(input.de, "ibge_calendario"),
+            isError: true,
+          };
         }
         de = toIbgeApiDate(parsed);
       }
@@ -77,7 +104,10 @@ export async function ibgeCalendario(input: CalendarioInput): Promise<string> {
       if (input.ate) {
         const parsed = parseUserDate(input.ate);
         if (!parsed) {
-          return ValidationErrors.invalidDate(input.ate, "ibge_calendario");
+          return {
+            markdown: ValidationErrors.invalidDate(input.ate, "ibge_calendario"),
+            isError: true,
+          };
         }
         ate = toIbgeApiDate(parsed);
       }
@@ -103,15 +133,37 @@ export async function ibgeCalendario(input: CalendarioInput): Promise<string> {
       const data = await cachedFetch<CalendarioResponse>(url, key, CACHE_TTL.SHORT);
 
       if (!data.items || data.items.length === 0) {
-        return formatNoResults(input);
+        return { markdown: formatNoResults(input), isError: true };
       }
 
-      return formatCalendarioResponse(data, input);
+      const eventos = data.items.map((item) => ({
+        id: item.id,
+        titulo: item.titulo,
+        produto: item.nome_produto || "",
+        dataDivulgacao: item.data_divulgacao,
+        tipoId: item.tipo_id,
+        tipo: item.tipo,
+        ...(item.link ? { link: item.link } : {}),
+      }));
+
+      return {
+        markdown: formatCalendarioResponse(data, input),
+        structured: {
+          eventos,
+          total: data.count,
+          pagina: data.page,
+          totalPaginas: data.totalPages,
+          ...(input.produto ? { produto: input.produto } : {}),
+        },
+      };
     } catch (error) {
       if (error instanceof Error) {
-        return formatCalendarioError(error.message, input);
+        return { markdown: formatCalendarioError(error.message, input), isError: true };
       }
-      return "Erro desconhecido ao consultar calendário do IBGE.";
+      return {
+        markdown: "Erro desconhecido ao consultar calendário do IBGE.",
+        isError: true,
+      };
     }
   });
 }

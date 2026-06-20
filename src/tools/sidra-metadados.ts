@@ -4,6 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, createKeyValueTable, truncate } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for the tool input
 export const sidraMetadadosSchema = z.object({
@@ -21,6 +22,77 @@ export const sidraMetadadosSchema = z.object({
 });
 
 export type SidraMetadadosInput = z.infer<typeof sidraMetadadosSchema>;
+
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const sidraMetadadosOutputSchema = z.object({
+  // Informações gerais da tabela
+  codigo: z.string().describe("Código da tabela/agregado SIDRA"),
+  nome: z.string().describe("Nome da tabela"),
+  url: z.string().optional().describe("URL da tabela no SIDRA"),
+  pesquisa: z.string().optional().describe("Nome da pesquisa de origem"),
+  assunto: z.string().optional().describe("Assunto/tema da tabela"),
+  periodicidade: z
+    .object({
+      frequencia: z.string().optional().describe("Frequência de coleta (ex: anual, mensal)"),
+      inicio: z.number().optional().describe("Ano/período inicial da série"),
+      fim: z.number().optional().describe("Ano/período final da série"),
+    })
+    .optional()
+    .describe("Periodicidade da pesquisa"),
+
+  // Níveis territoriais disponíveis
+  niveisTerritoriais: z
+    .array(
+      z.object({
+        codigo: z.string().describe("Código do nível territorial (ex: N1, N3, N6)"),
+        nome: z.string().describe("Nome do nível territorial (ex: Brasil, UF, Município)"),
+      })
+    )
+    .optional()
+    .describe("Níveis territoriais disponíveis para a tabela"),
+
+  // Variáveis (com unidades) e suas classificações/categorias
+  variaveis: z
+    .array(
+      z.object({
+        id: z.number().describe("ID da variável"),
+        nome: z.string().describe("Nome da variável"),
+        unidade: z.string().optional().describe("Unidade de medida da variável"),
+        classificacoes: z
+          .array(
+            z.object({
+              id: z.number().describe("ID da classificação"),
+              nome: z.string().describe("Nome da classificação"),
+              categorias: z
+                .array(
+                  z.object({
+                    id: z.number().describe("ID da categoria"),
+                    nome: z.string().describe("Nome da categoria"),
+                    unidade: z.string().optional().describe("Unidade da categoria"),
+                    nivel: z.number().optional().describe("Nível hierárquico da categoria"),
+                  })
+                )
+                .describe("Categorias da classificação"),
+            })
+          )
+          .optional()
+          .describe("Classificações aplicáveis à variável"),
+      })
+    )
+    .optional()
+    .describe("Variáveis da tabela, com unidades e classificações/categorias"),
+
+  // Períodos disponíveis
+  periodos: z
+    .array(
+      z.object({
+        id: z.string().describe("Código do período"),
+        literais: z.array(z.string()).describe("Descrições textuais do período"),
+      })
+    )
+    .optional()
+    .describe("Períodos disponíveis para a tabela (quando incluir_periodos)"),
+});
 
 interface Metadados {
   id: string;
@@ -71,7 +143,9 @@ interface Periodo {
 /**
  * Fetches metadata for a SIDRA table
  */
-export async function ibgeSidraMetadados(input: SidraMetadadosInput): Promise<string> {
+export async function ibgeSidraMetadados(
+  input: SidraMetadadosInput
+): Promise<StructuredToolResult> {
   return withMetrics("ibge_sidra_metadados", "agregados", async () => {
     try {
       // Fetch main metadata with cache (24 hours TTL - static data)
@@ -83,7 +157,10 @@ export async function ibgeSidraMetadados(input: SidraMetadadosInput): Promise<st
         metadados = await cachedFetch<Metadados>(metadadosUrl, metadadosKey, CACHE_TTL.STATIC);
       } catch (error) {
         if (error instanceof Error && error.message.includes("404")) {
-          return `Tabela ${input.tabela} não encontrada. Use ibge_sidra_tabelas para listar tabelas disponíveis.`;
+          return {
+            markdown: `Tabela ${input.tabela} não encontrada. Use ibge_sidra_tabelas para listar tabelas disponíveis.`,
+            isError: true,
+          };
         }
         throw error;
       }
@@ -100,16 +177,111 @@ export async function ibgeSidraMetadados(input: SidraMetadadosInput): Promise<st
         }
       }
 
-      return formatMetadadosResponse(metadados, periodos, input);
+      return {
+        markdown: formatMetadadosResponse(metadados, periodos, input),
+        structured: buildMetadadosStructured(metadados, periodos),
+      };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_sidra_metadados", { tabela: input.tabela }, [
-          "ibge_sidra_tabelas",
-        ]);
+        return {
+          markdown: parseHttpError(error, "ibge_sidra_metadados", { tabela: input.tabela }, [
+            "ibge_sidra_tabelas",
+          ]),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_sidra_metadados");
+      return { markdown: ValidationErrors.emptyResult("ibge_sidra_metadados"), isError: true };
     }
   });
+}
+
+/** Builds the structured payload from the same metadata used for the Markdown. */
+function buildMetadadosStructured(
+  meta: Metadados,
+  periodos: Periodo[]
+): Record<string, unknown> {
+  const niveisNomes: { [key: string]: string } = {
+    N1: "Brasil",
+    N2: "Grande Região",
+    N3: "Unidade da Federação",
+    N6: "Município",
+    N7: "Região Metropolitana",
+    N8: "Mesorregião",
+    N9: "Microrregião",
+    N10: "Distrito",
+    N11: "Subdistrito",
+    N13: "Região Metropolitana e RIDE",
+    N14: "Região Integrada de Desenvolvimento",
+    N15: "Aglomeração Urbana",
+    N17: "Região Geográfica Imediata",
+    N18: "Região Geográfica Intermediária",
+    N101: "País do Mercosul, Bolívia e Chile",
+    N102: "Município do Mercosul, Bolívia e Chile",
+    N103: "UF do Mercosul, Bolívia e Chile",
+    N104: "Aglomerado Subnormal",
+    N105: "Macrorregião de Saúde",
+    N106: "Região de Saúde",
+    N107: "Bacia Hidrográfica",
+    N108: "Sub-bacia Hidrográfica",
+  };
+
+  const allNiveis = [
+    ...(meta.nivelTerritorial?.Administrativo || []),
+    ...(meta.nivelTerritorial?.Especial || []),
+    ...(meta.nivelTerritorial?.IBGE || []),
+  ];
+
+  const structured: Record<string, unknown> = {
+    codigo: meta.id,
+    nome: meta.nome,
+  };
+
+  if (meta.URL) structured.url = meta.URL;
+  if (meta.pesquisa) structured.pesquisa = meta.pesquisa;
+  if (meta.assunto) structured.assunto = meta.assunto;
+  if (meta.periodicidade) {
+    structured.periodicidade = {
+      frequencia: meta.periodicidade.frequencia,
+      inicio: meta.periodicidade.inicio,
+      fim: meta.periodicidade.fim,
+    };
+  }
+
+  if (allNiveis.length > 0) {
+    structured.niveisTerritoriais = allNiveis.map((nivel) => ({
+      codigo: nivel,
+      nome: niveisNomes[nivel] || nivel,
+    }));
+  }
+
+  if (meta.variaveis && meta.variaveis.length > 0) {
+    structured.variaveis = meta.variaveis.map((v) => {
+      const variavel: Record<string, unknown> = { id: v.id, nome: v.nome };
+      if (v.unidade) variavel.unidade = v.unidade;
+      if (v.classificacoes && v.classificacoes.length > 0) {
+        variavel.classificacoes = v.classificacoes.map((c) => ({
+          id: c.id,
+          nome: c.nome,
+          categorias: c.categorias.map((cat) => {
+            const categoria: Record<string, unknown> = { id: cat.id, nome: cat.nome };
+            if (cat.unidade) categoria.unidade = cat.unidade;
+            if (cat.nivel !== undefined) categoria.nivel = cat.nivel;
+            return categoria;
+          }),
+        }));
+      }
+      return variavel;
+    });
+  }
+
+  if (periodos.length > 0) {
+    structured.periodos = periodos.map((p) => ({
+      id: p.id,
+      literais: p.literals,
+    }));
+  }
+
+  return structured;
 }
 
 function formatMetadadosResponse(

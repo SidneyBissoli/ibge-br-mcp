@@ -40,7 +40,7 @@ describe("ibgePesquisas", () => {
   it("lists all surveys with a summary table and categories", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(data));
 
-    const result = await ibgePesquisas({});
+    const { markdown: result } = await ibgePesquisas({});
 
     expect(result).toContain("Pesquisas do IBGE");
     expect(result).toContain("Total:** 3 pesquisas");
@@ -56,7 +56,7 @@ describe("ibgePesquisas", () => {
   it("filters by busca term", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(data));
 
-    const result = await ibgePesquisas({ busca: "pnad" });
+    const { markdown: result } = await ibgePesquisas({ busca: "pnad" });
 
     expect(result).toContain('**Busca:** "pnad"');
     expect(result).toContain("PNAD Contínua");
@@ -66,7 +66,7 @@ describe("ibgePesquisas", () => {
   it("shows details of a specific survey by code", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(data));
 
-    const result = await ibgePesquisas({ detalhes: "40" });
+    const { markdown: result } = await ibgePesquisas({ detalhes: "40" });
 
     expect(result).toContain("Pesquisa: PNAD Contínua");
     expect(result).toContain("**Código:** 40");
@@ -79,7 +79,7 @@ describe("ibgePesquisas", () => {
   it("returns a not-found message for an unknown detalhes code", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(data));
 
-    const result = await ibgePesquisas({ detalhes: "zzz999" });
+    const { markdown: result } = await ibgePesquisas({ detalhes: "zzz999" });
 
     expect(result).toContain('Pesquisa "zzz999" não encontrada');
   });
@@ -87,7 +87,7 @@ describe("ibgePesquisas", () => {
   it("returns a no-results message for a busca with no matches", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(data));
 
-    const result = await ibgePesquisas({ busca: "zzzznada" });
+    const { markdown: result } = await ibgePesquisas({ busca: "zzzznada" });
 
     expect(result).toContain("Nenhuma pesquisa encontrada para:");
   });
@@ -95,7 +95,7 @@ describe("ibgePesquisas", () => {
   it("returns a plain no-results message when the upstream list is empty", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse([]));
 
-    const result = await ibgePesquisas({});
+    const { markdown: result } = await ibgePesquisas({});
 
     expect(result).toBe("Nenhuma pesquisa encontrada.");
   });
@@ -103,7 +103,7 @@ describe("ibgePesquisas", () => {
   it("surfaces an upstream HTTP error", async () => {
     mockFetch.mockRejectedValueOnce(new Error("HTTP 500: Internal Server Error"));
 
-    const result = await ibgePesquisas({});
+    const { markdown: result } = await ibgePesquisas({});
 
     expect(result).toContain("Erro");
   });

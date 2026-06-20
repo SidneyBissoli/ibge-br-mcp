@@ -4,6 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { buildQueryString } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Available thematic meshes
 const TEMAS_DISPONIVEIS = {
@@ -83,13 +84,40 @@ export const malhasTemaSchema = z.object({
 export type MalhasTemaInput = z.infer<typeof malhasTemaSchema>;
 
 /**
+ * Structured output payload (validated against this schema by the MCP SDK).
+ * Lightweight metadata only — the actual geometry blob (GeoJSON/TopoJSON/SVG)
+ * is never included here, only descriptive metadata about the requested mesh.
+ */
+export const malhasTemaOutputSchema = z.object({
+  tema: z.string().describe("Tema da malha solicitada (ou 'listar')"),
+  codigo: z.string().optional().describe("Código específico do tema, quando informado"),
+  formato: z.string().optional().describe("Formato de saída (geojson, topojson, svg)"),
+  resolucao: z.string().optional().describe("Resolução da malha (0 = contorno, 5 = com municípios)"),
+  temas: z
+    .array(
+      z.object({
+        tema: z.string().describe("Identificador do tema"),
+        nome: z.string().describe("Nome do tema"),
+        descricao: z.string().describe("Descrição do tema"),
+      })
+    )
+    .optional()
+    .describe("Lista de temas disponíveis (somente no modo 'listar')"),
+});
+
+/**
  * Fetches thematic geographic meshes from IBGE API
  */
-export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<string> {
+export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_malhas_tema", "malhas", async () => {
     // List available themes
     if (input.tema === "listar") {
-      return listThemes();
+      const temas = Object.entries(TEMAS_DISPONIVEIS).map(([key, value]) => ({
+        tema: key,
+        nome: value.nome,
+        descricao: value.descricao,
+      }));
+      return { markdown: listThemes(), structured: { tema: "listar", temas } };
     }
 
     try {
@@ -97,8 +125,18 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<string> {
       const urlPath = getThemeUrl(input.tema, input.codigo);
 
       if (!urlPath) {
-        return `Tema "${input.tema}" não suportado ou código inválido.`;
+        return {
+          markdown: `Tema "${input.tema}" não suportado ou código inválido.`,
+          isError: true,
+        };
       }
+
+      const meta = {
+        tema: input.tema,
+        ...(input.codigo ? { codigo: input.codigo } : {}),
+        formato: input.formato || "geojson",
+        resolucao: input.resolucao || "0",
+      };
 
       // Build query parameters
       const formatMap: Record<string, string> = {
@@ -117,7 +155,7 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<string> {
 
       // For SVG, return URL only
       if (input.formato === "svg") {
-        return formatSvgResponse(fullUrl, input);
+        return { markdown: formatSvgResponse(fullUrl, input), structured: meta };
       }
 
       // Use cache for geographic data (24 hours TTL - static data)
@@ -128,25 +166,31 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<string> {
         data = await cachedFetch<GeoJSONData>(fullUrl, key, CACHE_TTL.STATIC);
       } catch (error) {
         if (error instanceof Error && error.message.includes("404")) {
-          return `Malha temática não encontrada para: ${input.tema}${input.codigo ? ` (código: ${input.codigo})` : ""}`;
+          return {
+            markdown: `Malha temática não encontrada para: ${input.tema}${input.codigo ? ` (código: ${input.codigo})` : ""}`,
+            isError: true,
+          };
         }
         throw error;
       }
 
-      return formatResponse(data, fullUrl, input);
+      return { markdown: formatResponse(data, fullUrl, input), structured: meta };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(
-          error,
-          "ibge_malhas_tema",
-          {
-            tema: input.tema,
-            codigo: input.codigo,
-          },
-          ["ibge_malhas"]
-        );
+        return {
+          markdown: parseHttpError(
+            error,
+            "ibge_malhas_tema",
+            {
+              tema: input.tema,
+              codigo: input.codigo,
+            },
+            ["ibge_malhas"]
+          ),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_malhas_tema");
+      return { markdown: ValidationErrors.emptyResult("ibge_malhas_tema"), isError: true };
     }
   });
 }

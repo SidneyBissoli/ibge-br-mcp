@@ -4,6 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for the tool input
 export const pesquisasSchema = z.object({
@@ -15,6 +16,45 @@ export const pesquisasSchema = z.object({
 });
 
 export type PesquisasInput = z.infer<typeof pesquisasSchema>;
+
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const pesquisasOutputSchema = z.object({
+  modo: z
+    .enum(["lista", "detalhes"])
+    .describe("Modo de consulta que originou este resultado: lista de pesquisas ou detalhes de uma"),
+
+  // Modo lista
+  pesquisas: z
+    .array(
+      z.object({
+        id: z.string().describe("Código da pesquisa"),
+        nome: z.string().describe("Nome da pesquisa"),
+        totalTabelas: z.number().describe("Quantidade de tabelas (agregados) da pesquisa"),
+      })
+    )
+    .optional()
+    .describe("Lista de pesquisas (modo lista)"),
+  total: z.number().optional().describe("Total de pesquisas encontradas (modo lista)"),
+  busca: z.string().optional().describe("Termo de busca aplicado, se houver (modo lista)"),
+
+  // Modo detalhes
+  pesquisa: z
+    .object({
+      id: z.string().describe("Código da pesquisa"),
+      nome: z.string().describe("Nome da pesquisa"),
+      totalTabelas: z.number().describe("Quantidade de tabelas da pesquisa"),
+      tabelas: z
+        .array(
+          z.object({
+            id: z.string().describe("Código da tabela (agregado)"),
+            nome: z.string().describe("Nome da tabela"),
+          })
+        )
+        .describe("Tabelas disponíveis na pesquisa"),
+    })
+    .optional()
+    .describe("Detalhes de uma pesquisa específica (modo detalhes)"),
+});
 
 interface AgregadoSimples {
   id: string;
@@ -30,7 +70,7 @@ interface PesquisaCompleta {
 /**
  * Lists IBGE surveys (pesquisas)
  */
-export async function ibgePesquisas(input: PesquisasInput): Promise<string> {
+export async function ibgePesquisas(input: PesquisasInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_pesquisas", "agregados", async () => {
     try {
       const url = IBGE_API.AGREGADOS;
@@ -49,7 +89,10 @@ export async function ibgePesquisas(input: PesquisasInput): Promise<string> {
         );
 
         if (!pesquisa) {
-          return `Pesquisa "${input.detalhes}" não encontrada. Use ibge_pesquisas() sem parâmetros para listar todas.`;
+          return {
+            markdown: `Pesquisa "${input.detalhes}" não encontrada. Use ibge_pesquisas() sem parâmetros para listar todas.`,
+            isError: true,
+          };
         }
 
         return formatPesquisaDetalhes(pesquisa);
@@ -66,25 +109,34 @@ export async function ibgePesquisas(input: PesquisasInput): Promise<string> {
       }
 
       if (filtered.length === 0) {
-        return input.busca
-          ? `Nenhuma pesquisa encontrada para: "${input.busca}"`
-          : "Nenhuma pesquisa encontrada.";
+        return {
+          markdown: input.busca
+            ? `Nenhuma pesquisa encontrada para: "${input.busca}"`
+            : "Nenhuma pesquisa encontrada.",
+          isError: true,
+        };
       }
 
       return formatPesquisasLista(filtered, input);
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_pesquisas", { busca: input.busca }, [
-          "ibge_sidra_tabelas",
-          "ibge_sidra",
-        ]);
+        return {
+          markdown: parseHttpError(error, "ibge_pesquisas", { busca: input.busca }, [
+            "ibge_sidra_tabelas",
+            "ibge_sidra",
+          ]),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_pesquisas");
+      return { markdown: ValidationErrors.emptyResult("ibge_pesquisas"), isError: true };
     }
   });
 }
 
-function formatPesquisasLista(pesquisas: PesquisaCompleta[], input: PesquisasInput): string {
+function formatPesquisasLista(
+  pesquisas: PesquisaCompleta[],
+  input: PesquisasInput
+): StructuredToolResult {
   let output = `## Pesquisas do IBGE\n\n`;
 
   if (input.busca) {
@@ -116,10 +168,22 @@ function formatPesquisasLista(pesquisas: PesquisaCompleta[], input: PesquisasInp
   output += '_Use `ibge_pesquisas(detalhes="CODIGO")` para ver as tabelas de uma pesquisa._\n';
   output += '_Use `ibge_sidra_tabelas(pesquisa="CODIGO")` para buscar tabelas específicas._\n';
 
-  return output;
+  return {
+    markdown: output,
+    structured: {
+      modo: "lista",
+      pesquisas: pesquisas.map((p) => ({
+        id: p.id,
+        nome: p.nome,
+        totalTabelas: p.agregados.length,
+      })),
+      total: pesquisas.length,
+      ...(input.busca ? { busca: input.busca } : {}),
+    },
+  };
 }
 
-function formatPesquisaDetalhes(pesquisa: PesquisaCompleta): string {
+function formatPesquisaDetalhes(pesquisa: PesquisaCompleta): StructuredToolResult {
   let output = `## Pesquisa: ${pesquisa.nome}\n\n`;
 
   output += `**Código:** ${pesquisa.id}\n`;
@@ -139,7 +203,18 @@ function formatPesquisaDetalhes(pesquisa: PesquisaCompleta): string {
   output += '_Use `ibge_sidra_metadados(tabela="CODIGO")` para ver detalhes de uma tabela._\n';
   output += '_Use `ibge_sidra(tabela="CODIGO")` para consultar os dados._\n';
 
-  return output;
+  return {
+    markdown: output,
+    structured: {
+      modo: "detalhes",
+      pesquisa: {
+        id: pesquisa.id,
+        nome: pesquisa.nome,
+        totalTabelas: pesquisa.agregados.length,
+        tabelas: pesquisa.agregados.map((ag) => ({ id: ag.id, nome: ag.nome })),
+      },
+    },
+  };
 }
 
 function categorizarPesquisas(pesquisas: PesquisaCompleta[]): Record<string, PesquisaCompleta[]> {

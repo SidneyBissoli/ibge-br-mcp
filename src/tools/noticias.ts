@@ -9,6 +9,7 @@ import {
 } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { parseUserDate, toIbgeApiDate } from "../validation.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for the tool input
 export const noticiasSchema = z.object({
@@ -32,17 +33,39 @@ export const noticiasSchema = z.object({
 
 export type NoticiasInput = z.infer<typeof noticiasSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const noticiasOutputSchema = z.object({
+  noticias: z
+    .array(
+      z.object({
+        titulo: z.string().describe("Título da notícia ou release"),
+        tipo: z.string().describe("Tipo de publicação (ex: 'Release' ou 'Notícia')"),
+        dataPublicacao: z.string().describe("Data de publicação (formato original da API)"),
+        editorias: z.string().optional().describe("Editoria(s) associada(s) à publicação"),
+        produtos: z.string().optional().describe("Produtos do IBGE relacionados à publicação"),
+        destaque: z.boolean().optional().describe("Indica se a publicação está em destaque"),
+        introducao: z.string().optional().describe("Introdução/resumo da publicação (texto limpo)"),
+        link: z.string().describe("URL para a publicação completa"),
+      })
+    )
+    .describe("Lista de notícias retornadas"),
+  total: z.number().describe("Total de notícias encontradas na consulta"),
+  pagina: z.number().describe("Página atual"),
+  totalPaginas: z.number().describe("Número total de páginas"),
+  busca: z.string().optional().describe("Termo de busca aplicado, se houver"),
+});
+
 /**
  * Fetches news from IBGE API
  */
-export async function ibgeNoticias(input: NoticiasInput): Promise<string> {
+export async function ibgeNoticias(input: NoticiasInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_noticias", "noticias", async () => {
     try {
       let de: string | undefined;
       if (input.de) {
         const parsed = parseUserDate(input.de);
         if (!parsed) {
-          return ValidationErrors.invalidDate(input.de, "ibge_noticias");
+          return { markdown: ValidationErrors.invalidDate(input.de, "ibge_noticias"), isError: true };
         }
         de = toIbgeApiDate(parsed);
       }
@@ -51,7 +74,10 @@ export async function ibgeNoticias(input: NoticiasInput): Promise<string> {
       if (input.ate) {
         const parsed = parseUserDate(input.ate);
         if (!parsed) {
-          return ValidationErrors.invalidDate(input.ate, "ibge_noticias");
+          return {
+            markdown: ValidationErrors.invalidDate(input.ate, "ibge_noticias"),
+            isError: true,
+          };
         }
         ate = toIbgeApiDate(parsed);
       }
@@ -73,17 +99,47 @@ export async function ibgeNoticias(input: NoticiasInput): Promise<string> {
       const data = await cachedFetch<NoticiasResponse>(url, key, CACHE_TTL.SHORT);
 
       if (!data.items || data.items.length === 0) {
-        return input.busca
-          ? `Nenhuma notícia encontrada para: "${input.busca}"`
-          : "Nenhuma notícia encontrada.";
+        return {
+          markdown: input.busca
+            ? `Nenhuma notícia encontrada para: "${input.busca}"`
+            : "Nenhuma notícia encontrada.",
+          isError: true,
+        };
       }
 
-      return formatNoticiasResponse(data, input);
+      const noticias = data.items.map((noticia) => ({
+        titulo: noticia.titulo,
+        tipo: noticia.tipo,
+        dataPublicacao: noticia.data_publicacao,
+        ...(noticia.editorias ? { editorias: noticia.editorias } : {}),
+        ...(noticia.produtos && noticia.produtos !== "null" ? { produtos: noticia.produtos } : {}),
+        ...(noticia.destaque !== undefined ? { destaque: noticia.destaque } : {}),
+        ...(noticia.introducao
+          ? { introducao: decodeHtmlEntities(noticia.introducao) }
+          : {}),
+        link: noticia.link,
+      }));
+
+      return {
+        markdown: formatNoticiasResponse(data, input),
+        structured: {
+          noticias,
+          total: data.count,
+          pagina: data.page,
+          totalPaginas: data.totalPages,
+          ...(input.busca ? { busca: input.busca } : {}),
+        },
+      };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_noticias", { busca: input.busca }, ["ibge_calendario"]);
+        return {
+          markdown: parseHttpError(error, "ibge_noticias", { busca: input.busca }, [
+            "ibge_calendario",
+          ]),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_noticias");
+      return { markdown: ValidationErrors.emptyResult("ibge_noticias"), isError: true };
     }
   });
 }

@@ -23,14 +23,19 @@ import {
   nomesOutputSchema,
   ibgeNomes,
   noticiasSchema,
+  noticiasOutputSchema,
   ibgeNoticias,
   sidraTabelasSchema,
+  sidraTabelasOutputSchema,
   ibgeSidraTabelas,
   sidraMetadadosSchema,
+  sidraMetadadosOutputSchema,
   ibgeSidraMetadados,
   malhasSchema,
+  malhasOutputSchema,
   ibgeMalhas,
   pesquisasSchema,
+  pesquisasOutputSchema,
   ibgePesquisas,
   censoSchema,
   censoOutputSchema,
@@ -47,12 +52,14 @@ import {
   ibgeGeocodigo,
   // Phase 2 tools (v1.5.0)
   calendarioSchema,
+  calendarioOutputSchema,
   ibgeCalendario,
   compararSchema,
   compararOutputSchema,
   ibgeComparar,
   // Phase 3 tools (v1.6.0)
   malhasTemaSchema,
+  malhasTemaOutputSchema,
   ibgeMalhasTema,
   vizinhosSchema,
   vizinhosOutputSchema,
@@ -322,9 +329,10 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Nomes 
   );
 
   // Register ibge_noticias tool
-  server.tool(
+  server.registerTool(
     "ibge_noticias",
-    `Searches and lists already-published IBGE news articles and press releases.
+    {
+      description: `Searches and lists already-published IBGE news articles and press releases.
 
 Use this to find recent IBGE publications or announcements about a survey or topic — when an indicator was released, or news mentioning a term like "censo". Results are sorted newest-first; with no parameters it returns the 10 most recent items.
 
@@ -347,18 +355,20 @@ Use a different tool when:
 - Scheduled/upcoming release dates (not yet published) → ibge_calendario
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Notícias API. Returns a Markdown list.`,
-    noticiasSchema.shape,
-    READ_ONLY,
+      inputSchema: noticiasSchema.shape,
+      outputSchema: noticiasOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeNoticias(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeNoticias(args));
     }
   );
 
   // Register ibge_sidra_tabelas tool
-  server.tool(
+  server.registerTool(
     "ibge_sidra_tabelas",
-    `Lists and searches available SIDRA tables.
+    {
+      description: `Lists and searches available SIDRA tables.
 
 Features:
 - List all SIDRA tables (aggregates)
@@ -382,18 +392,20 @@ This is step 1 of the SIDRA workflow: find a table code → ibge_sidra_metadados
 For common data, a wrapper is usually easier: ibge_censo, ibge_indicadores, ibge_comparar, ibge_cidades.
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns a Markdown table.`,
-    sidraTabelasSchema.shape,
-    READ_ONLY,
+      inputSchema: sidraTabelasSchema.shape,
+      outputSchema: sidraTabelasOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeSidraTabelas(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeSidraTabelas(args));
     }
   );
 
   // Register ibge_sidra_metadados tool
-  server.tool(
+  server.registerTool(
     "ibge_sidra_metadados",
-    `Returns metadata for a specific SIDRA table.
+    {
+      description: `Returns metadata for a specific SIDRA table.
 
 Features:
 - General info (name, survey, subject, periodicity)
@@ -412,18 +424,20 @@ Examples:
 Use this after finding a table code (ibge_sidra_tabelas) and before querying with ibge_sidra.
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown.`,
-    sidraMetadadosSchema.shape,
-    READ_ONLY,
+      inputSchema: sidraMetadadosSchema.shape,
+      outputSchema: sidraMetadadosOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeSidraMetadados(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeSidraMetadados(args));
     }
   );
 
   // Register ibge_malhas tool
-  server.tool(
+  server.registerTool(
     "ibge_malhas",
-    `Gets geographic meshes (maps) from IBGE in GeoJSON, TopoJSON, or SVG format.
+    {
+      description: `Gets geographic meshes (maps) from IBGE in GeoJSON, TopoJSON, or SVG format.
 
 Features:
 - Meshes for Brazil, regions, states, municipalities
@@ -451,18 +465,20 @@ Use a different tool when:
 - Thematic meshes (biomes, Legal Amazon, semi-arid, metropolitan regions) → ibge_malhas_tema
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Malhas API. Returns the mesh in the requested format (GeoJSON, TopoJSON, or SVG).`,
-    malhasSchema.shape,
-    READ_ONLY,
+      inputSchema: malhasSchema.shape,
+      outputSchema: malhasOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeMalhas(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeMalhas(args));
     }
   );
 
   // Register ibge_pesquisas tool
-  server.tool(
+  server.registerTool(
     "ibge_pesquisas",
-    `Lists available IBGE surveys and their tables.
+    {
+      description: `Lists available IBGE surveys and their tables.
 
 Features:
 - List all IBGE surveys (Census, PNAD, GDP, etc.)
@@ -485,11 +501,12 @@ Examples:
 This lists surveys, not data. To find table codes use ibge_sidra_tabelas; to query data use ibge_sidra (or a wrapper: ibge_censo, ibge_indicadores, ibge_comparar, ibge_cidades).
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA/Pesquisas API. Returns a Markdown list.`,
-    pesquisasSchema.shape,
-    READ_ONLY,
+      inputSchema: pesquisasSchema.shape,
+      outputSchema: pesquisasOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgePesquisas(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgePesquisas(args));
     }
   );
 
@@ -665,9 +682,10 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Locali
   );
 
   // Register ibge_calendario tool (Phase 2)
-  server.tool(
+  server.registerTool(
     "ibge_calendario",
-    `Queries IBGE release and collection calendar.
+    {
+      description: `Queries IBGE release and collection calendar.
 
 Features:
 - List upcoming survey releases
@@ -689,11 +707,12 @@ Use a different tool when:
 - Already-published news and releases → ibge_noticias
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Calendário API. Returns a Markdown list.`,
-    calendarioSchema.shape,
-    READ_ONLY,
+      inputSchema: calendarioSchema.shape,
+      outputSchema: calendarioOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeCalendario(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeCalendario(args));
     }
   );
 
@@ -738,9 +757,10 @@ Behavior: read-only and idempotent — a live GET against the public IBGE APIs (
   );
 
   // Register ibge_malhas_tema tool (Phase 3)
-  server.tool(
+  server.registerTool(
     "ibge_malhas_tema",
-    `Gets thematic geographic meshes from IBGE.
+    {
+      description: `Gets thematic geographic meshes from IBGE.
 
 Available themes:
 - biomas: Brazilian biomes (Amazon, Cerrado, Atlantic Forest, Caatinga, Pampa, Pantanal)
@@ -771,11 +791,12 @@ Use a different tool when:
 - Administrative meshes (Brazil/region/state/municipality outlines) → ibge_malhas
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Malhas API. Returns the mesh in the requested format (GeoJSON, TopoJSON, or SVG).`,
-    malhasTemaSchema.shape,
-    READ_ONLY,
+      inputSchema: malhasTemaSchema.shape,
+      outputSchema: malhasTemaOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeMalhasTema(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeMalhasTema(args));
     }
   );
 

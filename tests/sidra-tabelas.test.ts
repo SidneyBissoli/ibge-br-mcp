@@ -35,7 +35,7 @@ describe("ibgeSidraTabelas", () => {
   it("lists all tables grouped by pesquisa", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(agregadosData));
 
-    const result = await ibgeSidraTabelas({ limite: 20 });
+    const { markdown: result } = await ibgeSidraTabelas({ limite: 20 });
 
     expect(result).toContain("Tabelas SIDRA (Agregados)");
     expect(result).toContain("33 - Estimativas de população");
@@ -48,7 +48,7 @@ describe("ibgeSidraTabelas", () => {
   it("filters by pesquisa term", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(agregadosData));
 
-    const result = await ibgeSidraTabelas({ pesquisa: "pib", limite: 20 });
+    const { markdown: result } = await ibgeSidraTabelas({ pesquisa: "pib", limite: 20 });
 
     expect(result).toContain('**Pesquisa:** "pib"');
     expect(result).toContain("PIB dos Municípios");
@@ -58,7 +58,7 @@ describe("ibgeSidraTabelas", () => {
   it("filters by busca term against table name", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(agregadosData));
 
-    const result = await ibgeSidraTabelas({ busca: "residente", limite: 20 });
+    const { markdown: result } = await ibgeSidraTabelas({ busca: "residente", limite: 20 });
 
     expect(result).toContain('**Busca:** "residente"');
     expect(result).toContain("População residente estimada");
@@ -68,7 +68,7 @@ describe("ibgeSidraTabelas", () => {
   it("applies the limite (slices the result set)", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(agregadosData));
 
-    const result = await ibgeSidraTabelas({ limite: 1 });
+    const { markdown: result } = await ibgeSidraTabelas({ limite: 1 });
 
     expect(result).toContain("Mostrando:** 1 de 3 tabelas");
   });
@@ -76,7 +76,7 @@ describe("ibgeSidraTabelas", () => {
   it("returns a no-results message when criteria match nothing", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(agregadosData));
 
-    const result = await ibgeSidraTabelas({ busca: "zzzznada", limite: 20 });
+    const { markdown: result } = await ibgeSidraTabelas({ busca: "zzzznada", limite: 20 });
 
     expect(result).toContain("Nenhuma tabela encontrada para os critérios especificados");
   });
@@ -84,7 +84,7 @@ describe("ibgeSidraTabelas", () => {
   it("returns a plain no-results message when the upstream list is empty", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse([]));
 
-    const result = await ibgeSidraTabelas({ limite: 20 });
+    const { markdown: result } = await ibgeSidraTabelas({ limite: 20 });
 
     expect(result).toBe("Nenhuma tabela encontrada.");
   });
@@ -92,7 +92,7 @@ describe("ibgeSidraTabelas", () => {
   it("surfaces an upstream HTTP error", async () => {
     mockFetch.mockRejectedValueOnce(new Error("HTTP 500: Internal Server Error"));
 
-    const result = await ibgeSidraTabelas({ limite: 20 });
+    const { markdown: result } = await ibgeSidraTabelas({ limite: 20 });
 
     expect(result).toContain("Erro");
   });

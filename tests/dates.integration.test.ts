@@ -55,7 +55,7 @@ describe("Date normalization across tools", () => {
     });
 
     it("rejects an invalid date without calling the API", async () => {
-      const result = await ibgeNoticias({ de: "99/99/2026" });
+      const { markdown: result } = await ibgeNoticias({ de: "99/99/2026" });
 
       expect(result).toContain("Data inválida");
       expect(mockFetch).not.toHaveBeenCalled();
@@ -74,7 +74,7 @@ describe("Date normalization across tools", () => {
     });
 
     it("rejects an invalid date without calling the API", async () => {
-      const result = await ibgeCalendario({ de: "31-31-2026", tipo: "todos" });
+      const { markdown: result } = await ibgeCalendario({ de: "31-31-2026", tipo: "todos" });
 
       expect(result).toContain("Data inválida");
       expect(mockFetch).not.toHaveBeenCalled();
@@ -104,7 +104,7 @@ describe("Date normalization across tools", () => {
         })
       );
 
-      const result = await ibgeCalendario({ tipo: "todos" });
+      const { markdown: result } = await ibgeCalendario({ tipo: "todos" });
 
       expect(result).toContain("Março 2026");
       expect(result).toContain("31/03");

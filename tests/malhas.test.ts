@@ -94,7 +94,7 @@ describe("ibge_malhas", () => {
     it("summarizes a FeatureCollection (counts, geometry types, sample)", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
 
-      const result = await ibgeMalhas({ localidade: "BR", resolucao: "2" });
+      const { markdown: result } = await ibgeMalhas({ localidade: "BR", resolucao: "2" });
 
       expect(result).toContain("Malha Geográfica: BR");
       expect(result).toContain("Número de features");
@@ -107,7 +107,7 @@ describe("ibge_malhas", () => {
     it("summarizes a single Feature", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(singleFeature));
 
-      const result = await ibgeMalhas({ localidade: "3550308" });
+      const { markdown: result } = await ibgeMalhas({ localidade: "3550308" });
 
       expect(result).toContain("Tipo de geometria");
       expect(result).toContain("MultiPolygon");
@@ -116,7 +116,7 @@ describe("ibge_malhas", () => {
 
   describe("svg format", () => {
     it("returns a URL/instructions without calling the API", async () => {
-      const result = await ibgeMalhas({ localidade: "BR", formato: "svg" });
+      const { markdown: result } = await ibgeMalhas({ localidade: "BR", formato: "svg" });
 
       expect(result).toContain("Malha Geográfica (SVG): BR");
       expect(result).toContain("URL para Download");
@@ -128,7 +128,7 @@ describe("ibge_malhas", () => {
     it("returns a notFound message on a 404", async () => {
       mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
 
-      const result = await ibgeMalhas({ localidade: "9999999" });
+      const { markdown: result } = await ibgeMalhas({ localidade: "9999999" });
 
       expect(result).toContain("não encontrado");
     });
@@ -136,7 +136,7 @@ describe("ibge_malhas", () => {
     it("surfaces other upstream errors gracefully", async () => {
       mockFetch.mockRejectedValueOnce(new Error("HTTP 503: Service Unavailable"));
 
-      const result = await ibgeMalhas({ localidade: "SP" });
+      const { markdown: result } = await ibgeMalhas({ localidade: "SP" });
 
       expect(result).toContain("Erro");
     });

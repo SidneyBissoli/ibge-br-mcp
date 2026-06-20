@@ -44,7 +44,7 @@ describe("ibge_malhas_tema", () => {
 
   describe("listar mode", () => {
     it("lists available themes without calling the API", async () => {
-      const result = await ibgeMalhasTema({
+      const { markdown: result } = await ibgeMalhasTema({
         tema: "listar",
         formato: "geojson",
         resolucao: "0",
@@ -148,7 +148,7 @@ describe("ibge_malhas_tema", () => {
     it("summarizes a FeatureCollection (features, properties, sample table)", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
 
-      const result = await ibgeMalhasTema({
+      const { markdown: result } = await ibgeMalhasTema({
         tema: "biomas",
         formato: "geojson",
         resolucao: "0",
@@ -174,7 +174,7 @@ describe("ibge_malhas_tema", () => {
       };
       mockFetch.mockResolvedValueOnce(mockResponse(many));
 
-      const result = await ibgeMalhasTema({
+      const { markdown: result } = await ibgeMalhasTema({
         tema: "biomas",
         formato: "geojson",
         resolucao: "0",
@@ -187,7 +187,7 @@ describe("ibge_malhas_tema", () => {
 
   describe("svg format", () => {
     it("returns a download URL without calling the API", async () => {
-      const result = await ibgeMalhasTema({
+      const { markdown: result } = await ibgeMalhasTema({
         tema: "biomas",
         formato: "svg",
         resolucao: "0",
@@ -204,7 +204,7 @@ describe("ibge_malhas_tema", () => {
     it("returns a not-found message on a 404", async () => {
       mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
 
-      const result = await ibgeMalhasTema({
+      const { markdown: result } = await ibgeMalhasTema({
         tema: "biomas",
         codigo: "99",
         formato: "geojson",
@@ -219,7 +219,7 @@ describe("ibge_malhas_tema", () => {
     it("surfaces other upstream errors via parseHttpError", async () => {
       mockFetch.mockRejectedValueOnce(new Error("HTTP 500: Internal Server Error"));
 
-      const result = await ibgeMalhasTema({
+      const { markdown: result } = await ibgeMalhasTema({
         tema: "biomas",
         formato: "geojson",
         resolucao: "0",

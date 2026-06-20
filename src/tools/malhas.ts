@@ -4,6 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { buildQueryString } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for the tool input
 export const malhasSchema = z.object({
@@ -51,9 +52,29 @@ export const malhasSchema = z.object({
 export type MalhasInput = z.infer<typeof malhasSchema>;
 
 /**
+ * Structured output payload (validated against this schema by the MCP SDK).
+ *
+ * Lightweight metadata only — the actual geometry blob (GeoJSON/TopoJSON/SVG)
+ * can be very large and is NEVER included here. The geometry is conveyed in the
+ * Markdown channel (truncated/URL) instead.
+ */
+export const malhasOutputSchema = z.object({
+  localidade: z.string().describe("Código IBGE ou sigla da localidade consultada"),
+  formato: z.string().describe("Formato de saída solicitado (geojson, topojson ou svg)"),
+  resolucao: z.string().optional().describe("Resolução/divisões internas solicitada"),
+  qualidade: z.string().optional().describe("Qualidade do traçado solicitada"),
+  tipo: z.string().optional().describe("Tipo de divisão territorial, quando informado"),
+  intrarregiao: z
+    .string()
+    .optional()
+    .describe("Código de região usado para filtrar (apenas quando localidade=BR)"),
+  url: z.string().optional().describe("URL para download da malha completa"),
+});
+
+/**
  * Fetches geographic meshes from IBGE API
  */
-export async function ibgeMalhas(input: MalhasInput): Promise<string> {
+export async function ibgeMalhas(input: MalhasInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_malhas", "malhas", async () => {
     try {
       // Build the URL
@@ -100,7 +121,10 @@ export async function ibgeMalhas(input: MalhasInput): Promise<string> {
 
       // For SVG format, return the URL (as SVG content would be too large)
       if (input.formato === "svg") {
-        return formatSvgResponse(fullUrl, input);
+        return {
+          markdown: formatSvgResponse(fullUrl, input),
+          structured: buildMalhasMetadata(input, fullUrl),
+        };
       }
 
       // Use cache for geographic mesh data (24 hours TTL - static data)
@@ -115,31 +139,53 @@ export async function ibgeMalhas(input: MalhasInput): Promise<string> {
         );
       } catch (error) {
         if (error instanceof Error && error.message.includes("404")) {
-          return ValidationErrors.notFound(
-            `Malha para localidade ${input.localidade}`,
-            "ibge_malhas",
-            "ibge_municipios ou ibge_estados"
-          );
+          return {
+            markdown: ValidationErrors.notFound(
+              `Malha para localidade ${input.localidade}`,
+              "ibge_malhas",
+              "ibge_municipios ou ibge_estados"
+            ),
+            isError: true,
+          };
         }
         throw error;
       }
 
-      return formatMalhasResponse(data, fullUrl, input);
+      return {
+        markdown: formatMalhasResponse(data, fullUrl, input),
+        structured: buildMalhasMetadata(input, fullUrl),
+      };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(
-          error,
-          "ibge_malhas",
-          {
-            localidade: input.localidade,
-            formato: input.formato,
-          },
-          ["ibge_malhas_tema"]
-        );
+        return {
+          markdown: parseHttpError(
+            error,
+            "ibge_malhas",
+            {
+              localidade: input.localidade,
+              formato: input.formato,
+            },
+            ["ibge_malhas_tema"]
+          ),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_malhas");
+      return { markdown: ValidationErrors.emptyResult("ibge_malhas"), isError: true };
     }
   });
+}
+
+/** Builds the lightweight structured metadata payload (never the geometry). */
+function buildMalhasMetadata(input: MalhasInput, url: string): Record<string, unknown> {
+  return {
+    localidade: input.localidade,
+    formato: input.formato || "geojson",
+    resolucao: input.resolucao || "0",
+    qualidade: input.qualidade || "4",
+    tipo: input.tipo,
+    intrarregiao: input.intrarregiao,
+    url,
+  };
 }
 
 function formatMalhasResponse(

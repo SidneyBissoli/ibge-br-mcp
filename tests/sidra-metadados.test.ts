@@ -62,7 +62,7 @@ describe("ibgeSidraMetadados", () => {
       .mockResolvedValueOnce(mockResponse(metadados))
       .mockResolvedValueOnce(mockResponse(periodos));
 
-    const result = await ibgeSidraMetadados({
+    const { markdown: result } = await ibgeSidraMetadados({
       tabela: "6579",
       incluir_periodos: true,
       incluir_localidades: false,
@@ -107,7 +107,7 @@ describe("ibgeSidraMetadados", () => {
   it("skips period fetch when incluir_periodos is false", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse(metadados));
 
-    const result = await ibgeSidraMetadados({
+    const { markdown: result } = await ibgeSidraMetadados({
       tabela: "6579",
       incluir_periodos: false,
       incluir_localidades: false,
@@ -141,7 +141,7 @@ describe("ibgeSidraMetadados", () => {
     };
     mockFetch.mockResolvedValueOnce(mockResponse(manyCats));
 
-    const result = await ibgeSidraMetadados({
+    const { markdown: result } = await ibgeSidraMetadados({
       tabela: "6579",
       incluir_periodos: false,
       incluir_localidades: false,
@@ -159,7 +159,7 @@ describe("ibgeSidraMetadados", () => {
     };
     mockFetch.mockResolvedValueOnce(mockResponse(bare));
 
-    const result = await ibgeSidraMetadados({
+    const { markdown: result } = await ibgeSidraMetadados({
       tabela: "6579",
       incluir_periodos: false,
       incluir_localidades: false,
@@ -172,7 +172,7 @@ describe("ibgeSidraMetadados", () => {
   it("returns a friendly not-found message on a 404", async () => {
     mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
 
-    const result = await ibgeSidraMetadados({
+    const { markdown: result } = await ibgeSidraMetadados({
       tabela: "99999",
       incluir_periodos: true,
       incluir_localidades: false,
@@ -185,7 +185,7 @@ describe("ibgeSidraMetadados", () => {
   it("surfaces a non-404 upstream error via parseHttpError", async () => {
     mockFetch.mockRejectedValueOnce(new Error("HTTP 500: Internal Server Error"));
 
-    const result = await ibgeSidraMetadados({
+    const { markdown: result } = await ibgeSidraMetadados({
       tabela: "6579",
       incluir_periodos: true,
       incluir_localidades: false,
@@ -200,7 +200,7 @@ describe("ibgeSidraMetadados", () => {
       .mockResolvedValueOnce(mockResponse(metadados))
       .mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
 
-    const result = await ibgeSidraMetadados({
+    const { markdown: result } = await ibgeSidraMetadados({
       tabela: "6579",
       incluir_periodos: true,
       incluir_localidades: false,

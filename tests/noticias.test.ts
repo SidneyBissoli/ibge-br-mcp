@@ -68,7 +68,7 @@ describe("ibge_noticias", () => {
     it("renders header metadata and a notícia with decoded HTML and badge", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(noticiasResponse([noticiaItem])));
 
-      const result = await ibgeNoticias({ quantidade: 10, pagina: 1 });
+      const { markdown: result } = await ibgeNoticias({ quantidade: 10, pagina: 1 });
 
       expect(result).toContain("Notícias e Releases do IBGE");
       expect(result).toContain("Total:** 1 notícias encontradas");
@@ -86,7 +86,7 @@ describe("ibge_noticias", () => {
     it("renders a release with its badge and omits 'null' produtos / empty editoria", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(noticiasResponse([releaseItem])));
 
-      const result = await ibgeNoticias({ quantidade: 10, pagina: 1 });
+      const { markdown: result } = await ibgeNoticias({ quantidade: 10, pagina: 1 });
 
       expect(result).toContain("📢 Divulgação do IPCA");
       expect(result).not.toContain("Produtos:** null");
@@ -96,7 +96,7 @@ describe("ibge_noticias", () => {
     it("shows the search term in the header", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(noticiasResponse([noticiaItem])));
 
-      const result = await ibgeNoticias({ busca: "pib", quantidade: 10, pagina: 1 });
+      const { markdown: result } = await ibgeNoticias({ busca: "pib", quantidade: 10, pagina: 1 });
 
       expect(lastUrl()).toContain("busca=pib");
       expect(result).toContain('Busca:** "pib"');
@@ -148,7 +148,7 @@ describe("ibge_noticias", () => {
         )
       );
 
-      const result = await ibgeNoticias({ quantidade: 10, pagina: 1 });
+      const { markdown: result } = await ibgeNoticias({ quantidade: 10, pagina: 1 });
 
       expect(result).toContain("Página 1 de 3");
       expect(result).toContain("Use pagina=2 para a próxima página");
@@ -158,31 +158,31 @@ describe("ibge_noticias", () => {
   describe("empty / invalid / error branches", () => {
     it("returns a plain empty message when no items", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(noticiasResponse([])));
-      const result = await ibgeNoticias({ quantidade: 10, pagina: 1 });
+      const { markdown: result } = await ibgeNoticias({ quantidade: 10, pagina: 1 });
       expect(result).toBe("Nenhuma notícia encontrada.");
     });
 
     it("returns a search-specific empty message when no items and busca set", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(noticiasResponse([])));
-      const result = await ibgeNoticias({ busca: "xyz", quantidade: 10, pagina: 1 });
+      const { markdown: result } = await ibgeNoticias({ busca: "xyz", quantidade: 10, pagina: 1 });
       expect(result).toBe('Nenhuma notícia encontrada para: "xyz"');
     });
 
     it("rejects an invalid 'de' date without calling the API", async () => {
-      const result = await ibgeNoticias({ de: "99/99/2026", quantidade: 10, pagina: 1 });
+      const { markdown: result } = await ibgeNoticias({ de: "99/99/2026", quantidade: 10, pagina: 1 });
       expect(result).toContain("Data inválida");
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("rejects an invalid 'ate' date without calling the API", async () => {
-      const result = await ibgeNoticias({ ate: "32/13/2026", quantidade: 10, pagina: 1 });
+      const { markdown: result } = await ibgeNoticias({ ate: "32/13/2026", quantidade: 10, pagina: 1 });
       expect(result).toContain("Data inválida");
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("surfaces an upstream HTTP error", async () => {
       mockFetch.mockRejectedValueOnce(new Error("HTTP 500: Internal Server Error"));
-      const result = await ibgeNoticias({ busca: "pib", quantidade: 10, pagina: 1 });
+      const { markdown: result } = await ibgeNoticias({ busca: "pib", quantidade: 10, pagina: 1 });
       expect(result).toContain("Erro");
     });
   });
