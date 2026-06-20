@@ -11,28 +11,30 @@ function lastUrl(): string {
 }
 
 const brasil = {
-  id: { M49: 76, "ISO-ALPHA-2": "BR", "ISO-ALPHA-3": "BRA" },
-  nome: "Brasil",
+  id: { M49: 76, "ISO-3166-1-ALPHA-2": "BR", "ISO-3166-1-ALPHA-3": "BRA" },
+  nome: { abreviado: "Brasil", "abreviado-EN": "Brazil", "abreviado-ES": "Brasil" },
   area: { total: "8515767.049" },
   localizacao: {
-    regiao: { id: 19, nome: "Américas" },
-    "sub-regiao": { id: 419, nome: "América Latina e Caribe" },
+    regiao: { id: { M49: 19 }, nome: "Américas" },
+    "sub-regiao": { id: { M49: 419 }, nome: "América Latina e Caribe" },
   },
   linguas: [{ nome: "Português" }],
-  "unidades-monetarias": [{ id: "BRL", nome: "Real" }],
+  "unidades-monetarias": [
+    { id: { "ISO-4217-ALPHA": "BRL", "ISO-4217-NUMERICO": "986" }, nome: "Real" },
+  ],
   historico: "Texto histórico do Brasil.",
 };
 
 const argentina = {
-  id: { M49: 32, "ISO-ALPHA-2": "AR", "ISO-ALPHA-3": "ARG" },
-  nome: "Argentina",
-  localizacao: { regiao: { id: 19, nome: "Américas" } },
+  id: { M49: 32, "ISO-3166-1-ALPHA-2": "AR", "ISO-3166-1-ALPHA-3": "ARG" },
+  nome: { abreviado: "Argentina" },
+  localizacao: { regiao: { id: { M49: 19 }, nome: "Américas" } },
 };
 
 const franca = {
-  id: { M49: 250, "ISO-ALPHA-2": "FR", "ISO-ALPHA-3": "FRA" },
-  nome: "França",
-  localizacao: { regiao: { id: 150, nome: "Europa" } },
+  id: { M49: 250, "ISO-3166-1-ALPHA-2": "FR", "ISO-3166-1-ALPHA-3": "FRA" },
+  nome: { abreviado: "França" },
+  localizacao: { regiao: { id: { M49: 150 }, nome: "Europa" } },
 };
 
 describe("ibge_paises", () => {

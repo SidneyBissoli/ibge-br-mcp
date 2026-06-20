@@ -203,15 +203,15 @@ export interface PopulacaoEstimativa {
 
 export interface PaisLocalizacao {
   regiao: {
-    id: number;
+    id: { M49: number };
     nome: string;
   };
   "sub-regiao"?: {
-    id: number;
+    id: { M49: number };
     nome: string;
   };
   "regiao-intermediaria"?: {
-    id: number;
+    id: { M49: number };
     nome: string;
   };
 }
@@ -219,10 +219,14 @@ export interface PaisLocalizacao {
 export interface Pais {
   id: {
     M49: number;
-    "ISO-ALPHA-2": string;
-    "ISO-ALPHA-3": string;
+    "ISO-3166-1-ALPHA-2": string;
+    "ISO-3166-1-ALPHA-3": string;
   };
-  nome: string;
+  nome: {
+    abreviado: string;
+    "abreviado-EN"?: string;
+    "abreviado-ES"?: string;
+  };
   area?: {
     total?: string;
     unidade?: {
@@ -236,7 +240,10 @@ export interface Pais {
     nome: string;
   }>;
   "unidades-monetarias"?: Array<{
-    id: string;
+    id: {
+      "ISO-4217-ALPHA": string;
+      "ISO-4217-NUMERICO": string;
+    };
     nome: string;
   }>;
   historico?: string;

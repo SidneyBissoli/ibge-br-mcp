@@ -189,14 +189,16 @@ async function listarPaises(busca?: string, regiao?: string): Promise<Structured
     const regiaoNormalizada = regiao.toLowerCase();
     const regiaoId = REGIOES_M49[regiaoNormalizada];
     if (regiaoId) {
-      resultado = resultado.filter((p) => p.localizacao?.regiao?.id === regiaoId);
+      resultado = resultado.filter((p) => p.localizacao?.regiao?.id?.M49 === regiaoId);
     }
   }
 
   // Filtrar por busca se especificado
   if (busca) {
     const buscaNormalizada = busca.toLowerCase();
-    resultado = resultado.filter((p) => p.nome.toLowerCase().includes(buscaNormalizada));
+    resultado = resultado.filter((p) =>
+      p.nome.abreviado.toLowerCase().includes(buscaNormalizada)
+    );
   }
 
   if (resultado.length === 0) {
@@ -213,8 +215,8 @@ async function listarPaises(busca?: string, regiao?: string): Promise<Structured
   output += `**Total:** ${resultado.length} países\n\n`;
 
   const paisesEstruturados = resultado.map((p) => ({
-    codigo: p.id["ISO-ALPHA-2"] || "-",
-    nome: p.nome,
+    codigo: p.id["ISO-3166-1-ALPHA-2"] || "-",
+    nome: p.nome.abreviado,
     regiao: p.localizacao?.regiao?.nome || "-",
     subRegiao: p.localizacao?.["sub-regiao"]?.nome || "-",
   }));
@@ -263,18 +265,18 @@ async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
   const pais = paises[0];
 
   const detalhes: Record<string, unknown> = {
-    nome: pais.nome,
+    nome: pais.nome.abreviado,
     m49: pais.id.M49,
-    isoAlpha2: pais.id["ISO-ALPHA-2"],
-    isoAlpha3: pais.id["ISO-ALPHA-3"],
+    isoAlpha2: pais.id["ISO-3166-1-ALPHA-2"],
+    isoAlpha3: pais.id["ISO-3166-1-ALPHA-3"],
   };
 
-  let output = `## ${pais.nome}\n\n`;
+  let output = `## ${pais.nome.abreviado}\n\n`;
 
   output += "### Identificação\n\n";
   output += `- **Código M49:** ${pais.id.M49}\n`;
-  output += `- **ISO Alpha-2:** ${pais.id["ISO-ALPHA-2"]}\n`;
-  output += `- **ISO Alpha-3:** ${pais.id["ISO-ALPHA-3"]}\n\n`;
+  output += `- **ISO Alpha-2:** ${pais.id["ISO-3166-1-ALPHA-2"]}\n`;
+  output += `- **ISO Alpha-3:** ${pais.id["ISO-3166-1-ALPHA-3"]}\n\n`;
 
   if (pais.localizacao) {
     output += "### Localização\n\n";
@@ -311,11 +313,11 @@ async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
   if (pais["unidades-monetarias"] && pais["unidades-monetarias"].length > 0) {
     output += "### Moeda\n\n";
     pais["unidades-monetarias"].forEach((moeda) => {
-      output += `- ${moeda.nome} (${moeda.id})\n`;
+      output += `- ${moeda.nome} (${moeda.id["ISO-4217-ALPHA"]})\n`;
     });
     output += "\n";
     detalhes.moedas = pais["unidades-monetarias"].map((moeda) => ({
-      id: moeda.id,
+      id: moeda.id["ISO-4217-ALPHA"],
       nome: moeda.nome,
     }));
   }

@@ -232,7 +232,7 @@ function buildMetadadosStructured(
   ];
 
   const structured: Record<string, unknown> = {
-    codigo: meta.id,
+    codigo: String(meta.id),
     nome: meta.nome,
   };
 
