@@ -1,5 +1,5 @@
 // Export all tools
-export { ibgeEstados, estadosSchema } from "./estados.js";
+export { ibgeEstados, estadosSchema, estadosOutputSchema } from "./estados.js";
 export { ibgeMunicipios, municipiosSchema } from "./municipios.js";
 export { ibgeLocalidade, localidadeSchema } from "./localidade.js";
 export { ibgePopulacao, populacaoSchema, populacaoOutputSchema } from "./populacao.js";

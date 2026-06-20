@@ -52,7 +52,7 @@ describe("Integration Tests with Mocks", () => {
     it("should list all states", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(mockEstados));
 
-      const result = await ibgeEstados({});
+      const result = (await ibgeEstados({})).markdown;
 
       expect(result).toContain("Estados Brasileiros");
       expect(result).toContain("São Paulo");
@@ -65,7 +65,7 @@ describe("Integration Tests with Mocks", () => {
       const seEstados = mockEstados.filter((e) => e.regiao.sigla === "SE");
       mockFetch.mockResolvedValueOnce(mockResponse(seEstados));
 
-      const result = await ibgeEstados({ regiao: "SE" });
+      const result = (await ibgeEstados({ regiao: "SE" })).markdown;
 
       expect(result).toContain("Sudeste");
       expect(result).toContain("São Paulo");
@@ -76,7 +76,7 @@ describe("Integration Tests with Mocks", () => {
     it("should sort by abbreviation", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(mockEstados));
 
-      const result = await ibgeEstados({ ordenar: "sigla" });
+      const result = (await ibgeEstados({ ordenar: "sigla" })).markdown;
 
       expect(result).toContain("Estados Brasileiros");
       // Results should contain state abbreviations
@@ -88,7 +88,7 @@ describe("Integration Tests with Mocks", () => {
     it("should handle empty response", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse([]));
 
-      const result = await ibgeEstados({});
+      const result = (await ibgeEstados({})).markdown;
 
       expect(result).toContain("Nenhum estado encontrado");
     });
@@ -221,14 +221,14 @@ describe("Integration Tests with Mocks", () => {
       mockFetch.mockResolvedValue(mockResponse(mockData));
 
       // First request
-      const result1 = await ibgeEstados({});
+      const result1 = (await ibgeEstados({})).markdown;
       expect(result1).toContain("São Paulo");
 
       // Clear mock call count but keep cache
       mockFetch.mockClear();
 
       // Second request should use cache (no new fetch calls)
-      const result2 = await ibgeEstados({});
+      const result2 = (await ibgeEstados({})).markdown;
       expect(result2).toContain("São Paulo");
 
       // Both results should be identical
@@ -262,7 +262,7 @@ describe("Error handling", () => {
   it("should handle 404 errors", async () => {
     mockFetch.mockResolvedValueOnce(mockResponse({}, 404));
 
-    const result = await ibgeEstados({});
+    const result = (await ibgeEstados({})).markdown;
 
     expect(result).toBeDefined();
   });
@@ -270,7 +270,7 @@ describe("Error handling", () => {
   it("should handle 500 errors", async () => {
     mockFetch.mockRejectedValueOnce(new Error("500 Internal Server Error"));
 
-    const result = await ibgeEstados({});
+    const result = (await ibgeEstados({})).markdown;
 
     expect(result).toContain("Erro");
   });
@@ -278,7 +278,7 @@ describe("Error handling", () => {
   it("should point to related tools on a failure (errors that teach)", async () => {
     mockFetch.mockRejectedValueOnce(new Error("500 Internal Server Error"));
 
-    const result = await ibgeEstados({});
+    const result = (await ibgeEstados({})).markdown;
 
     expect(result).toContain("Ferramentas relacionadas");
     expect(result).toContain("ibge_municipios");
@@ -301,7 +301,7 @@ describe("Error handling", () => {
       json: () => Promise.reject(new Error("Invalid JSON")),
     } as Response);
 
-    const result = await ibgeEstados({});
+    const result = (await ibgeEstados({})).markdown;
 
     expect(result).toBeDefined();
   });

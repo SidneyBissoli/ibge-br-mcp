@@ -5,6 +5,7 @@ import { toMcpResult } from "./structured.js";
 
 import {
   estadosSchema,
+  estadosOutputSchema,
   ibgeEstados,
   municipiosSchema,
   ibgeMunicipios,
@@ -107,9 +108,10 @@ export function createServer(): McpServer {
  */
 export function registerAll(server: McpServer): void {
   // Register ibge_estados tool
-  server.tool(
+  server.registerTool(
     "ibge_estados",
-    `Lists all Brazilian states from IBGE.
+    {
+      description: `Lists all Brazilian states from IBGE.
 
 Features:
 - Lists all 27 states (26 states + Federal District)
@@ -126,11 +128,12 @@ Use a different tool when:
 - Details/hierarchy of one locality by code → ibge_localidade
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown table.`,
-    estadosSchema.shape,
-    READ_ONLY,
+      inputSchema: estadosSchema.shape,
+      outputSchema: estadosOutputSchema.shape,
+      annotations: READ_ONLY,
+    },
     async (args) => {
-      const result = await ibgeEstados(args);
-      return { content: [{ type: "text", text: result }] };
+      return toMcpResult(await ibgeEstados(args));
     }
   );
 

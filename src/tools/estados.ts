@@ -4,6 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
+import type { StructuredToolResult } from "../structured.js";
 
 // Schema for the tool input
 export const estadosSchema = z.object({
@@ -22,6 +23,21 @@ export const estadosSchema = z.object({
 
 export type EstadosInput = z.infer<typeof estadosSchema>;
 
+/** Structured output payload (validated against this schema by the MCP SDK). */
+export const estadosOutputSchema = z.object({
+  estados: z
+    .array(
+      z.object({
+        id: z.number().describe("Código IBGE do estado"),
+        sigla: z.string().describe("Sigla da UF"),
+        nome: z.string().describe("Nome do estado"),
+        regiao: z.string().describe("Nome da região"),
+      })
+    )
+    .describe("Lista de estados"),
+  total: z.number().describe("Total de estados retornados"),
+});
+
 // Map region codes to IDs
 const REGIAO_IDS: Record<string, number> = {
   N: 1, // Norte
@@ -34,7 +50,7 @@ const REGIAO_IDS: Record<string, number> = {
 /**
  * Fetches all Brazilian states from IBGE API
  */
-export async function ibgeEstados(input: EstadosInput): Promise<string> {
+export async function ibgeEstados(input: EstadosInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_estados", "localidades", async () => {
     try {
       let url = `${IBGE_API.LOCALIDADES}/estados`;
@@ -55,7 +71,7 @@ export async function ibgeEstados(input: EstadosInput): Promise<string> {
       const estados = await cachedFetch<UF[]>(url, key, CACHE_TTL.STATIC);
 
       if (estados.length === 0) {
-        return "Nenhum estado encontrado.";
+        return { markdown: "Nenhum estado encontrado.", structured: { estados: [], total: 0 } };
       }
 
       // Format the response
@@ -77,15 +93,18 @@ export async function ibgeEstados(input: EstadosInput): Promise<string> {
         alignment: ["right", "center", "left", "left"],
       });
 
-      return output;
+      return { markdown: output, structured: { estados: resultado, total: estados.length } };
     } catch (error) {
       if (error instanceof Error) {
-        return parseHttpError(error, "ibge_estados", { regiao: input.regiao }, [
-          "ibge_municipios",
-          "ibge_localidade",
-        ]);
+        return {
+          markdown: parseHttpError(error, "ibge_estados", { regiao: input.regiao }, [
+            "ibge_municipios",
+            "ibge_localidade",
+          ]),
+          isError: true,
+        };
       }
-      return ValidationErrors.emptyResult("ibge_estados");
+      return { markdown: ValidationErrors.emptyResult("ibge_estados"), isError: true };
     }
   });
 }
