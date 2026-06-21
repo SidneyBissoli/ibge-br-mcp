@@ -1,0 +1,216 @@
+{
+  "identifier": "sidneybissoli-ibge-br-mcp",
+  "name": "IBGE Brasil MCP",
+  "version": "3.0.2",
+  "description": "MCP server for live, sourced Brazilian public data from the official IBGE APIs - geography, census, economy, names, health (via SIDRA) and maps.",
+  "author": "Sidney Bissoli",
+  "authorUrl": "https://github.com/SidneyBissoli",
+  "homepage": "https://github.com/SidneyBissoli/ibge-br-mcp",
+  "icon": "🗺️",
+  "category": "data-analytics",
+  "tags": [
+    "ibge",
+    "brazil",
+    "brasil",
+    "census",
+    "censo",
+    "sidra",
+    "demographics",
+    "geography",
+    "open-data",
+    "statistics"
+  ],
+  "tools": [
+    {
+      "name": "ibge_estados",
+      "description": "List all 27 Brazilian states (UFs); filter by region, sort by id/name/abbreviation.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_municipios",
+      "description": "List Brazilian municipalities (5,570) by state or name; returns the 7-digit IBGE code.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_localidade",
+      "description": "Return the full record and hierarchy of one locality (state/municipality/district) by IBGE code.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_populacao",
+      "description": "Real-time Brazilian national population projection (estimate, birth/death rates, daily increment).",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_sidra",
+      "description": "Query any SIDRA table (Census, PNAD, GDP, etc.) by table code, territorial level and period.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_nomes",
+      "description": "Name frequency and rankings in Brazil by decade, sex and locality (IBGE Nomes/Censo).",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_noticias",
+      "description": "Search and list published IBGE news articles and survey releases.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_sidra_tabelas",
+      "description": "List and search available SIDRA tables (aggregates) by name or survey.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_sidra_metadados",
+      "description": "Return the structure/metadata of a SIDRA table (variables, levels, classifications, periods).",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_malhas",
+      "description": "Get administrative geographic meshes (Brazil/region/state/municipality) as GeoJSON, TopoJSON or SVG.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_pesquisas",
+      "description": "List IBGE surveys (Census, PNAD, GDP, etc.) and their tables.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_censo",
+      "description": "Query Demographic Census data (1970-2022) by theme without needing SIDRA table codes.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_indicadores",
+      "description": "Query IBGE economic and social indicator time series (GDP, IPCA, unemployment, etc.).",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_cnae",
+      "description": "Query the CNAE classification of economic activities by code or description.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_geocodigo",
+      "description": "Decode an IBGE code's structure or resolve a locality name to its code at any level.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_calendario",
+      "description": "Query the IBGE release and field-collection calendar (upcoming survey publications).",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_comparar",
+      "description": "Compare/rank up to 10 localities on one indicator with statistics.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_malhas_tema",
+      "description": "Get thematic geographic meshes (biomes, Legal Amazon, semi-arid, metropolitan regions, etc.).",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_vizinhos",
+      "description": "Find neighboring municipalities (same-mesoregion proximity), optionally with population data.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_datasaude",
+      "description": "Query Brazilian health indicators via IBGE SIDRA (mortality, births, life expectancy, sanitation, coverage).",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_paises",
+      "description": "Query international country data via IBGE (area, languages, currency, region).",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "ibge_cidades",
+      "description": "Single-municipality panel (Cidades@): population, HDI, GDP and other indicators, with history.",
+      "inputSchema": {
+        "type": "object"
+      }
+    }
+  ],
+  "resources": [
+    {
+      "name": "ufs",
+      "uri": "ibge://catalogos/ufs",
+      "description": "The 27 federation units with IBGE code (2 digits), abbreviation, name and region."
+    },
+    {
+      "name": "regioes",
+      "uri": "ibge://catalogos/regioes",
+      "description": "The 5 macro-regions with code, abbreviation, name and member UFs."
+    },
+    {
+      "name": "niveis-territoriais",
+      "uri": "ibge://catalogos/niveis-territoriais",
+      "description": "Territorial-level codes accepted by the SIDRA tools, with label and name."
+    },
+    {
+      "name": "tabelas-sidra",
+      "uri": "ibge://catalogos/tabelas-sidra",
+      "description": "Codes of the most-used SIDRA tables (population, GDP, IPCA, etc.) with description."
+    },
+    {
+      "name": "biomas",
+      "uri": "ibge://catalogos/biomas",
+      "description": "Codes of the 6 Brazilian biomes (used by ibge_malhas_tema)."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "comparar-municipios",
+      "description": "Compare 2 to 10 localities (municipalities or states) on an indicator and produce a commented ranking."
+    },
+    {
+      "name": "perfil-demografico",
+      "description": "Build a demographic profile of a locality combining population, census and socioeconomic indicators."
+    }
+  ]
+}
