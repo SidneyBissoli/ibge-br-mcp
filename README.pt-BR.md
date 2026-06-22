@@ -22,6 +22,16 @@ Pergunte a um LLM _"qual era a população de Belo Horizonte no Censo 2022?"_ e 
 
 Este servidor implementa o [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) para dar aos assistentes de IA acesso ao vivo e estruturado aos dados públicos geográficos, demográficos, econômicos e de saúde do Brasil — vindos das APIs do IBGE (inclusive os indicadores de saúde, servidos pelo SIDRA do IBGE).
 
+## Veja na prática
+
+Pergunte ao seu assistente, em português:
+
+- *"Qual era a população de Belo Horizonte no Censo 2022?"* → `ibge_cidades` / `ibge_censo`
+- *"Liste os municípios do Espírito Santo."* → `ibge_municipios`
+- *"Compare o PIB per capita das capitais do Sudeste."* → `ibge_comparar`
+
+As respostas vêm ao vivo das APIs oficiais do IBGE — valores exatos com a tabela e o período de onde vieram, não números chutados do treino.
+
 ## Recursos
 
 - **22 ferramentas especializadas** cobrindo todos os principais domínios de dados do IBGE
