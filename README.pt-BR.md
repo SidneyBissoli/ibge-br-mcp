@@ -122,6 +122,7 @@ Com 22 ferramentas, várias podem tocar no mesmo assunto. Guia rápido para as s
 | Ranquear/comparar 2–10 localidades num indicador | `ibge_comparar` |
 | Série temporal de indicador macro (PIB, IPCA, desemprego…) | `ibge_indicadores` |
 | Uma tabela SIDRA específica / controle fino | `ibge_sidra` |
+| O maior/menor/média/mediana de uma tabela inteira | `ibge_sidra`/`ibge_censo`/`ibge_indicadores`/`ibge_datasaude` com `estatisticas=true` |
 
 ### Indicadores econômicos
 
@@ -323,6 +324,22 @@ ibge_sidra(tabela="9514", nivel_territorial="6", localidades="3550308")
 | 106 | Região de Saúde |
 | 127 | Amazônia Legal |
 | 128 | Semiárido |
+
+**Modo estatístico** (também em `ibge_censo`, `ibge_indicadores`,
+`ibge_datasaude`): para perguntas de maior/menor/média/mediana/distribuição/
+ranking, passe `estatisticas=true` — o servidor computa a distribuição completa
+(mínimo/máximo/média/mediana/desvio-padrão/percentis rotulados) sobre **todos**
+os registros, antes da paginação, e devolve rankings `top`/`bottom` (`topN`,
+padrão 10). `agruparPor="<rótulo da coluna>"` ranqueia os grupos por soma
+decrescente, cada um com sua mini-distribuição.
+
+```
+# Qual estado tem a maior população estimada?
+ibge_sidra(tabela="6579", nivel_territorial="3", estatisticas=true)
+
+# Distribuição da população do Censo 2022 agrupada por UF
+ibge_censo(ano="2022", tema="populacao", nivel_territorial="3", estatisticas=true, agruparPor="Unidade da Federação")
+```
 
 ### ibge_censo
 

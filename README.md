@@ -122,6 +122,7 @@ With 22 tools, several can touch the same topic. Quick guide for the common over
 | Rank/compare 2–10 localities on one indicator | `ibge_comparar` |
 | A macro indicator time series (GDP, IPCA, unemployment…) | `ibge_indicadores` |
 | A specific SIDRA table / fine control | `ibge_sidra` |
+| The largest/smallest/mean/median across a whole table | `ibge_sidra`/`ibge_censo`/`ibge_indicadores`/`ibge_datasaude` with `estatisticas=true` |
 
 ### Economic indicators
 
@@ -323,6 +324,21 @@ ibge_sidra(tabela="9514", nivel_territorial="6", localidades="3550308")
 | 106 | Health Region |
 | 127 | Legal Amazon |
 | 128 | Semi-arid |
+
+**Statistics mode** (also on `ibge_censo`, `ibge_indicadores`, `ibge_datasaude`):
+for largest/smallest/mean/median/distribution/ranking questions, pass
+`estatisticas=true` — the server computes the full distribution (min/max/mean/
+median/std-dev/labeled percentiles) over **all** rows before pagination and
+returns `top`/`bottom` rankings (`topN`, default 10). `agruparPor="<column
+label>"` ranks groups by descending sum, each with its own mini-distribution.
+
+```
+# Which state has the largest estimated population?
+ibge_sidra(tabela="6579", nivel_territorial="3", estatisticas=true)
+
+# Census 2022 population distribution grouped by state
+ibge_censo(ano="2022", tema="populacao", nivel_territorial="3", estatisticas=true, agruparPor="Unidade da Federação")
+```
 
 ### ibge_censo
 

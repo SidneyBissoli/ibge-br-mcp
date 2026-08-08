@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-08-08
+
+Statistics engine over SIDRA plus usability: server-computed distributions and
+rankings on the four tabular tools, pt-BR display titles on every tool, server
+instructions on the handshake, and a smoke script for both transports. No new
+tools; no tool was renamed.
+
+### Added
+- **Statistics mode (`estatisticas=true`) on `ibge_sidra`, `ibge_censo`,
+  `ibge_indicadores`, and `ibge_datasaude`**, served by
+  [`@sbissoli/mcp-stats`](https://www.npmjs.com/package/@sbissoli/mcp-stats):
+  the server computes min/max/mean/median/std-dev/labeled percentiles over
+  **all** rows of the query — before pagination/truncation — and returns
+  `top`/`bottom` rankings (`topN`, default 10, cap 100). `agruparPor="<column
+  label>"` (accent/case-insensitive) ranks groups by descending sum, each with
+  its own mini-distribution. SIDRA absence markers (`-`, `..`, `...`, `X`) are
+  excluded from *n* and reported via `registrosSemValor`; queries mixing
+  several variables auto-group by "Variável" with an explanatory `aviso`.
+  Extremes are identified by the columns that vary across the result (constant
+  columns are context, not identity). In this mode `pagina`/`campos`/`formato`
+  are ignored and `registros` comes empty; each tool's `outputSchema` gained
+  the optional typed `estatisticas` block.
+- **`title` on all 22 tools** — pt-BR display names (the description stays
+  English, per repo convention; clients show the title to humans).
+- **Server `instructions` on the MCP handshake** (STDIO and Worker): the
+  disambiguation map across the overlapping tool clusters (population,
+  economic, localities, SIDRA flow, meshes) plus guidance to reach the
+  statistics modes and to verbalize percentiles from their `rotulo`.
+- **Smoke script** `scripts/smoke-mcp.mjs` (ported from ilo-mcp-server):
+  exercises initialize/tools/list/tool calls — including the statistics modes
+  and a pedagogical-error path — against the hosted Worker
+  (`node scripts/smoke-mcp.mjs`) or the local STDIO build
+  (`node scripts/smoke-mcp.mjs --stdio`).
+
 ## [3.1.0] - 2026-08-08
 
 Foundation release: MCP SDK v2 + zod 4, and the Cloudflare Worker rebuilt on
