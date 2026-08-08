@@ -8,6 +8,12 @@ import { isValidPeriod, isValidTerritorialLevel, formatValidationError } from ".
 import { territorialLevelHint, territorialLevelList, ALL_TERRITORIAL_LEVELS } from "../config.js";
 import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
 import {
+  extrairPeriodoSidra,
+  NOTA_DERIVACAO_ESTATISTICAS,
+  provenienciaIbge,
+  type Provenance,
+} from "../provenance.js";
+import {
   agruparPorParam,
   estatisticasBlocoSchema,
   estatisticasParam,
@@ -186,6 +192,22 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
         throw error;
       }
 
+      const pesquisa = TABELAS_COMUNS[input.tabela]
+        ? `SIDRA, Tabela ${input.tabela} (${TABELAS_COMUNS[input.tabela]})`
+        : `SIDRA, Tabela ${input.tabela}`;
+      const proveniencia = (opts?: {
+        dataVintage?: string | null;
+        derivado?: { nota: string };
+      }): Provenance =>
+        provenienciaIbge({
+          fonte: "SIDRA",
+          url,
+          chaveCache: key,
+          pesquisa,
+          dataset: input.tabela,
+          ...opts,
+        });
+
       // No data is a valid (empty) result, not a failure: return an empty
       // structured payload plus guidance, without isError.
       if (!data || data.length === 0) {
@@ -195,20 +217,30 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
             "Verifique se a tabela e parâmetros estão corretos. Use ibge_sidra_metadados para consultar os níveis e períodos disponíveis."
           ),
           structured: emptyStructured(input.tabela),
+          provenance: proveniencia(),
         };
       }
 
+      const { colunas, registros } = sidraRecords(data);
+      const dataVintage = extrairPeriodoSidra(colunas, registros);
+
       // Statistics mode (D2): full distribution over ALL data rows, before any
       // pagination or field selection — `pagina`/`campos`/`formato` are ignored.
+      // The aggregates are a server-side derivation → derived block.
       if (input.estatisticas) {
-        return buildSidraStatsResult(data, input);
+        return buildSidraStatsResult(
+          data,
+          input,
+          proveniencia({ dataVintage, derivado: { nota: NOTA_DERIVACAO_ESTATISTICAS } })
+        );
       }
 
       return buildSidraResult(
         selectSidraColumns(data, input.campos),
         input.tabela,
         input.pagina ?? 1,
-        input.formato ?? "tabela"
+        input.formato ?? "tabela",
+        proveniencia({ dataVintage })
       );
     } catch (error) {
       if (error instanceof Error) {
@@ -249,7 +281,8 @@ function buildSidraResult(
   data: SidraRecord[],
   tabela: string,
   pagina: number,
-  formato: string
+  formato: string,
+  provenance: Provenance
 ): StructuredToolResult {
   const tabelaNome = TABELAS_COMUNS[tabela] || `Tabela ${tabela}`;
   const { colunas, registros: allRegistros, totalRegistros } = sidraRecords(data);
@@ -269,14 +302,18 @@ function buildSidraResult(
   const structured = { tabela, nome: tabelaNome, totalRegistros, colunas, registros, paginacao };
 
   if (formato === "json") {
-    return { markdown: JSON.stringify(structured, null, 2), structured };
+    return { markdown: JSON.stringify(structured, null, 2), structured, provenance };
   }
 
   let output = `## SIDRA - ${tabelaNome}\n\n`;
   output += `Total de registros: ${totalRegistros}\n\n`;
 
   if (totalRegistros === 0) {
-    return { markdown: output + "Nenhum dado encontrado para os filtros aplicados.", structured };
+    return {
+      markdown: output + "Nenhum dado encontrado para os filtros aplicados.",
+      structured,
+      provenance,
+    };
   }
 
   const rows = registros.map((reg) =>
@@ -295,7 +332,7 @@ function buildSidraResult(
     output += `\n_Página ${page} de ${totalPaginas}. Use pagina=${page + 1} para a próxima página (ou formato='json' para os dados completos)._\n`;
   }
 
-  return { markdown: output, structured };
+  return { markdown: output, structured, provenance };
 }
 
 /**
@@ -303,7 +340,11 @@ function buildSidraResult(
  * plus the tool's usual metadata. `registros` stays empty — the aggregates
  * replace the listing (use the default mode to page through raw records).
  */
-function buildSidraStatsResult(data: SidraRecord[], input: SidraInput): StructuredToolResult {
+function buildSidraStatsResult(
+  data: SidraRecord[],
+  input: SidraInput,
+  provenance: Provenance
+): StructuredToolResult {
   const tabelaNome = TABELAS_COMUNS[input.tabela] || `Tabela ${input.tabela}`;
   const dados = sidraRecords(data);
   const resultado = estatisticasSidra(dados, {
@@ -335,7 +376,7 @@ function buildSidraStatsResult(data: SidraRecord[], input: SidraInput): Structur
     `Total de registros: ${dados.totalRegistros}\n\n` +
     resultado.markdown;
 
-  return { markdown, structured };
+  return { markdown, structured, provenance };
 }
 
 /**

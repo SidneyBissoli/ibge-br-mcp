@@ -8,6 +8,7 @@ import { isValidIbgeCode, formatValidationError } from "../validation.js";
 import { resolveUf } from "../config.js";
 import { fetchWithRetry, RETRY_PRESETS } from "../retry.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const vizinhosSchema = z.object({
@@ -170,9 +171,20 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<StructuredTool
         vizinhosData = await enrichVizinhosData(vizinhosData);
       }
 
+      // Principal data fetch: the state municipality list from which the
+      // same-mesoregion neighbors are selected (selection, not derivation).
+      const municipiosUrl = `${IBGE_API.LOCALIDADES}/estados/${ufCode}/municipios`;
+      const provenance = provenienciaIbge({
+        fonte: "LOCALIDADES",
+        url: municipiosUrl,
+        chaveCache: cacheKey(municipiosUrl),
+        pesquisa: "API de Localidades (municípios vizinhos)",
+      });
+
       const markdown = formatResponse(municipioNome, municipioId, vizinhosData, input);
       return {
         markdown,
+        provenance,
         structured: {
           municipio: { codigo: municipioId, nome: municipioNome },
           vizinhos: vizinhosData.map((v) => ({

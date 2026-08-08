@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const estadosSchema = z.object({
@@ -70,8 +71,19 @@ export async function ibgeEstados(input: EstadosInput): Promise<StructuredToolRe
       const key = cacheKey(url);
       const estados = await cachedFetch<UF[]>(url, key, CACHE_TTL.STATIC);
 
+      const provenance = provenienciaIbge({
+        fonte: "LOCALIDADES",
+        url,
+        chaveCache: key,
+        pesquisa: "API de Localidades (estados)",
+      });
+
       if (estados.length === 0) {
-        return { markdown: "Nenhum estado encontrado.", structured: { estados: [], total: 0 } };
+        return {
+          markdown: "Nenhum estado encontrado.",
+          structured: { estados: [], total: 0 },
+          provenance,
+        };
       }
 
       // Format the response
@@ -93,7 +105,11 @@ export async function ibgeEstados(input: EstadosInput): Promise<StructuredToolRe
         alignment: ["right", "center", "left", "left"],
       });
 
-      return { markdown: output, structured: { estados: resultado, total: estados.length } };
+      return {
+        markdown: output,
+        structured: { estados: resultado, total: estados.length },
+        provenance,
+      };
     } catch (error) {
       if (error instanceof Error) {
         return {

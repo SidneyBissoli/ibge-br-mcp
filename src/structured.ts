@@ -11,12 +11,24 @@
 
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { normalizeText } from "./config.js";
+import {
+  ATTRIBUTION_META_KEY,
+  PROVENANCE_META_KEY,
+  projetarProveniencia,
+  rodapeProveniencia,
+  type Provenance,
+} from "./provenance.js";
 
 export interface StructuredToolResult {
   /** Always present: the Markdown text channel. */
   markdown: string;
   /** Typed payload, validated against the tool's outputSchema (success only). */
   structured?: Record<string, unknown>;
+  /**
+   * Canonical provenance block (contract v1.0) — attached by every tool on
+   * success; emitted by `toMcpResult` on the three channels of the contract.
+   */
+  provenance?: Provenance;
   /** When true, this is an error result; structured-output validation is skipped. */
   isError?: boolean;
 }
@@ -25,12 +37,28 @@ export interface StructuredToolResult {
  * Converts a tool's `StructuredToolResult` into the MCP `CallToolResult`.
  * - Error → `{ content, isError: true }` (no structured payload required).
  * - Success → `{ content, structuredContent }` when a payload is present.
+ * - With `provenance`, the three channels of the contract v1.0 are emitted:
+ *   the concise block + `attribution` inside `structuredContent` (parseable,
+ *   visible to the model), a mirror under namespaced `_meta` keys (audit/UI,
+ *   zero model tokens), and the compact text footer as a second content block.
  */
 export function toMcpResult(result: StructuredToolResult): CallToolResult {
   const content = [{ type: "text" as const, text: result.markdown }];
 
   if (result.isError) {
     return { content, isError: true };
+  }
+
+  if (result.provenance !== undefined) {
+    const projetado = projetarProveniencia(result.provenance);
+    return {
+      content: [...content, { type: "text" as const, text: rodapeProveniencia(result.provenance) }],
+      structuredContent: { ...(result.structured ?? {}), ...projetado },
+      _meta: {
+        [PROVENANCE_META_KEY]: projetado.provenance,
+        [ATTRIBUTION_META_KEY]: projetado.attribution,
+      },
+    };
   }
 
   if (result.structured !== undefined) {

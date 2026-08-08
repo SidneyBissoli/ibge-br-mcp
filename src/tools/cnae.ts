@@ -6,6 +6,7 @@ import { createMarkdownTable, truncate } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidCnaeCode, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Types for CNAE data
 interface CnaeSecao {
@@ -217,6 +218,12 @@ async function getCnaeByCode(codigo: string): Promise<StructuredToolResult> {
   return {
     markdown: formatCnaeDetail(data, level),
     structured: { modo: "codigo", codigo: buildCnaeCodeStructured(data, level) },
+    provenance: provenienciaIbge({
+      fonte: "CNAE",
+      url: endpoint,
+      chaveCache: key,
+      pesquisa: "API CNAE",
+    }),
   };
 }
 
@@ -332,6 +339,12 @@ async function searchCnae(
         resultados,
       },
     },
+    provenance: provenienciaIbge({
+      fonte: "CNAE",
+      url: endpoint,
+      chaveCache: key,
+      pesquisa: "API CNAE",
+    }),
   };
 }
 
@@ -377,6 +390,12 @@ async function listCnaeByLevel(nivel: string, limite: number): Promise<Structure
         registros: display.map((item) => ({ id: item.id, descricao: item.descricao })),
       },
     },
+    provenance: provenienciaIbge({
+      fonte: "CNAE",
+      url: endpoint,
+      chaveCache: key,
+      pesquisa: "API CNAE",
+    }),
   };
 }
 
@@ -440,7 +459,15 @@ ibge_cnae(nivel="divisoes", limite=50)
 ibge_cnae(busca="restaurante", nivel="classes")
 \`\`\``;
 
-  return { markdown, structured: { modo: "estrutura" } };
+  return {
+    markdown,
+    structured: { modo: "estrutura" },
+    provenance: provenienciaIbge({
+      fonte: "CNAE",
+      url: IBGE_API.CNAE,
+      pesquisa: "estrutura da classificação CNAE mantida pelo servidor",
+    }),
+  };
 }
 
 function formatCnaeDetail(

@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const pesquisasSchema = z.object({
@@ -95,7 +96,16 @@ export async function ibgePesquisas(input: PesquisasInput): Promise<StructuredTo
           };
         }
 
-        return formatPesquisaDetalhes(pesquisa);
+        return {
+          ...formatPesquisaDetalhes(pesquisa),
+          provenance: provenienciaIbge({
+            fonte: "AGREGADOS",
+            url,
+            chaveCache: key,
+            pesquisa: `API de Agregados (tabelas da pesquisa ${pesquisa.id})`,
+            dataset: pesquisa.id,
+          }),
+        };
       }
 
       // Filter by busca if specified
@@ -117,7 +127,15 @@ export async function ibgePesquisas(input: PesquisasInput): Promise<StructuredTo
         };
       }
 
-      return formatPesquisasLista(filtered, input);
+      return {
+        ...formatPesquisasLista(filtered, input),
+        provenance: provenienciaIbge({
+          fonte: "AGREGADOS",
+          url,
+          chaveCache: key,
+          pesquisa: "API de Agregados (catálogo de pesquisas do IBGE)",
+        }),
+      };
     } catch (error) {
       if (error instanceof Error) {
         return {

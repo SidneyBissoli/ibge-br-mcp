@@ -3,7 +3,12 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
-import type { StructuredToolResult } from "../structured.js";
+import { type StructuredToolResult, sidraRecords } from "../structured.js";
+import { extrairPeriodoSidra, provenienciaIbge } from "../provenance.js";
+
+/** Derivation note for the data-comparison paths (server-side computation). */
+const NOTA_DERIVACAO_COMPARACAO =
+  "Comparação, ranking e variação computados pelo servidor a partir dos valores brutos do SIDRA; os valores individuais permanecem os originais do IBGE.";
 
 // Pre-defined comparison templates
 const TEMPLATES_COMPARACAO: Record<
@@ -141,9 +146,17 @@ export const compararOutputSchema = z.object({
  */
 export async function ibgeComparar(input: CompararInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_comparar", "agregados", async () => {
-    // List available indicators (catalog in the text channel)
+    // List available indicators (catalog in the text channel; no upstream fetch)
     if (input.indicador === "listar") {
-      return { markdown: listIndicadoresComparacao(), structured: { localidades: [] } };
+      return {
+        markdown: listIndicadoresComparacao(),
+        structured: { localidades: [] },
+        provenance: provenienciaIbge({
+          fonte: "SIDRA",
+          url: IBGE_API.SIDRA,
+          pesquisa: "catálogo de indicadores de comparação mantido pelo servidor",
+        }),
+      };
     }
 
     const template = TEMPLATES_COMPARACAO[input.indicador || "populacao"];
@@ -196,6 +209,8 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
 
       const data = await cachedFetch<Record<string, string>[]>(url, key, CACHE_TTL.SHORT);
 
+      const pesquisa = `SIDRA — comparação de localidades (Tabela ${template.tabela})`;
+
       if (!data || data.length <= 1) {
         // No data is a valid (empty) result, not a failure.
         return {
@@ -206,19 +221,38 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
             tabela: template.tabela,
             localidades: [],
           },
+          provenance: provenienciaIbge({
+            fonte: "SIDRA",
+            url,
+            chaveCache: key,
+            pesquisa,
+            dataset: template.tabela,
+          }),
         };
       }
 
-      // Get locality names
+      // Get locality names (helper lookup — not part of provenance)
       const localidadeNames = await getLocalidadeNames(localidadesList, nivel);
 
-      return formatCompararResponse(
-        data,
-        template,
-        localidadeNames,
-        input.formato || "tabela",
-        input.indicador
-      );
+      const { colunas, registros } = sidraRecords(data);
+      return {
+        ...formatCompararResponse(
+          data,
+          template,
+          localidadeNames,
+          input.formato || "tabela",
+          input.indicador
+        ),
+        provenance: provenienciaIbge({
+          fonte: "SIDRA",
+          url,
+          chaveCache: key,
+          pesquisa,
+          dataset: template.tabela,
+          dataVintage: extrairPeriodoSidra(colunas, registros),
+          derivado: { nota: NOTA_DERIVACAO_COMPARACAO },
+        }),
+      };
     } catch (error) {
       if (error instanceof Error) {
         return { markdown: formatCompararError(error.message, input, template), isError: true };

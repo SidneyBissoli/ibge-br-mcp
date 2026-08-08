@@ -4,6 +4,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 import pkg from "../package.json" with { type: "json" };
 
 import { toMcpResult, type StructuredToolResult } from "./structured.js";
+import { comProveniencia } from "./provenance.js";
 
 import {
   estadosSchema,
@@ -195,7 +196,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown table.`,
       inputSchema: estadosSchema,
-      outputSchema: estadosOutputSchema,
+      outputSchema: comProveniencia(estadosOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_estados", ibgeEstados)
@@ -226,7 +227,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown table.`,
       inputSchema: municipiosSchema,
-      outputSchema: municipiosOutputSchema,
+      outputSchema: comProveniencia(municipiosOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_municipios", ibgeMunicipios)
@@ -257,7 +258,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown record.`,
       inputSchema: localidadeSchema,
-      outputSchema: localidadeOutputSchema,
+      outputSchema: comProveniencia(localidadeOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_localidade", ibgeLocalidade)
@@ -289,7 +290,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE population-projection API. Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: populacaoSchema,
-      outputSchema: populacaoOutputSchema,
+      outputSchema: comProveniencia(populacaoOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_populacao", ibgePopulacao)
@@ -336,7 +337,7 @@ Use ibge_sidra_tabelas and ibge_sidra_metadados to find a table code and its str
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: sidraSchema,
-      outputSchema: sidraOutputSchema,
+      outputSchema: comProveniencia(sidraOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_sidra", ibgeSidra)
@@ -369,7 +370,7 @@ Examples:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Nomes (Censo) API. Returns a Markdown table.`,
       inputSchema: nomesSchema,
-      outputSchema: nomesOutputSchema,
+      outputSchema: comProveniencia(nomesOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_nomes", ibgeNomes)
@@ -404,7 +405,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Notícias API. Returns a Markdown list.`,
       inputSchema: noticiasSchema,
-      outputSchema: noticiasOutputSchema,
+      outputSchema: comProveniencia(noticiasOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_noticias", ibgeNoticias)
@@ -440,7 +441,7 @@ For common data, a wrapper is usually easier: ibge_censo, ibge_indicadores, ibge
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns a Markdown table.`,
       inputSchema: sidraTabelasSchema,
-      outputSchema: sidraTabelasOutputSchema,
+      outputSchema: comProveniencia(sidraTabelasOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_sidra_tabelas", ibgeSidraTabelas)
@@ -471,7 +472,7 @@ Use this after finding a table code (ibge_sidra_tabelas) and before querying wit
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown.`,
       inputSchema: sidraMetadadosSchema,
-      outputSchema: sidraMetadadosOutputSchema,
+      outputSchema: comProveniencia(sidraMetadadosOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_sidra_metadados", ibgeSidraMetadados)
@@ -511,7 +512,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Malhas API. Returns the mesh in the requested format (GeoJSON, TopoJSON, or SVG).`,
       inputSchema: malhasSchema,
-      outputSchema: malhasOutputSchema,
+      outputSchema: comProveniencia(malhasOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_malhas", ibgeMalhas)
@@ -546,7 +547,7 @@ This lists surveys, not data. To find table codes use ibge_sidra_tabelas; to que
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA/Pesquisas API. Returns a Markdown list.`,
       inputSchema: pesquisasSchema,
-      outputSchema: pesquisasOutputSchema,
+      outputSchema: comProveniencia(pesquisasOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_pesquisas", ibgePesquisas)
@@ -590,7 +591,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: censoSchema,
-      outputSchema: censoOutputSchema,
+      outputSchema: comProveniencia(censoOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_censo", ibgeCenso)
@@ -643,7 +644,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: indicadoresSchema,
-      outputSchema: indicadoresOutputSchema,
+      outputSchema: comProveniencia(indicadoresOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_indicadores", ibgeIndicadores)
@@ -679,7 +680,7 @@ Examples:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE CNAE API. Returns Markdown.`,
       inputSchema: cnaeSchema,
-      outputSchema: cnaeOutputSchema,
+      outputSchema: comProveniencia(cnaeOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_cnae", ibgeCnae)
@@ -717,7 +718,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns Markdown.`,
       inputSchema: geocodigoSchema,
-      outputSchema: geocodigoOutputSchema,
+      outputSchema: comProveniencia(geocodigoOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_geocodigo", ibgeGeocodigo)
@@ -751,7 +752,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Calendário API. Returns a Markdown list.`,
       inputSchema: calendarioSchema,
-      outputSchema: calendarioOutputSchema,
+      outputSchema: comProveniencia(calendarioOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_calendario", ibgeCalendario)
@@ -790,7 +791,7 @@ For a single locality, use ibge_cidades (municipal panel), ibge_censo, or ibge_s
 
 Behavior: read-only and idempotent — a live GET against the public IBGE APIs (SIDRA and Localidades). Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: compararSchema,
-      outputSchema: compararOutputSchema,
+      outputSchema: comProveniencia(compararOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_comparar", ibgeComparar)
@@ -833,7 +834,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Malhas API. Returns the mesh in the requested format (GeoJSON, TopoJSON, or SVG).`,
       inputSchema: malhasTemaSchema,
-      outputSchema: malhasTemaOutputSchema,
+      outputSchema: comProveniencia(malhasTemaOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_malhas_tema", ibgeMalhasTema)
@@ -864,7 +865,7 @@ For listing/searching municipalities, use ibge_municipios.
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown list.`,
       inputSchema: vizinhosSchema,
-      outputSchema: vizinhosOutputSchema,
+      outputSchema: comProveniencia(vizinhosOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_vizinhos", ibgeVizinhos)
@@ -911,7 +912,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: datasaudeSchema,
-      outputSchema: datasaudeOutputSchema,
+      outputSchema: comProveniencia(datasaudeOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_datasaude", ibgeDatasaude)
@@ -943,7 +944,7 @@ Examples:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Países API. Returns Markdown.`,
       inputSchema: paisesSchema,
-      outputSchema: paisesOutputSchema,
+      outputSchema: comProveniencia(paisesOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_paises", ibgePaises)
@@ -980,7 +981,7 @@ Use a different tool when:
 
 Behavior: read-only and idempotent — a live GET against the public IBGE APIs (Cidades@/agregados). Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: cidadesSchema,
-      outputSchema: cidadesOutputSchema,
+      outputSchema: comProveniencia(cidadesOutputSchema),
       annotations: READ_ONLY,
     },
     handle("ibge_cidades", ibgeCidades)

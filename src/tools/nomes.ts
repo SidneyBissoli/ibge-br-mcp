@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber, buildQueryString } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for frequency search
 export const nomesFrequenciaSchema = z.object({
@@ -339,6 +340,12 @@ async function ibgeNomesFrequenciaStructured(
       return {
         markdown: formatFrequenciaResponse(data),
         structured: { tipo: "frequencia", frequencia },
+        provenance: provenienciaIbge({
+          fonte: "NOMES",
+          url,
+          chaveCache: key,
+          pesquisa: "API de Nomes (frequência de nomes, Censo 2010)",
+        }),
       };
     } catch (error) {
       if (error instanceof Error) {
@@ -394,6 +401,12 @@ async function ibgeNomesRankingStructured(
             itens,
           },
         },
+        provenance: provenienciaIbge({
+          fonte: "NOMES",
+          url,
+          chaveCache: key,
+          pesquisa: "API de Nomes (ranking de nomes, Censo 2010)",
+        }),
       };
     } catch (error) {
       if (error instanceof Error) {

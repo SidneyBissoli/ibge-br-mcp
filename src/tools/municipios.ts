@@ -6,6 +6,7 @@ import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { normalizeUf, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const municipiosSchema = z.object({
@@ -141,7 +142,16 @@ export async function ibgeMunicipios(input: MunicipiosInput): Promise<Structured
         structured.busca = input.busca;
       }
 
-      return { markdown: output, structured };
+      return {
+        markdown: output,
+        structured,
+        provenance: provenienciaIbge({
+          fonte: "LOCALIDADES",
+          url,
+          chaveCache: key,
+          pesquisa: "API de Localidades (municípios)",
+        }),
+      };
     } catch (error) {
       if (error instanceof Error) {
         return {

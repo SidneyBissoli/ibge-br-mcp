@@ -7,6 +7,12 @@ import { ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
 import {
+  extrairPeriodoSidra,
+  NOTA_DERIVACAO_ESTATISTICAS,
+  provenienciaIbge,
+  type Provenance,
+} from "../provenance.js";
+import {
   agruparPorParam,
   estatisticasBlocoSchema,
   estatisticasParam,
@@ -218,6 +224,15 @@ function emptyMeta(): Record<string, unknown> {
   return { totalRegistros: 0, colunas: [], registros: [] };
 }
 
+/** Provenance for the static indicator catalog maintained in code (no upstream fetch). */
+function provenienciaCatalogo(): Provenance {
+  return provenienciaIbge({
+    fonte: "SIDRA",
+    url: IBGE_API.SIDRA,
+    pesquisa: "catálogo de indicadores mantido pelo servidor",
+  });
+}
+
 /**
  * Fetches economic and social indicators from IBGE
  */
@@ -225,18 +240,30 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
   return withMetrics("ibge_indicadores", "agregados", async () => {
     // List available indicators (catalog goes in the text channel)
     if (input.indicador === "listar" || (!input.indicador && !input.categoria)) {
-      return { markdown: listIndicadores(input.categoria), structured: emptyMeta() };
+      return {
+        markdown: listIndicadores(input.categoria),
+        structured: emptyMeta(),
+        provenance: provenienciaCatalogo(),
+      };
     }
 
     // Get indicator by category
     if (input.categoria && input.categoria !== "todos" && !input.indicador) {
-      return { markdown: listIndicadores(input.categoria), structured: emptyMeta() };
+      return {
+        markdown: listIndicadores(input.categoria),
+        structured: emptyMeta(),
+        provenance: provenienciaCatalogo(),
+      };
     }
 
     // Get specific indicator
     const indicadorKey = input.indicador?.toLowerCase();
     if (!indicadorKey) {
-      return { markdown: listIndicadores(), structured: emptyMeta() };
+      return {
+        markdown: listIndicadores(),
+        structured: emptyMeta(),
+        provenance: provenienciaCatalogo(),
+      };
     }
 
     const indicador = INDICADORES_CONHECIDOS[indicadorKey];
@@ -300,6 +327,20 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
 
       const meta = { indicador: indicadorKey, nome: indicador.nome, tabela: indicador.tabela };
 
+      const pesquisa = `SIDRA, Tabela ${indicador.tabela} (${indicador.nome})`;
+      const proveniencia = (opts?: {
+        dataVintage?: string | null;
+        derivado?: { nota: string };
+      }): Provenance =>
+        provenienciaIbge({
+          fonte: "SIDRA",
+          url,
+          chaveCache: key,
+          pesquisa,
+          dataset: indicador.tabela,
+          ...opts,
+        });
+
       if (!data || data.length === 0) {
         // No data is a valid (empty) result, not a failure.
         return {
@@ -310,8 +351,13 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
             "Tente ajustar os períodos ou localidades."
           ),
           structured: { ...meta, ...sidraRecords(data) },
+          provenance: proveniencia(),
         };
       }
+
+      // Reference period from the FULL result, before field selection/truncation.
+      const completo = sidraRecords(data);
+      const dataVintage = extrairPeriodoSidra(completo.colunas, completo.registros);
 
       // Format output
       let output = `## ${indicador.nome}\n\n`;
@@ -339,6 +385,7 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
             registros: [],
             estatisticas: resultado.bloco,
           },
+          provenance: proveniencia({ dataVintage, derivado: { nota: NOTA_DERIVACAO_ESTATISTICAS } }),
         };
       }
 
@@ -350,11 +397,12 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
         return {
           markdown: output + "```json\n" + JSON.stringify(filtered, null, 2) + "\n```",
           structured,
+          provenance: proveniencia({ dataVintage }),
         };
       }
 
       output += formatIndicadorTable(filtered);
-      return { markdown: output, structured };
+      return { markdown: output, structured, provenance: proveniencia({ dataVintage }) };
     } catch (error) {
       if (error instanceof Error) {
         return {

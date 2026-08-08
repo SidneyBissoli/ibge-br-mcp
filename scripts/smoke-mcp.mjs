@@ -116,13 +116,29 @@ const semTitle = tools.filter((t) => !t.title);
 if (semTitle.length > 0) fail(`tools sem title: ${semTitle.map((t) => t.name).join(", ")}`);
 console.log("titles: ok nas 22");
 
-// 1) Tool simples
+// 1) Tool simples + bloco de proveniência (contrato v1.0, três canais)
 const estados = await rpc("tools/call", {
   name: "ibge_estados",
   arguments: { regiao: "SE" },
 });
 if (estados.isError) fail("ibge_estados retornou erro");
 console.log("\nibge_estados SE: ok,", Object.keys(estados.structuredContent ?? {}));
+
+const prov = estados.structuredContent?.provenance;
+if (!prov) fail("bloco de proveniência ausente em structuredContent");
+const chaves = Object.keys(prov).join(",");
+if (chaves !== "source,source_url,data_vintage,retrieved_at,citation,license")
+  fail(`chaves do bloco concise fora do contrato: ${chaves}`);
+if (!/^Fonte: IBGE — .+, extraído em \d{2}\/\d{2}\/\d{4}\.$/.test(prov.citation))
+  fail(`citation fora do padrão: ${prov.citation}`);
+if (!Array.isArray(estados.structuredContent.attribution) || estados.structuredContent.attribution.length === 0)
+  fail("attribution ausente em structuredContent");
+const rodape = estados.content?.[estados.content.length - 1]?.text ?? "";
+if (!rodape.includes("A referência completa desta informação pode ser solicitada nesta própria conversa."))
+  fail("rodapé de proveniência ausente no canal de texto");
+const metaProv = estados._meta?.["br.com.sidneybissoli.ibge/provenance"];
+if (!metaProv) fail("espelho de proveniência ausente em _meta");
+console.log("provenance: ok (structuredContent + rodapé + _meta) |", prov.source);
 
 // 2) D2 — distribuição + top/bottom (população por UF)
 const stats = await rpc("tools/call", {
@@ -132,6 +148,7 @@ const stats = await rpc("tools/call", {
 if (stats.isError) fail("ibge_sidra estatisticas=true retornou erro");
 const bloco = stats.structuredContent?.estatisticas;
 if (!bloco?.distribuicao) fail("bloco estatisticas.distribuicao ausente");
+if (!stats.structuredContent?.provenance) fail("proveniência ausente no modo estatísticas (derivado)");
 console.log("\nibge_sidra estatisticas: n =", bloco.distribuicao.n, "| top[0] =", JSON.stringify(bloco.top?.[0]));
 if (stats.structuredContent.registros.length !== 0) fail("registros deveriam vir vazios no modo estatísticas");
 

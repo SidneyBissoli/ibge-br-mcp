@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const paisesSchema = z.object({
@@ -242,6 +243,12 @@ async function listarPaises(busca?: string, regiao?: string): Promise<Structured
       ...(busca ? { busca } : {}),
       ...(regiao ? { regiao } : {}),
     },
+    provenance: provenienciaIbge({
+      fonte: "PAISES",
+      url,
+      chaveCache: key,
+      pesquisa: "API de Países",
+    }),
   };
 }
 
@@ -370,7 +377,16 @@ async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
   output += "- Use `ibge_paises tipo='indicadores'` para ver indicadores disponíveis\n";
   output += "- Use `ibge_paises tipo='listar' regiao='americas'` para ver países da mesma região\n";
 
-  return { markdown: output, structured: { tipo: "detalhes", pais: detalhes } };
+  return {
+    markdown: output,
+    structured: { tipo: "detalhes", pais: detalhes },
+    provenance: provenienciaIbge({
+      fonte: "PAISES",
+      url,
+      chaveCache: key,
+      pesquisa: "API de Países",
+    }),
+  };
 }
 
 function listarIndicadores(): StructuredToolResult {
@@ -396,5 +412,13 @@ function listarIndicadores(): StructuredToolResult {
   output += 'ibge_paises tipo="buscar" busca="Argentina"\n';
   output += "```\n";
 
-  return { markdown: output, structured: { tipo: "indicadores", indicadores: indicadoresEstruturados } };
+  return {
+    markdown: output,
+    structured: { tipo: "indicadores", indicadores: indicadoresEstruturados },
+    provenance: provenienciaIbge({
+      fonte: "PAISES",
+      url: IBGE_API.PAISES,
+      pesquisa: "catálogo de indicadores de países mantido pelo servidor",
+    }),
+  };
 }

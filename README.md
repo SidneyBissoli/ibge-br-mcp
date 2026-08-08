@@ -36,6 +36,9 @@ The answers come live from the official IBGE APIs — exact figures with the tab
 ## Features
 
 - **22 specialized tools** covering all major IBGE data domains
+- **Provenance block on every response** — source, canonical URL, reference
+  period, real extraction timestamp, ready-to-use citation, and legal regime
+  (see [Data provenance](#data-provenance))
 - **Reference resources & analysis prompts** (MCP catalogs + ready-made templates)
 - **460 automated tests** with 97%+ core coverage
 - **Automatic caching** with configurable TTL for optimal performance
@@ -43,6 +46,31 @@ The answers come live from the official IBGE APIs — exact figures with the tab
 - **Comprehensive validation** for all input parameters
 - **Standardized error handling** with helpful suggestions
 - **Full TypeScript support** with strict typing
+
+## Data provenance
+
+Since v3.3.0 every successful tool response carries a **provenance block**
+([portfolio contract v1.0](https://www.npmjs.com/package/@sbissoli/mcp-provenance)),
+so each number is citable, auditable, and reproducible. The block is emitted on
+three channels:
+
+1. `structuredContent.provenance` (parseable, visible to the model) — exactly
+   six keys: `source` (the IBGE API queried), `source_url` (canonical URL that
+   reproduces the query), `data_vintage` (reference period when the source
+   exposes one; `null` otherwise), `retrieved_at` (the REAL upstream extraction
+   instant, preserved across cache hits, Brasília time), `citation`
+   ("Fonte: IBGE — [pesquisa/tabela], [URL], extraído em [data]."), and
+   `license` — plus `attribution`, the canonical list of source URLs.
+2. `_meta` under `br.com.sidneybissoli.ibge/provenance` and `.../attribution`
+   (out-of-band mirror for audit/UI, zero model tokens).
+3. A compact text footer appended to the Markdown, for text-only clients.
+
+The IBGE APIs declare no license of their own; the legal regime is Brazil's
+open-data framework — Lei 12.527/2011 (LAI) and Decreto 8.777/2016
+(unrestricted reuse, free use, obligation limited to crediting the source).
+Statistics-mode responses (`estatisticas=true`) and `ibge_comparar` are marked
+`derived` with an explanatory note in the canonical block, since the
+aggregates are computed server-side from the raw IBGE values.
 
 ## Available Tools
 

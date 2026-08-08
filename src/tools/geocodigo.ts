@@ -6,6 +6,7 @@ import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { resolveUf } from "../config.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Map of state codes to names
 const ESTADOS_MAP: Record<number, { sigla: string; nome: string; regiao: string }> = {
@@ -309,6 +310,12 @@ async function decodeMunicipio(codigo: string): Promise<StructuredToolResult> {
         hierarquia,
         codigoSidra: codigo.substring(0, 6),
       },
+      provenance: provenienciaIbge({
+        fonte: "LOCALIDADES",
+        url: endpoint,
+        chaveCache: key,
+        pesquisa: "API de Localidades (municípios)",
+      }),
     };
   } catch {
     return {
@@ -377,6 +384,12 @@ async function decodeDistrito(codigo: string): Promise<StructuredToolResult> {
           { nivel: "Distrito", codigo: data.id, nome: data.nome },
         ],
       },
+      provenance: provenienciaIbge({
+        fonte: "LOCALIDADES",
+        url: endpoint,
+        chaveCache: key,
+        pesquisa: "API de Localidades (distritos)",
+      }),
     };
   } catch {
     return {
@@ -468,6 +481,12 @@ async function searchByName(nome: string, uf?: string): Promise<StructuredToolRe
       matches: matches.map((mun) => ({ codigo: mun.id, nome: mun.nome })),
       total: matches.length,
     },
+    provenance: provenienciaIbge({
+      fonte: "LOCALIDADES",
+      url: endpoint,
+      chaveCache: key,
+      pesquisa: "API de Localidades (municípios)",
+    }),
   };
 }
 
@@ -502,6 +521,12 @@ function formatRegiaoInfo(
         nome: estado.nome,
       })),
     },
+    // Static catalog maintained in code — no upstream fetch for this path.
+    provenance: provenienciaIbge({
+      fonte: "LOCALIDADES",
+      url: IBGE_API.LOCALIDADES,
+      pesquisa: "API de Localidades (catálogo de regiões)",
+    }),
   };
 }
 
@@ -530,6 +555,12 @@ function formatEstadoInfo(
       regiao: estado.regiao,
       ...(regiaoCode ? { regiaoCodigo: parseInt(regiaoCode) } : {}),
     },
+    // Static catalog maintained in code — no upstream fetch for this path.
+    provenance: provenienciaIbge({
+      fonte: "LOCALIDADES",
+      url: IBGE_API.LOCALIDADES,
+      pesquisa: "API de Localidades (catálogo de UFs)",
+    }),
   };
 }
 

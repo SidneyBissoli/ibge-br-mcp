@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const sidraTabelasSchema = z.object({
@@ -127,7 +128,16 @@ export async function ibgeSidraTabelas(
         ...(input.pesquisa ? { pesquisa: input.pesquisa } : {}),
       };
 
-      return { markdown, structured };
+      return {
+        markdown,
+        structured,
+        provenance: provenienciaIbge({
+          fonte: "AGREGADOS",
+          url,
+          chaveCache: key,
+          pesquisa: "API de Agregados (busca de tabelas SIDRA)",
+        }),
+      };
     } catch (error) {
       if (error instanceof Error) {
         return {

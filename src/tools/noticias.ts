@@ -10,6 +10,7 @@ import {
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { parseUserDate, toIbgeApiDate } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const noticiasSchema = z.object({
@@ -129,6 +130,12 @@ export async function ibgeNoticias(input: NoticiasInput): Promise<StructuredTool
           totalPaginas: data.totalPages,
           ...(input.busca ? { busca: input.busca } : {}),
         },
+        provenance: provenienciaIbge({
+          fonte: "NOTICIAS",
+          url,
+          chaveCache: key,
+          pesquisa: "API de Notícias",
+        }),
       };
     } catch (error) {
       if (error instanceof Error) {

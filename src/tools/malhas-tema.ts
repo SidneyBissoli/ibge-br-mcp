@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { buildQueryString } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Available thematic meshes
 const TEMAS_DISPONIVEIS = {
@@ -117,7 +118,15 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<Structured
         nome: value.nome,
         descricao: value.descricao,
       }));
-      return { markdown: listThemes(), structured: { tema: "listar", temas } };
+      return {
+        markdown: listThemes(),
+        structured: { tema: "listar", temas },
+        provenance: provenienciaIbge({
+          fonte: "MALHAS",
+          url: IBGE_API.MALHAS,
+          pesquisa: "catálogo de temas de malhas mantido pelo servidor",
+        }),
+      };
     }
 
     try {
@@ -155,7 +164,15 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<Structured
 
       // For SVG, return URL only
       if (input.formato === "svg") {
-        return { markdown: formatSvgResponse(fullUrl, input), structured: meta };
+        return {
+          markdown: formatSvgResponse(fullUrl, input),
+          structured: meta,
+          provenance: provenienciaIbge({
+            fonte: "MALHAS",
+            url: fullUrl,
+            pesquisa: `API de Malhas Geográficas (recorte temático: ${input.tema})`,
+          }),
+        };
       }
 
       // Use cache for geographic data (24 hours TTL - static data)
@@ -174,7 +191,16 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<Structured
         throw error;
       }
 
-      return { markdown: formatResponse(data, fullUrl, input), structured: meta };
+      return {
+        markdown: formatResponse(data, fullUrl, input),
+        structured: meta,
+        provenance: provenienciaIbge({
+          fonte: "MALHAS",
+          url: fullUrl,
+          chaveCache: key,
+          pesquisa: `API de Malhas Geográficas (recorte temático: ${input.tema})`,
+        }),
+      };
     } catch (error) {
       if (error instanceof Error) {
         return {

@@ -6,6 +6,7 @@ import { createKeyValueTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidIbgeCode, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const localidadeSchema = z.object({
@@ -177,14 +178,26 @@ export async function ibgeLocalidade(input: LocalidadeInput): Promise<Structured
         };
       }
 
+      const pesquisaPorTipo = {
+        estado: "API de Localidades (estados)",
+        municipio: "API de Localidades (municípios)",
+        distrito: "API de Localidades (distritos)",
+      } as const;
+      const provenance = provenienciaIbge({
+        fonte: "LOCALIDADES",
+        url,
+        chaveCache: key,
+        pesquisa: pesquisaPorTipo[tipo],
+      });
+
       // Format response based on type
       switch (tipo) {
         case "estado":
-          return formatEstado(localidade as UF);
+          return { ...formatEstado(localidade as UF), provenance };
         case "municipio":
-          return formatMunicipio(localidade as Municipio);
+          return { ...formatMunicipio(localidade as Municipio), provenance };
         case "distrito":
-          return formatDistrito(localidade as Distrito);
+          return { ...formatDistrito(localidade as Distrito), provenance };
         default:
           return { markdown: "Tipo de localidade não suportado.", isError: true };
       }

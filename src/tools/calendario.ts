@@ -6,6 +6,7 @@ import { createMarkdownTable, truncate, buildQueryString } from "../utils/index.
 import { parseUserDate, toIbgeApiDate } from "../validation.js";
 import { ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Types for calendar data — field names match the IBGE v3 /calendario API response.
 interface CalendarioItem {
@@ -155,6 +156,12 @@ export async function ibgeCalendario(input: CalendarioInput): Promise<Structured
           totalPaginas: data.totalPages,
           ...(input.produto ? { produto: input.produto } : {}),
         },
+        provenance: provenienciaIbge({
+          fonte: "CALENDARIO",
+          url,
+          chaveCache: key,
+          pesquisa: "API de Calendário de Divulgações",
+        }),
       };
     } catch (error) {
       if (error instanceof Error) {

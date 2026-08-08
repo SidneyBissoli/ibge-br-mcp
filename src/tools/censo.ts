@@ -7,6 +7,12 @@ import { parseHttpError, ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
 import {
+  extrairPeriodoSidra,
+  NOTA_DERIVACAO_ESTATISTICAS,
+  provenienciaIbge,
+  type Provenance,
+} from "../provenance.js";
+import {
   agruparPorParam,
   estatisticasBlocoSchema,
   estatisticasParam,
@@ -244,7 +250,16 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
   return withMetrics("ibge_censo", "sidra", async () => {
     // If tema is "listar", show available tables (catalog in the text channel)
     if (input.tema === "listar") {
-      return { markdown: listAvailableTables(input.ano), structured: emptyMeta() };
+      return {
+        markdown: listAvailableTables(input.ano),
+        structured: emptyMeta(),
+        // Static catalog maintained in code — no upstream fetch (no cache key/dataset).
+        provenance: provenienciaIbge({
+          fonte: "SIDRA",
+          url: IBGE_API.SIDRA,
+          pesquisa: "catálogo de temas do Censo mantido pelo servidor",
+        }),
+      };
     }
 
     // Get the appropriate table
@@ -336,12 +351,25 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
         throw error;
       }
 
+      const pesquisa = `SIDRA, Tabela ${tabelaInfo.tabela} (${tabelaInfo.descricao})`;
+      const dataset = tabelaInfo.tabela;
+      const proveniencia = (opts?: {
+        dataVintage?: string | null;
+        derivado?: { nota: string };
+      }): Provenance =>
+        provenienciaIbge({ fonte: "SIDRA", url, chaveCache: key, pesquisa, dataset, ...opts });
+
       if (!data || data.length === 0) {
         return {
           markdown: "Nenhum dado encontrado para os parâmetros informados.",
           structured: { ...meta, ...sidraRecords(data) },
+          provenance: proveniencia(),
         };
       }
+
+      // Reference period from the FULL result, before field selection/truncation.
+      const completo = sidraRecords(data);
+      const dataVintage = extrairPeriodoSidra(completo.colunas, completo.registros);
 
       // Format output
       let output = `## Censo Demográfico - ${tema.charAt(0).toUpperCase() + tema.slice(1).replace("_", " ")}\n\n`;
@@ -369,6 +397,7 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
             registros: [],
             estatisticas: resultado.bloco,
           },
+          provenance: proveniencia({ dataVintage, derivado: { nota: NOTA_DERIVACAO_ESTATISTICAS } }),
         };
       }
 
@@ -381,13 +410,14 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
         return {
           markdown: output + "```json\n" + JSON.stringify(filtered, null, 2) + "\n```",
           structured,
+          provenance: proveniencia({ dataVintage }),
         };
       }
 
       // Format as table
       output += formatCensoTable(filtered);
 
-      return { markdown: output, structured };
+      return { markdown: output, structured, provenance: proveniencia({ dataVintage }) };
     } catch (error) {
       if (error instanceof Error) {
         return {

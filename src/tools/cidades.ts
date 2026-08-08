@@ -6,6 +6,7 @@ import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidIbgeCode, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const cidadesSchema = z.object({
@@ -235,6 +236,17 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
     }
   }
 
+  // Provenance: keyed to the first/principal indicator fetch of the panorama
+  // (populacao) — the response merges several fetches of the same API.
+  const principal = INDICADORES_PANORAMA["populacao"];
+  const principalUrl = `${IBGE_API.PESQUISAS}/${principal.pesquisa}/indicadores/${principal.id}/resultados/${codigoMunicipio}`;
+  const provenance = provenienciaIbge({
+    fonte: "PESQUISAS",
+    url: principalUrl,
+    chaveCache: cacheKey(principalUrl),
+    pesquisa: "Cidades@ — panorama municipal",
+  });
+
   if (resultados.length === 0) {
     return {
       markdown: ValidationErrors.emptyResult(
@@ -247,6 +259,7 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
         nome: nomeMunicipio,
         indicadores: [],
       },
+      provenance,
     };
   }
 
@@ -270,6 +283,7 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
       nome: nomeMunicipio,
       indicadores: resultados,
     },
+    provenance,
   };
 }
 
@@ -297,10 +311,19 @@ async function consultarIndicador(
     const key = cacheKey(url);
     const data = await cachedFetch<PesquisaResultado[]>(url, key, CACHE_TTL.MEDIUM);
 
+    const provenance = provenienciaIbge({
+      fonte: "PESQUISAS",
+      url,
+      chaveCache: key,
+      pesquisa: `Cidades@ — indicador ${indicadorInfo.nome}`,
+      dataset: String(indicadorInfo.id),
+    });
+
     if (!data || data.length === 0) {
       return {
         markdown: ValidationErrors.emptyResult("ibge_cidades"),
         structured: { tipo: "indicador", municipio, nome: indicadorInfo.nome, indicadores: [] },
+        provenance,
       };
     }
 
@@ -330,6 +353,7 @@ async function consultarIndicador(
     return {
       markdown: output,
       structured: { tipo: "indicador", municipio, nome: indicadorInfo.nome, indicadores },
+      provenance,
     };
   }
 
@@ -376,7 +400,17 @@ async function listarPesquisas(pesquisaId?: string): Promise<StructuredToolResul
         }
       }
 
-      return { markdown: output, structured: listingPayload("pesquisas") };
+      return {
+        markdown: output,
+        structured: listingPayload("pesquisas"),
+        provenance: provenienciaIbge({
+          fonte: "PESQUISAS",
+          url,
+          chaveCache: key,
+          pesquisa: `Cidades@ — pesquisa ${pesquisaId} (indicadores disponíveis)`,
+          dataset: pesquisaId,
+        }),
+      };
     } catch (error) {
       if (error instanceof Error) {
         return {
@@ -405,7 +439,16 @@ async function listarPesquisas(pesquisaId?: string): Promise<StructuredToolResul
   output += 'ibge_cidades tipo="pesquisas" pesquisa="33"\n';
   output += "```\n";
 
-  return { markdown: output, structured: listingPayload("pesquisas") };
+  // Static catalog maintained in code — no upstream fetch, no cache key.
+  return {
+    markdown: output,
+    structured: listingPayload("pesquisas"),
+    provenance: provenienciaIbge({
+      fonte: "PESQUISAS",
+      url: IBGE_API.PESQUISAS,
+      pesquisa: "Cidades@ — catálogo de pesquisas principais",
+    }),
+  };
 }
 
 async function historicoIndicador(
@@ -423,6 +466,14 @@ async function historicoIndicador(
 
   const data = await cachedFetch<PesquisaResultado[]>(url, key, CACHE_TTL.MEDIUM);
 
+  const provenance = provenienciaIbge({
+    fonte: "PESQUISAS",
+    url,
+    chaveCache: key,
+    pesquisa: `Cidades@ — histórico do indicador ${indicadorNome}`,
+    dataset: String(indicadorId),
+  });
+
   if (!data || data.length === 0 || !data[0].res || data[0].res.length === 0) {
     return {
       markdown: ValidationErrors.emptyResult(
@@ -430,6 +481,7 @@ async function historicoIndicador(
         `Nenhum histórico encontrado para o indicador ${indicador}`
       ),
       structured: { tipo: "historico", municipio, nome: indicadorNome, indicadores: [] },
+      provenance,
     };
   }
 
@@ -445,6 +497,7 @@ async function historicoIndicador(
     return {
       markdown: ValidationErrors.emptyResult("ibge_cidades"),
       structured: { tipo: "historico", municipio, nome: indicadorNome, indicadores: [] },
+      provenance,
     };
   }
 
@@ -466,6 +519,7 @@ async function historicoIndicador(
         ano,
       })),
     },
+    provenance,
   };
 }
 
@@ -490,5 +544,14 @@ function listarIndicadoresDisponiveis(): StructuredToolResult {
   output += 'ibge_cidades tipo="historico" municipio="3550308" indicador="29171"\n';
   output += "```\n";
 
-  return { markdown: output, structured: listingPayload("indicador") };
+  // Static catalog maintained in code — no upstream fetch, no cache key.
+  return {
+    markdown: output,
+    structured: listingPayload("indicador"),
+    provenance: provenienciaIbge({
+      fonte: "PESQUISAS",
+      url: IBGE_API.PESQUISAS,
+      pesquisa: "Cidades@ — catálogo de indicadores municipais suportados",
+    }),
+  };
 }

@@ -8,6 +8,12 @@ import { fetchWithRetry } from "../retry.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
 import {
+  extrairPeriodoSidra,
+  NOTA_DERIVACAO_ESTATISTICAS,
+  provenienciaIbge,
+  type Provenance,
+} from "../provenance.js";
+import {
   agruparPorParam,
   estatisticasBlocoSchema,
   estatisticasParam,
@@ -156,7 +162,16 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
   return withMetrics("ibge_datasaude", "sidra", async () => {
     // List indicators (catalog in the text channel)
     if (input.indicador === "listar") {
-      return { markdown: listHealthIndicators(), structured: emptyMeta() };
+      return {
+        markdown: listHealthIndicators(),
+        structured: emptyMeta(),
+        // Static catalog maintained in code — no upstream fetch (no cache key/dataset).
+        provenance: provenienciaIbge({
+          fonte: "SIDRA",
+          url: IBGE_API.SIDRA,
+          pesquisa: "catálogo de indicadores de saúde mantido pelo servidor",
+        }),
+      };
     }
 
     const indicadorInfo = INDICADORES_SAUDE[input.indicador.toLowerCase()];
@@ -212,12 +227,31 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
         data = await response.json();
       }
 
+      const pesquisa = `SIDRA, Tabela ${indicadorInfo.tabela} (${indicadorInfo.nome})`;
+      const proveniencia = (opts?: {
+        dataVintage?: string | null;
+        derivado?: { nota: string };
+      }): Provenance =>
+        provenienciaIbge({
+          fonte: "SIDRA",
+          url,
+          chaveCache: key,
+          pesquisa,
+          dataset: indicadorInfo.tabela,
+          ...opts,
+        });
+
       if (!data || data.length === 0) {
         return {
           markdown: `Nenhum dado encontrado para ${indicadorInfo.nome}.`,
           structured: { ...meta, ...sidraRecords(data) },
+          provenance: proveniencia(),
         };
       }
+
+      // Reference period from the FULL result, before field selection/truncation.
+      const completo = sidraRecords(data);
+      const dataVintage = extrairPeriodoSidra(completo.colunas, completo.registros);
 
       // Statistics mode (D2): full distribution over ALL data rows, before any
       // truncation or field selection — `campos`/`formato` are ignored.
@@ -243,6 +277,7 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
             registros: [],
             estatisticas: resultado.bloco,
           },
+          provenance: proveniencia({ dataVintage, derivado: { nota: NOTA_DERIVACAO_ESTATISTICAS } }),
         };
       }
 
@@ -251,6 +286,7 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
       return {
         markdown: formatResponse(filtered, indicadorInfo, input),
         structured: { ...meta, ...sidraRecords(filtered) },
+        provenance: proveniencia({ dataVintage }),
       };
     } catch (error) {
       if (error instanceof Error) {

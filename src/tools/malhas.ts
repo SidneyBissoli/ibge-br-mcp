@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { buildQueryString } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const malhasSchema = z.object({
@@ -124,6 +125,11 @@ export async function ibgeMalhas(input: MalhasInput): Promise<StructuredToolResu
         return {
           markdown: formatSvgResponse(fullUrl, input),
           structured: buildMalhasMetadata(input, fullUrl),
+          provenance: provenienciaIbge({
+            fonte: "MALHAS",
+            url: fullUrl,
+            pesquisa: "API de Malhas Geográficas",
+          }),
         };
       }
 
@@ -154,6 +160,12 @@ export async function ibgeMalhas(input: MalhasInput): Promise<StructuredToolResu
       return {
         markdown: formatMalhasResponse(data, fullUrl, input),
         structured: buildMalhasMetadata(input, fullUrl),
+        provenance: provenienciaIbge({
+          fonte: "MALHAS",
+          url: fullUrl,
+          chaveCache: key,
+          pesquisa: "API de Malhas Geográficas",
+        }),
       };
     } catch (error) {
       if (error instanceof Error) {

@@ -6,6 +6,7 @@ import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { fetchWithRetry } from "../retry.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const populacaoSchema = z.object({
@@ -82,6 +83,12 @@ export async function ibgePopulacao(input: PopulacaoInput): Promise<StructuredTo
             obito: data.projecao.periodoMedio.obito,
           },
         },
+        provenance: provenienciaIbge({
+          fonte: "POPULACAO",
+          url,
+          chaveCache: key,
+          pesquisa: "API de Projeções de População (projeção em tempo real)",
+        }),
       };
     } catch (error) {
       if (error instanceof Error) {

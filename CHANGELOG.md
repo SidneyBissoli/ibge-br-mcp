@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-08-08
+
+Dedicated provenance release: every successful response of the 22 tools now
+carries the portfolio's provenance block (contract v1.0, via
+[`@sbissoli/mcp-provenance`](https://www.npmjs.com/package/@sbissoli/mcp-provenance)).
+No new tools; no tool renamed; the response surface changes ONLY by the block.
+
+### Added
+- **Provenance block on every successful tool response**, emitted on three
+  channels: `structuredContent.provenance` (concise projection — `source`,
+  `source_url`, `data_vintage`, `retrieved_at`, `citation`, `license`) plus
+  `structuredContent.attribution` (canonical source-URL list, MCP RFC #711);
+  an out-of-band mirror in `_meta` under `br.com.sidneybissoli.ibge/provenance`
+  and `.../attribution`; and a compact pt-BR text footer appended to the
+  Markdown for text-only clients. Every tool's `outputSchema` now declares the
+  `provenance` + `attribution` fields.
+  - `retrieved_at` is the **real upstream extraction instant**, preserved by
+    the cache layer across hits (`cachedFetch` now records per-key fetch
+    metadata; `served_from_cache` is tracked in the canonical block).
+    Timestamps are serialized in Brasília time (`-03:00`).
+  - `citation` follows the fixed pattern "Fonte: IBGE — [pesquisa/tabela],
+    [URL], extraído em [data]." — the attribution required by Brazil's
+    open-data regime.
+  - `license` reflects the normative regime (no explicit upstream license):
+    "Dados abertos do Poder Executivo federal (Lei 12.527/2011; Decreto
+    8.777/2016)", verified 2026-08-08.
+  - `data_vintage` carries the SIDRA reference period when the source exposes
+    one (e.g. "2022", "1º trimestre 2023", "2020–2023"); `null` otherwise.
+  - Statistics-mode responses (`estatisticas=true`) and `ibge_comparar` are
+    marked `derived: true` with a `derivation_note` in the canonical block —
+    the aggregates are computed server-side from raw IBGE values.
+- Smoke script now verifies the provenance block (three channels) on both
+  transports.
+
 ## [3.2.0] - 2026-08-08
 
 Statistics engine over SIDRA plus usability: server-computed distributions and

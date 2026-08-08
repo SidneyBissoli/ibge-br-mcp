@@ -5,6 +5,7 @@ import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, createKeyValueTable, truncate } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
+import { provenienciaIbge } from "../provenance.js";
 
 // Schema for the tool input
 export const sidraMetadadosSchema = z.object({
@@ -180,6 +181,13 @@ export async function ibgeSidraMetadados(
       return {
         markdown: formatMetadadosResponse(metadados, periodos, input),
         structured: buildMetadadosStructured(metadados, periodos),
+        provenance: provenienciaIbge({
+          fonte: "AGREGADOS",
+          url: metadadosUrl,
+          chaveCache: metadadosKey,
+          pesquisa: `API de Agregados (metadados da Tabela ${input.tabela})`,
+          dataset: input.tabela,
+        }),
       };
     } catch (error) {
       if (error instanceof Error) {

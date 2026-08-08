@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { cacheKey, CACHE_TTL, cache } from "../src/cache.js";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { cacheKey, CACHE_TTL, cache, cachedFetch, lastFetchMeta } from "../src/cache.js";
+import { mockResponse } from "./helpers.js";
 
 describe("cacheKey", () => {
   it("should return base URL when no params provided", () => {
@@ -131,5 +132,59 @@ describe("cache instance", () => {
   });
 });
 
-// Note: cachedFetch tests would require mocking fetch, which is more complex
-// Consider adding integration tests separately
+describe("fetch metadata (retrieved_at real + served_from_cache)", () => {
+  beforeEach(() => {
+    cache.clear();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockResponse({ ok: true })));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns null for keys never fetched", () => {
+    expect(lastFetchMeta("never-fetched")).toBe(null);
+  });
+
+  it("records a real fetch with servedFromCache=false", async () => {
+    const before = Date.now();
+    await cachedFetch("https://api.example.com/x", "key-1", 1);
+    const meta = lastFetchMeta("key-1");
+    expect(meta).not.toBe(null);
+    expect(meta!.servedFromCache).toBe(false);
+    expect(meta!.retrievedAt.getTime()).toBeGreaterThanOrEqual(before);
+    expect(meta!.retrievedAt.getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("preserves the original fetch instant on cache hits and flags servedFromCache", async () => {
+    await cachedFetch("https://api.example.com/x", "key-1", 1);
+    const original = lastFetchMeta("key-1")!.retrievedAt.getTime();
+
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    await cachedFetch("https://api.example.com/x", "key-1", 1);
+
+    const meta = lastFetchMeta("key-1")!;
+    expect(meta.servedFromCache).toBe(true);
+    expect(meta.retrievedAt.getTime()).toBe(original);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("resets to a fresh fetch after expiry", async () => {
+    await cachedFetch("https://api.example.com/x", "key-1", 0.0001);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await cachedFetch("https://api.example.com/x", "key-1", 1);
+
+    const meta = lastFetchMeta("key-1")!;
+    expect(meta.servedFromCache).toBe(false);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears metadata on cache.clear() and cache.delete()", async () => {
+    await cachedFetch("https://api.example.com/x", "key-1", 1);
+    await cachedFetch("https://api.example.com/y", "key-2", 1);
+    cache.delete("key-1");
+    expect(lastFetchMeta("key-1")).toBe(null);
+    cache.clear();
+    expect(lastFetchMeta("key-2")).toBe(null);
+  });
+});
