@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-08-08
+
+Foundation release: MCP SDK v2 + zod 4, and the Cloudflare Worker rebuilt on
+the portfolio's hosting template. The tool surface is unchanged — `tools/list`
+is semantically identical to 3.0.2 (same names, descriptions, schemas, and
+annotations; the advertised JSON Schema dialect changes from draft-07 to
+2020-12 because SDK v2 emits schemas natively from zod 4).
+
+### Changed
+- **Migrated to MCP SDK v2** (`@modelcontextprotocol/server` ^2.0.0, replacing
+  `@modelcontextprotocol/sdk` 1.x). Tools, resources, and prompts now register
+  with whole zod schemas (Standard Schema); STDIO is served via `serveStdio`,
+  which also answers 2025-era protocol openings, so existing clients keep
+  working unchanged.
+- **Upgraded zod 3 → 4** (4.4.3). Only internal schema code changed.
+- **Node.js floor raised to >= 20** (`engines`) — required by MCP SDK v2. This
+  only affects local STDIO installs on Node 18, which is end-of-life.
+
+### Added
+- **Worker rebuilt on the Fase 0 hosting template** (`createMcpHandler` +
+  Durable Object): the hosted endpoint `https://ibge.sidneybissoli.com/mcp`
+  gains a landing page, `/status` (version + deploy metadata), `/metrics`
+  (aggregated usage statistics), a per-IP rate limit, and optional Bearer auth.
+  Usage statistics are privacy-preserving by construction: event kind, tool
+  name, and daily counts only — never tool arguments, results, or user data.
+- **Worker test suite** (21 tests: auth, rate limit, usage aggregation, status,
+  and the served MCP surface).
+
 ## [3.0.2] - 2026-06-21
 
 Supply-chain hardening release (no functional changes).
