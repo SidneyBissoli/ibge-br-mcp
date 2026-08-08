@@ -162,8 +162,7 @@ export interface EstatisticasOpcoes {
 }
 
 export type EstatisticasResultado =
-  | { ok: true; bloco: Record<string, unknown>; markdown: string }
-  | { ok: false; erro: string };
+  { ok: true; bloco: Record<string, unknown>; markdown: string } | { ok: false; erro: string };
 
 /** Finds a column by accent/case-insensitive label match (exact, then substring). */
 function acharColuna(colunas: string[], rotulo: string): string | undefined {
