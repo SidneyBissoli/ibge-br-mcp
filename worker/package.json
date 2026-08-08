@@ -3,16 +3,21 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Cloudflare Worker that serves ibge-br-mcp over Streamable HTTP",
+  "description": "Cloudflare Worker that serves ibge-br-mcp over Streamable HTTP (Fase 0 hosting template: createMcpHandler + UsageTracker)",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
-  "//": "@modelcontextprotocol/sdk and zod are intentionally NOT listed here — they resolve from the parent package's node_modules so there is a single SDK copy (avoids duplicate-instance type clashes with registerAll). If you extract this Worker to its own repo, add them as dependencies and depend on the published ibge-br-mcp package.",
+  "//": "@modelcontextprotocol/server and zod are intentionally NOT listed here — they resolve from the parent package's node_modules so there is a single SDK copy (avoids duplicate-instance type clashes with registerAll). `agents` declares them as hard peers, so .npmrc pins legacy-peer-deps=true to stop npm from installing a second copy here. If you extract this Worker to its own repo, add them as dependencies and depend on the published ibge-br-mcp package.",
+  "dependencies": {
+    "agents": "^0.20.1"
+  },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250109.0",
-    "typescript": "^5.3.3",
-    "wrangler": "^4.0.0"
+    "@cloudflare/workers-types": "^5.20260804.1",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.9",
+    "wrangler": "^4.119.0"
   }
 }

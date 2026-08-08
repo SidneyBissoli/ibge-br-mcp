@@ -1,0 +1,33 @@
+// Configuração do Worker ibge-br-mcp — instância do template de hosting da Fase 0.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ibge-br-mcp",
+  "main": "src/index.ts",
+  "account_id": "5c499208eebced4e34bd98ffa204f2fb",
+  "compatibility_date": "2026-08-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+
+  // Domínio próprio preservado do deploy anterior — o endpoint MCP público é
+  // https://ibge.sidneybissoli.com/mcp. O hostname também está listado em
+  // SERVER_CONFIG.extraAllowedHostnames (src/config.ts) — o createMcpHandler valida Host.
+  "routes": [{ "pattern": "ibge.sidneybissoli.com", "custom_domain": true }],
+
+  "vars": {
+    "ALLOWED_ORIGIN": "*"
+  },
+
+  // Estatísticas de uso — Durable Object singleton com storage SQLite (src/usage.ts).
+  // Nenhum recurso precisa ser criado manualmente: a migration abaixo provisiona a classe no deploy.
+  "durable_objects": {
+    "bindings": [{ "name": "USAGE", "class_name": "UsageTracker" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UsageTracker"] }],
+
+  // Metadados do último deploy (id/tag/timestamp) — expostos em GET /status para que
+  // a liveness e o build corrente sejam verificáveis sem o handshake MCP.
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+
+  // Logs estruturados no painel da Cloudflare (Workers Logs).
+  "observability": { "enabled": true }
+}

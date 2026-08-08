@@ -3,7 +3,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 // Node ESM reads it via the import attribute; esbuild inlines it for the Worker build.
 import pkg from "../package.json" with { type: "json" };
 
-import { toMcpResult } from "./structured.js";
+import { toMcpResult, type StructuredToolResult } from "./structured.js";
 
 import {
   estadosSchema,
@@ -117,12 +117,37 @@ export function createServer(): McpServer {
 }
 
 /**
+ * Optional per-tool usage hook: called with `tool_call` on every invocation and
+ * additionally with `tool_error` when the call fails (error result or throw).
+ * The STDIO entry passes nothing; the Cloudflare Worker passes its Durable
+ * Object recorder (fire-and-forget telemetry — names and counts only, never
+ * tool arguments or results).
+ */
+export type ToolUsageRecorder = (kind: "tool_call" | "tool_error", name: string) => void;
+
+/**
  * Registers every tool, resource, and prompt onto a given `McpServer`. Kept
  * separate from `createServer` so an alternative transport (e.g. the Cloudflare
  * Worker in `worker/`, which builds its own `McpServer` with hosted metadata)
  * can reuse the exact same registrations.
  */
-export function registerAll(server: McpServer): void {
+export function registerAll(server: McpServer, record?: ToolUsageRecorder): void {
+  /** Wraps a tool impl into the registered handler, instrumented via `record`. */
+  const handle =
+    <A>(name: string, fn: (args: A) => Promise<StructuredToolResult>) =>
+    async (args: A) => {
+      try {
+        const result = toMcpResult(await fn(args));
+        record?.("tool_call", name);
+        if (result.isError === true) record?.("tool_error", name);
+        return result;
+      } catch (error) {
+        record?.("tool_call", name);
+        record?.("tool_error", name);
+        throw error;
+      }
+    };
+
   // Register ibge_estados tool
   server.registerTool(
     "ibge_estados",
@@ -148,9 +173,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Locali
       outputSchema: estadosOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeEstados(args));
-    }
+    handle("ibge_estados", ibgeEstados)
   );
 
   // Register ibge_municipios tool
@@ -180,9 +203,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Locali
       outputSchema: municipiosOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeMunicipios(args));
-    }
+    handle("ibge_municipios", ibgeMunicipios)
   );
 
   // Register ibge_localidade tool
@@ -212,9 +233,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Locali
       outputSchema: localidadeOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeLocalidade(args));
-    }
+    handle("ibge_localidade", ibgeLocalidade)
   );
 
   // Register ibge_populacao tool
@@ -245,9 +264,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE popula
       outputSchema: populacaoOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgePopulacao(args));
-    }
+    handle("ibge_populacao", ibgePopulacao)
   );
 
   // Register ibge_sidra tool
@@ -291,9 +308,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA 
       outputSchema: sidraOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeSidra(args));
-    }
+    handle("ibge_sidra", ibgeSidra)
   );
 
   // Register ibge_nomes tool
@@ -325,9 +340,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Nomes 
       outputSchema: nomesOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeNomes(args));
-    }
+    handle("ibge_nomes", ibgeNomes)
   );
 
   // Register ibge_noticias tool
@@ -361,9 +374,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Notíc
       outputSchema: noticiasOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeNoticias(args));
-    }
+    handle("ibge_noticias", ibgeNoticias)
   );
 
   // Register ibge_sidra_tabelas tool
@@ -398,9 +409,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA 
       outputSchema: sidraTabelasOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeSidraTabelas(args));
-    }
+    handle("ibge_sidra_tabelas", ibgeSidraTabelas)
   );
 
   // Register ibge_sidra_metadados tool
@@ -430,9 +439,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA 
       outputSchema: sidraMetadadosOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeSidraMetadados(args));
-    }
+    handle("ibge_sidra_metadados", ibgeSidraMetadados)
   );
 
   // Register ibge_malhas tool
@@ -471,9 +478,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Malhas
       outputSchema: malhasOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeMalhas(args));
-    }
+    handle("ibge_malhas", ibgeMalhas)
   );
 
   // Register ibge_pesquisas tool
@@ -507,9 +512,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA/
       outputSchema: pesquisasOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgePesquisas(args));
-    }
+    handle("ibge_pesquisas", ibgePesquisas)
   );
 
   // Register ibge_censo tool
@@ -550,9 +553,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA 
       outputSchema: censoOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeCenso(args));
-    }
+    handle("ibge_censo", ibgeCenso)
   );
 
   // Register ibge_indicadores tool (Phase 1)
@@ -602,9 +603,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA 
       outputSchema: indicadoresOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeIndicadores(args));
-    }
+    handle("ibge_indicadores", ibgeIndicadores)
   );
 
   // Register ibge_cnae tool (Phase 1)
@@ -639,9 +638,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE CNAE A
       outputSchema: cnaeOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeCnae(args));
-    }
+    handle("ibge_cnae", ibgeCnae)
   );
 
   // Register ibge_geocodigo tool (Phase 1)
@@ -678,9 +675,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Locali
       outputSchema: geocodigoOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeGeocodigo(args));
-    }
+    handle("ibge_geocodigo", ibgeGeocodigo)
   );
 
   // Register ibge_calendario tool (Phase 2)
@@ -713,9 +708,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Calend
       outputSchema: calendarioOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeCalendario(args));
-    }
+    handle("ibge_calendario", ibgeCalendario)
   );
 
   // Register ibge_comparar tool (Phase 2)
@@ -753,9 +746,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE APIs (
       outputSchema: compararOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeComparar(args));
-    }
+    handle("ibge_comparar", ibgeComparar)
   );
 
   // Register ibge_malhas_tema tool (Phase 3)
@@ -797,9 +788,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Malhas
       outputSchema: malhasTemaOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeMalhasTema(args));
-    }
+    handle("ibge_malhas_tema", ibgeMalhasTema)
   );
 
   // Register ibge_vizinhos tool (Phase 3)
@@ -829,9 +818,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Locali
       outputSchema: vizinhosOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeVizinhos(args));
-    }
+    handle("ibge_vizinhos", ibgeVizinhos)
   );
 
   // Register ibge_datasaude tool (Phase 3)
@@ -875,9 +862,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA 
       outputSchema: datasaudeOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeDatasaude(args));
-    }
+    handle("ibge_datasaude", ibgeDatasaude)
   );
 
   // Register ibge_paises tool (Phase 4)
@@ -908,9 +893,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Paíse
       outputSchema: paisesOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgePaises(args));
-    }
+    handle("ibge_paises", ibgePaises)
   );
 
   // Register ibge_cidades tool (Phase 4)
@@ -946,9 +929,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE APIs (
       outputSchema: cidadesOutputSchema,
       annotations: READ_ONLY,
     },
-    async (args) => {
-      return toMcpResult(await ibgeCidades(args));
-    }
+    handle("ibge_cidades", ibgeCidades)
   );
 
   // Reference catalogs (roadmap 1.6) and analysis templates
