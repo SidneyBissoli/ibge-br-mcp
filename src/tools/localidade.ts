@@ -25,9 +25,7 @@ export type LocalidadeInput = z.infer<typeof localidadeSchema>;
 
 /** Structured output payload (validated against this schema by the MCP SDK). */
 export const localidadeOutputSchema = z.object({
-  tipo: z
-    .enum(["estado", "municipio", "distrito"])
-    .describe("Tipo da localidade retornada"),
+  tipo: z.enum(["estado", "municipio", "distrito"]).describe("Tipo da localidade retornada"),
   id: z.number().describe("Código IBGE da localidade"),
   nome: z.string().describe("Nome da localidade"),
   sigla: z.string().optional().describe("Sigla da UF (apenas para estados)"),

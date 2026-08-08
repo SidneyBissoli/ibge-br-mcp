@@ -360,9 +360,7 @@ async function ibgeNomesFrequenciaStructured(
 }
 
 /** Ranking mode: builds the same Markdown as before plus a structured payload. */
-async function ibgeNomesRankingStructured(
-  input: NomesRankingInput
-): Promise<StructuredToolResult> {
+async function ibgeNomesRankingStructured(input: NomesRankingInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_nomes_ranking", "nomes", async () => {
     try {
       const queryString = buildQueryString({

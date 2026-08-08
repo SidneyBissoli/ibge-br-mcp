@@ -22,7 +22,9 @@ export type PesquisasInput = z.infer<typeof pesquisasSchema>;
 export const pesquisasOutputSchema = z.object({
   modo: z
     .enum(["lista", "detalhes"])
-    .describe("Modo de consulta que originou este resultado: lista de pesquisas ou detalhes de uma"),
+    .describe(
+      "Modo de consulta que originou este resultado: lista de pesquisas ou detalhes de uma"
+    ),
 
   // Modo lista
   pesquisas: z

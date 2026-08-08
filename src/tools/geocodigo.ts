@@ -103,7 +103,9 @@ export const geocodigoOutputSchema = z.object({
   hierarquia: z
     .array(hierarquiaNivelSchema)
     .optional()
-    .describe("Hierarquia geográfica completa, da região ao município/distrito (tipo municipio/distrito)"),
+    .describe(
+      "Hierarquia geográfica completa, da região ao município/distrito (tipo municipio/distrito)"
+    ),
   codigoSidra: z
     .string()
     .optional()

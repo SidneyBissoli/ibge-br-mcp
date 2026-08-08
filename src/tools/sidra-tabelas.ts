@@ -55,9 +55,7 @@ interface PesquisaComAgregados {
 /**
  * Lists and searches SIDRA tables (agregados)
  */
-export async function ibgeSidraTabelas(
-  input: SidraTabelasInput
-): Promise<StructuredToolResult> {
+export async function ibgeSidraTabelas(input: SidraTabelasInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_sidra_tabelas", "agregados", async () => {
     try {
       const url = IBGE_API.AGREGADOS;

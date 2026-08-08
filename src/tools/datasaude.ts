@@ -277,7 +277,10 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
             registros: [],
             estatisticas: resultado.bloco,
           },
-          provenance: proveniencia({ dataVintage, derivado: { nota: NOTA_DERIVACAO_ESTATISTICAS } }),
+          provenance: proveniencia({
+            dataVintage,
+            derivado: { nota: NOTA_DERIVACAO_ESTATISTICAS },
+          }),
         };
       }
 

@@ -93,7 +93,10 @@ export const malhasTemaOutputSchema = z.object({
   tema: z.string().describe("Tema da malha solicitada (ou 'listar')"),
   codigo: z.string().optional().describe("Código específico do tema, quando informado"),
   formato: z.string().optional().describe("Formato de saída (geojson, topojson, svg)"),
-  resolucao: z.string().optional().describe("Resolução da malha (0 = contorno, 5 = com municípios)"),
+  resolucao: z
+    .string()
+    .optional()
+    .describe("Resolução da malha (0 = contorno, 5 = com municípios)"),
   temas: z
     .array(
       z.object({

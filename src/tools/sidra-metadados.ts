@@ -204,10 +204,7 @@ export async function ibgeSidraMetadados(
 }
 
 /** Builds the structured payload from the same metadata used for the Markdown. */
-function buildMetadadosStructured(
-  meta: Metadados,
-  periodos: Periodo[]
-): Record<string, unknown> {
+function buildMetadadosStructured(meta: Metadados, periodos: Periodo[]): Record<string, unknown> {
   const niveisNomes: { [key: string]: string } = {
     N1: "Brasil",
     N2: "Grande Região",

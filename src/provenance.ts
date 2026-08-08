@@ -211,7 +211,9 @@ export const provenanceBlockSchema = z.object({
     .string()
     .nullable()
     .describe("Período de referência do dado segundo a fonte; null se a fonte não expõe"),
-  retrieved_at: z.string().describe("Instante real da extração no upstream (ISO-8601, horário de Brasília)"),
+  retrieved_at: z
+    .string()
+    .describe("Instante real da extração no upstream (ISO-8601, horário de Brasília)"),
   citation: z.string().describe("Citação pronta para uso"),
   license: z.string().nullable().describe("Regime legal do dado"),
 });

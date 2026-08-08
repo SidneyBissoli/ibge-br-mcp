@@ -9,7 +9,11 @@ export { ibgeNoticias, noticiasSchema, noticiasOutputSchema } from "./noticias.j
 
 // SIDRA tools
 export { ibgeSidraTabelas, sidraTabelasSchema, sidraTabelasOutputSchema } from "./sidra-tabelas.js";
-export { ibgeSidraMetadados, sidraMetadadosSchema, sidraMetadadosOutputSchema } from "./sidra-metadados.js";
+export {
+  ibgeSidraMetadados,
+  sidraMetadadosSchema,
+  sidraMetadadosOutputSchema,
+} from "./sidra-metadados.js";
 export { ibgeMalhas, malhasSchema, malhasOutputSchema } from "./malhas.js";
 export { ibgePesquisas, pesquisasSchema, pesquisasOutputSchema } from "./pesquisas.js";
 export { ibgeCenso, censoSchema, censoOutputSchema } from "./censo.js";

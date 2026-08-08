@@ -92,13 +92,13 @@ export const cnaeOutputSchema = z.object({
     .object({
       id: z.string().describe("Código CNAE consultado"),
       descricao: z.string().describe("Descrição do código"),
-      nivel: z
-        .string()
-        .describe("Nível do código (secao, divisao, grupo, classe ou subclasse)"),
+      nivel: z.string().describe("Nível do código (secao, divisao, grupo, classe ou subclasse)"),
       hierarquia: z
         .array(
           z.object({
-            nivel: z.string().describe("Nível hierárquico (Seção, Divisão, Grupo, Classe, Subclasse)"),
+            nivel: z
+              .string()
+              .describe("Nível hierárquico (Seção, Divisão, Grupo, Classe, Subclasse)"),
             id: z.string().describe("Código do nível"),
             descricao: z.string().describe("Descrição do nível"),
           })
@@ -237,8 +237,16 @@ function buildCnaeCodeStructured(
   if (level === "subclasse") {
     const sub = data as CnaeSubclasse;
     hierarquia.push(
-      { nivel: "Seção", id: sub.classe.grupo.divisao.secao.id, descricao: sub.classe.grupo.divisao.secao.descricao },
-      { nivel: "Divisão", id: sub.classe.grupo.divisao.id, descricao: sub.classe.grupo.divisao.descricao },
+      {
+        nivel: "Seção",
+        id: sub.classe.grupo.divisao.secao.id,
+        descricao: sub.classe.grupo.divisao.secao.descricao,
+      },
+      {
+        nivel: "Divisão",
+        id: sub.classe.grupo.divisao.id,
+        descricao: sub.classe.grupo.divisao.descricao,
+      },
       { nivel: "Grupo", id: sub.classe.grupo.id, descricao: sub.classe.grupo.descricao },
       { nivel: "Classe", id: sub.classe.id, descricao: sub.classe.descricao },
       { nivel: "Subclasse", id: sub.id, descricao: sub.descricao }
@@ -246,7 +254,11 @@ function buildCnaeCodeStructured(
   } else if (level === "classe") {
     const cls = data as CnaeClasse;
     hierarquia.push(
-      { nivel: "Seção", id: cls.grupo.divisao.secao.id, descricao: cls.grupo.divisao.secao.descricao },
+      {
+        nivel: "Seção",
+        id: cls.grupo.divisao.secao.id,
+        descricao: cls.grupo.divisao.secao.descricao,
+      },
       { nivel: "Divisão", id: cls.grupo.divisao.id, descricao: cls.grupo.divisao.descricao },
       { nivel: "Grupo", id: cls.grupo.id, descricao: cls.grupo.descricao },
       { nivel: "Classe", id: cls.id, descricao: cls.descricao }

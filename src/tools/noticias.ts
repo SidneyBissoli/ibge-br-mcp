@@ -66,7 +66,10 @@ export async function ibgeNoticias(input: NoticiasInput): Promise<StructuredTool
       if (input.de) {
         const parsed = parseUserDate(input.de);
         if (!parsed) {
-          return { markdown: ValidationErrors.invalidDate(input.de, "ibge_noticias"), isError: true };
+          return {
+            markdown: ValidationErrors.invalidDate(input.de, "ibge_noticias"),
+            isError: true,
+          };
         }
         de = toIbgeApiDate(parsed);
       }
@@ -115,9 +118,7 @@ export async function ibgeNoticias(input: NoticiasInput): Promise<StructuredTool
         ...(noticia.editorias ? { editorias: noticia.editorias } : {}),
         ...(noticia.produtos && noticia.produtos !== "null" ? { produtos: noticia.produtos } : {}),
         ...(noticia.destaque !== undefined ? { destaque: noticia.destaque } : {}),
-        ...(noticia.introducao
-          ? { introducao: decodeHtmlEntities(noticia.introducao) }
-          : {}),
+        ...(noticia.introducao ? { introducao: decodeHtmlEntities(noticia.introducao) } : {}),
         link: noticia.link,
       }));
 

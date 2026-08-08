@@ -397,7 +397,10 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
             registros: [],
             estatisticas: resultado.bloco,
           },
-          provenance: proveniencia({ dataVintage, derivado: { nota: NOTA_DERIVACAO_ESTATISTICAS } }),
+          provenance: proveniencia({
+            dataVintage,
+            derivado: { nota: NOTA_DERIVACAO_ESTATISTICAS },
+          }),
         };
       }
 

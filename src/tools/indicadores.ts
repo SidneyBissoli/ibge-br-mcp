@@ -385,7 +385,10 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
             registros: [],
             estatisticas: resultado.bloco,
           },
-          provenance: proveniencia({ dataVintage, derivado: { nota: NOTA_DERIVACAO_ESTATISTICAS } }),
+          provenance: proveniencia({
+            dataVintage,
+            derivado: { nota: NOTA_DERIVACAO_ESTATISTICAS },
+          }),
         };
       }
 

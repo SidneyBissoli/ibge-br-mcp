@@ -197,9 +197,7 @@ async function listarPaises(busca?: string, regiao?: string): Promise<Structured
   // Filtrar por busca se especificado
   if (busca) {
     const buscaNormalizada = busca.toLowerCase();
-    resultado = resultado.filter((p) =>
-      p.nome.abreviado.toLowerCase().includes(buscaNormalizada)
-    );
+    resultado = resultado.filter((p) => p.nome.abreviado.toLowerCase().includes(buscaNormalizada));
   }
 
   if (resultado.length === 0) {

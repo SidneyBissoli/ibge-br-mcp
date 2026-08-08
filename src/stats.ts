@@ -90,24 +90,41 @@ const distribuicaoSchema = z.object({
 
 export const estatisticasBlocoSchema = z
   .object({
-    colunaValor: z.string().describe("Rótulo da coluna numérica analisada (sempre 'Valor' no SIDRA)"),
+    colunaValor: z
+      .string()
+      .describe("Rótulo da coluna numérica analisada (sempre 'Valor' no SIDRA)"),
     registrosConsiderados: z.number().describe("Registros com valor numérico (contam no n)"),
     registrosSemValor: z
       .number()
-      .describe("Registros excluídos por marcador de ausência SIDRA ('-', '..', '...', 'X') ou valor não numérico"),
-    aviso: z.string().optional().describe("Avisos sobre agrupamento automático, mistura de unidades ou truncamento"),
-    distribuicao: distribuicaoSchema.optional().describe("Distribuição do conjunto inteiro (sem agruparPor)"),
+      .describe(
+        "Registros excluídos por marcador de ausência SIDRA ('-', '..', '...', 'X') ou valor não numérico"
+      ),
+    aviso: z
+      .string()
+      .optional()
+      .describe("Avisos sobre agrupamento automático, mistura de unidades ou truncamento"),
+    distribuicao: distribuicaoSchema
+      .optional()
+      .describe("Distribuição do conjunto inteiro (sem agruparPor)"),
     top: z
       .array(z.record(z.string(), z.unknown()))
       .optional()
       .describe("Maiores valores, com as colunas de identificação do registro (sem agruparPor)"),
-    bottom: z.array(z.record(z.string(), z.unknown())).optional().describe("Menores valores (sem agruparPor)"),
+    bottom: z
+      .array(z.record(z.string(), z.unknown()))
+      .optional()
+      .describe("Menores valores (sem agruparPor)"),
     agrupadoPor: z.string().optional().describe("Rótulo da coluna de agrupamento (com agruparPor)"),
-    totalGrupos: z.number().optional().describe("Total de grupos existentes antes do teto (com agruparPor)"),
+    totalGrupos: z
+      .number()
+      .optional()
+      .describe("Total de grupos existentes antes do teto (com agruparPor)"),
     grupos: z
       .array(distribuicaoSchema.extend({ grupo: z.string() }))
       .optional()
-      .describe("Grupos ordenados por soma decrescente, cada um com sua mini-distribuição (com agruparPor)"),
+      .describe(
+        "Grupos ordenados por soma decrescente, cada um com sua mini-distribuição (com agruparPor)"
+      ),
   })
   .describe("Bloco estatístico presente quando estatisticas=true (registros vem vazio nesse modo)");
 
@@ -282,10 +299,7 @@ export function estatisticasSidra(
 }
 
 /** Projects a record onto the chosen identity columns. */
-function identidade(
-  registro: Record<string, string>,
-  colunas: string[]
-): Record<string, unknown> {
+function identidade(registro: Record<string, string>, colunas: string[]): Record<string, unknown> {
   const id: Record<string, unknown> = {};
   for (const c of colunas) id[c] = registro[c];
   return id;
@@ -329,7 +343,10 @@ function markdownDistribuicao(bloco: Record<string, unknown>): string {
   }
 
   out += rankingMarkdown("Top (maiores valores)", bloco.top as Array<Record<string, unknown>>);
-  out += rankingMarkdown("Bottom (menores valores)", bloco.bottom as Array<Record<string, unknown>>);
+  out += rankingMarkdown(
+    "Bottom (menores valores)",
+    bloco.bottom as Array<Record<string, unknown>>
+  );
   return out;
 }
 
@@ -358,11 +375,9 @@ function markdownAgrupado(bloco: Record<string, unknown>, colunaGrupo: string): 
     formatarValor(g.media as number),
     formatarValor(g.mediana as number),
   ]);
-  out += createMarkdownTable(
-    ["Grupo", "n", "Soma", "Mínimo", "Máximo", "Média", "Mediana"],
-    rows,
-    { alignment: ["left", "right", "right", "right", "right", "right", "right"] }
-  );
+  out += createMarkdownTable(["Grupo", "n", "Soma", "Mínimo", "Máximo", "Média", "Mediana"], rows, {
+    alignment: ["left", "right", "right", "right", "right", "right", "right"],
+  });
   out += "\n_Percentis e desvio-padrão de cada grupo estão no payload estruturado._\n";
   return out;
 }
