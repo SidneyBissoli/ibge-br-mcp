@@ -7,7 +7,7 @@
  * a static `ibge://catalogos/...` resource returning JSON.
  */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 
 import {
   UF_CODES,

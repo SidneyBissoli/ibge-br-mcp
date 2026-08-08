@@ -8,7 +8,7 @@
  */
 
 import { z } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 
 /** Wraps prompt text into the single-user-message result the SDK expects. */
 function userMessage(text: string) {
@@ -31,7 +31,7 @@ export function registerPrompts(server: McpServer): void {
       title: "Comparar municípios",
       description:
         "Compara 2 a 10 localidades (municípios ou UFs) em um indicador e produz um ranking comentado.",
-      argsSchema: {
+      argsSchema: z.object({
         localidades: z
           .string()
           .describe(
@@ -43,7 +43,7 @@ export function registerPrompts(server: McpServer): void {
           .describe(
             "Indicador a comparar (ex.: populacao, pib, densidade, alfabetizacao). Padrão: populacao"
           ),
-      },
+      }),
     },
     ({ localidades, indicador }) => {
       const ind = indicador?.trim() || "populacao";
@@ -66,11 +66,11 @@ Passos:
       title: "Perfil demográfico",
       description:
         "Monta um perfil demográfico de uma localidade combinando população, censo e indicadores socioeconômicos.",
-      argsSchema: {
+      argsSchema: z.object({
         localidade: z
           .string()
           .describe("Município ou UF — código IBGE ou nome (ex.: '3550308' ou 'São Paulo')"),
-      },
+      }),
     },
     ({ localidade }) =>
       userMessage(

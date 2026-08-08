@@ -9,7 +9,7 @@
  * `toMcpResult`.
  */
 
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/server";
 import { normalizeText } from "./config.js";
 
 export interface StructuredToolResult {
