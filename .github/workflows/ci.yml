@@ -12,7 +12,8 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        # Floor is node >= 20 (package engines, MCP SDK v2 requirement).
+        node-version: [20.x, 22.x]
 
     steps:
       - name: Checkout repository
