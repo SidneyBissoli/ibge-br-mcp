@@ -76,7 +76,7 @@ export const sidraOutputSchema = z.object({
   totalRegistros: z.number().describe("Total de registros de dados disponíveis (todas as páginas)"),
   colunas: z.array(z.string()).describe("Rótulos das colunas, na ordem"),
   registros: z
-    .array(z.record(z.string()))
+    .array(z.record(z.string(), z.string()))
     .describe("Registros da página atual: cada um mapeia rótulo da coluna -> valor"),
   paginacao: z
     .object({

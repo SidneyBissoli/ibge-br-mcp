@@ -216,7 +216,7 @@ export const censoOutputSchema = z.object({
   totalRegistros: z.number().describe("Total de registros de dados"),
   colunas: z.array(z.string()).describe("Rótulos das colunas, na ordem"),
   registros: z
-    .array(z.record(z.string()))
+    .array(z.record(z.string(), z.string()))
     .describe("Registros: cada um mapeia rótulo da coluna -> valor"),
 });
 
