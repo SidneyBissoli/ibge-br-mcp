@@ -7,6 +7,14 @@ import { parseHttpError, ValidationErrors } from "../errors.js";
 import { fetchWithRetry } from "../retry.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
+import {
+  agruparPorParam,
+  estatisticasBlocoSchema,
+  estatisticasParam,
+  estatisticasSidra,
+  topNParam,
+  TOP_N_DEFAULT,
+} from "../stats.js";
 
 // Health data is published by SIDRA down to the municipality level.
 const DATASAUDE_NIVEIS = ["1", "2", "3", "6"];
@@ -115,6 +123,9 @@ export const datasaudeSchema = z.object({
     .describe(
       "Selecionar apenas algumas colunas por rótulo, separadas por vírgula (ex: 'Valor,Ano'). Reduz o volume da resposta."
     ),
+  estatisticas: estatisticasParam,
+  agruparPor: agruparPorParam,
+  topN: topNParam,
 });
 
 export type DatasaudeInput = z.infer<typeof datasaudeSchema>;
@@ -129,6 +140,7 @@ export const datasaudeOutputSchema = z.object({
   registros: z
     .array(z.record(z.string(), z.string()))
     .describe("Registros: cada um mapeia rótulo da coluna -> valor"),
+  estatisticas: estatisticasBlocoSchema.optional(),
 });
 
 /** Minimal valid payload for non-data success responses (e.g. the indicator catalog). */
@@ -204,6 +216,33 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
         return {
           markdown: `Nenhum dado encontrado para ${indicadorInfo.nome}.`,
           structured: { ...meta, ...sidraRecords(data) },
+        };
+      }
+
+      // Statistics mode (D2): full distribution over ALL data rows, before any
+      // truncation or field selection — `campos`/`formato` are ignored.
+      if (input.estatisticas) {
+        let cabecalho = `## ${indicadorInfo.nome}\n\n`;
+        cabecalho += `**Descrição:** ${indicadorInfo.descricao}\n`;
+        cabecalho += `**Fonte:** ${indicadorInfo.fonte}\n\n`;
+
+        const dados = sidraRecords(data);
+        const resultado = estatisticasSidra(dados, {
+          agruparPor: input.agruparPor,
+          topN: input.topN ?? TOP_N_DEFAULT,
+        });
+        if (!resultado.ok) {
+          return { markdown: cabecalho + resultado.erro, isError: true };
+        }
+        return {
+          markdown: cabecalho + resultado.markdown,
+          structured: {
+            ...meta,
+            totalRegistros: dados.totalRegistros,
+            colunas: dados.colunas,
+            registros: [],
+            estatisticas: resultado.bloco,
+          },
         };
       }
 

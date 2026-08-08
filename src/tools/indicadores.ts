@@ -6,6 +6,14 @@ import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
+import {
+  agruparPorParam,
+  estatisticasBlocoSchema,
+  estatisticasParam,
+  estatisticasSidra,
+  topNParam,
+  TOP_N_DEFAULT,
+} from "../stats.js";
 
 // These aggregates are published down to UF level (no municipal breakdown).
 const INDICADORES_NIVEIS = ["1", "2", "3"];
@@ -185,6 +193,9 @@ Use "listar" para ver todos os indicadores disponíveis.`),
     .describe(
       "Selecionar apenas algumas colunas por rótulo, separadas por vírgula (ex: 'Valor,Ano'). Reduz o volume da resposta."
     ),
+  estatisticas: estatisticasParam,
+  agruparPor: agruparPorParam,
+  topN: topNParam,
 });
 
 export type IndicadoresInput = z.infer<typeof indicadoresSchema>;
@@ -199,6 +210,7 @@ export const indicadoresOutputSchema = z.object({
   registros: z
     .array(z.record(z.string(), z.string()))
     .describe("Registros: cada um mapeia rótulo da coluna -> valor"),
+  estatisticas: estatisticasBlocoSchema.optional(),
 });
 
 /** Minimal valid payload for non-data success responses (e.g. the indicator catalog). */
@@ -306,6 +318,29 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
       output += `**Descrição:** ${indicador.descricao}\n`;
       output += `**Periodicidade:** ${indicador.periodicidade}\n`;
       output += `**Tabela SIDRA:** ${indicador.tabela}\n\n`;
+
+      // Statistics mode (D2): full distribution over ALL data rows, before any
+      // truncation or field selection — `campos`/`formato` are ignored.
+      if (input.estatisticas) {
+        const dados = sidraRecords(data);
+        const resultado = estatisticasSidra(dados, {
+          agruparPor: input.agruparPor,
+          topN: input.topN ?? TOP_N_DEFAULT,
+        });
+        if (!resultado.ok) {
+          return { markdown: output + resultado.erro, isError: true };
+        }
+        return {
+          markdown: output + resultado.markdown,
+          structured: {
+            ...meta,
+            totalRegistros: dados.totalRegistros,
+            colunas: dados.colunas,
+            registros: [],
+            estatisticas: resultado.bloco,
+          },
+        };
+      }
 
       // Apply optional field selection (1.2) to both channels.
       const filtered = selectSidraColumns(data, input.campos);

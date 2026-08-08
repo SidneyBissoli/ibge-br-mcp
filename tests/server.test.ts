@@ -10,12 +10,14 @@ import { createServer } from "../src/server.js";
  */
 describe("MCP server protocol surface", () => {
   let client: Client;
+  let instructions: string | undefined;
 
   beforeAll(async () => {
     const server = createServer();
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     client = new Client({ name: "test-client", version: "0.0.0" });
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    instructions = client.getInstructions();
   });
 
   afterAll(async () => {
@@ -34,6 +36,23 @@ describe("MCP server protocol surface", () => {
         expect(tool.annotations?.idempotentHint, `tool ${tool.name}`).toBe(true);
         expect(tool.annotations?.openWorldHint, `tool ${tool.name}`).toBe(true);
       }
+    });
+
+    it("gives every tool a pt-BR display title", async () => {
+      const { tools } = await client.listTools();
+
+      for (const tool of tools) {
+        expect(tool.title, `tool ${tool.name} missing title`).toBeTruthy();
+        expect(tool.title, `tool ${tool.name} title should differ from name`).not.toBe(tool.name);
+      }
+    });
+  });
+
+  describe("server instructions", () => {
+    it("sends the disambiguation map + D2 guidance on the handshake", () => {
+      expect(instructions).toBeTruthy();
+      expect(instructions).toContain("estatisticas");
+      expect(instructions).toContain("ibge_sidra");
     });
   });
 

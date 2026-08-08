@@ -13,17 +13,20 @@
 
 import { McpServer } from "@modelcontextprotocol/server";
 
-import { registerAll, SERVER_VERSION } from "../../dist/server.js";
+import { registerAll, SERVER_INSTRUCTIONS, SERVER_VERSION } from "../../dist/server.js";
 import { SERVER_CONFIG } from "./config.js";
 import type { RecordUsage } from "./usage-core.js";
 
 /** Builds a fresh MCP server with the shared tool/resource/prompt surface. */
 export function buildServer(record: RecordUsage = () => {}): McpServer {
-  const server = new McpServer({
-    name: SERVER_CONFIG.name,
-    version: SERVER_VERSION,
-    websiteUrl: SERVER_CONFIG.websiteUrl,
-  });
+  const server = new McpServer(
+    {
+      name: SERVER_CONFIG.name,
+      version: SERVER_VERSION,
+      websiteUrl: SERVER_CONFIG.websiteUrl,
+    },
+    { instructions: SERVER_INSTRUCTIONS }
+  );
   registerAll(server, (kind, name) => record(kind, name));
   return server;
 }

@@ -19,6 +19,8 @@ npm run lint           # eslint src/  (must be zero warnings)
 npm run lint:fix
 npm run format         # prettier --write src/
 npm run inspector      # @modelcontextprotocol/inspector against dist/index.js — manual tool testing
+node scripts/smoke-mcp.mjs           # smoke against the hosted Worker (initialize/tools/list/calls incl. estatisticas)
+node scripts/smoke-mcp.mjs --stdio   # same smoke over local STDIO (requires npm run build)
 ```
 
 Run a single test file or test by name:
@@ -58,6 +60,7 @@ The Worker intentionally does **not** list `@modelcontextprotocol/server` or `zo
 - `errors.ts` — `parseHttpError`, `formatError`, `ValidationErrors`. All user-facing errors are Portuguese Markdown with a suggestion and related tools.
 - `metrics.ts` — wrap every tool body in `withMetrics(toolName, apiName, fn)`. Also exports `logger` (writes to **stderr** only — stdout is the MCP protocol channel, never log there).
 - `structured.ts` — structured-output plumbing for data tools: `StructuredToolResult` type, `toMcpResult` (success → `structuredContent`, error → `isError` so the SDK skips schema validation), `sidraRecords` (SIDRA header+rows → labeled `{ colunas, registros, totalRegistros }`), and `selectSidraColumns` (the `campos` field-selection filter, accent/case-insensitive, returns data unchanged on no match).
+- `stats.ts` — the D2 statistics modes (`estatisticas`/`agruparPor`/`topN`) shared by the four SIDRA-backed tabular tools (`ibge_sidra`, `ibge_censo`, `ibge_indicadores`, `ibge_datasaude`), a pt-BR adapter over `@sbissoli/mcp-stats` (the portfolio package owns the math — percentile type 7, population std-dev, stable tie-breaks; never reimplement locally). Exports the shared input params, the `estatisticasBlocoSchema` output block, and `estatisticasSidra(dados, opcoes)`. SIDRA absence markers (`-`, `..`, `...`, `X`) drop out of *n*; multi-variable queries auto-group by "Variável"; top/bottom entries are identified by the columns that vary across the result.
 - `utils/formatters.ts` (re-exported via `utils/index.js`) — `createMarkdownTable`, `createKeyValueTable`, `formatNumber`, etc. Output formatting goes through these.
 - `types.ts` — IBGE API response interfaces plus the `IBGE_API` endpoint alias.
 
@@ -68,7 +71,7 @@ The Worker intentionally does **not** list `@modelcontextprotocol/server` or `zo
 Three edits, but the tool's user-facing description lives in exactly ONE place:
 1. The tool file in `src/tools/` — the Zod schema (`xxxSchema`), the input type, and the async impl (`ibgeXxx`).
 2. `src/tools/index.ts` — re-export the schema and the function.
-3. `src/server.ts` — a registration block inside `registerAll()`: `server.registerTool(name, { description, inputSchema: xxxSchema, outputSchema: xxxOutputSchema, annotations: READ_ONLY }, handle(name, ibgeXxx))` (whole zod schemas, no `.shape` — see the request flow above). Pass `READ_ONLY` so the new tool is annotated like the rest, and route the handler through `handle(...)` so usage instrumentation keeps covering it. This **English** description is the ONLY description the MCP client sees; put tool-selection / disambiguation guidance here.
+3. `src/server.ts` — a registration block inside `registerAll()`: `server.registerTool(name, { title, description, inputSchema: xxxSchema, outputSchema: xxxOutputSchema, annotations: READ_ONLY }, handle(name, ibgeXxx))` (whole zod schemas, no `.shape` — see the request flow above). Pass `READ_ONLY` so the new tool is annotated like the rest, and route the handler through `handle(...)` so usage instrumentation keeps covering it. This **English** description is the ONLY description the MCP client sees; put tool-selection / disambiguation guidance here. `title` is the pt-BR display name — every tool must have one (`tests/server.test.ts` enforces it). Cross-tool guidance (disambiguation clusters, statistics-mode routing) lives in `SERVER_INSTRUCTIONS` (also `server.ts`), sent on the handshake by both `createServer` and the Worker.
 
 Note `SERVER_VERSION` in `src/server.ts` is sourced from `package.json` (`import pkg from "../package.json" with { type: "json" }`; esbuild inlines it for the Worker build), so on release bump the version in **`package.json` only** — `src` no longer drifts. `server.json` is re-synced from `package.json` by the `publish-registry` CI job; the LobeHub `lhm.plugin.json` version is still bumped by hand. Add a `CHANGELOG.md` entry for the release too. (`engines` is `node >=20` — the MCP SDK v2 floor.)
 

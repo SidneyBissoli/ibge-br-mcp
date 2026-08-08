@@ -6,6 +6,14 @@ import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
+import {
+  agruparPorParam,
+  estatisticasBlocoSchema,
+  estatisticasParam,
+  estatisticasSidra,
+  topNParam,
+  TOP_N_DEFAULT,
+} from "../stats.js";
 
 // Census data is published by SIDRA down to the municipality level.
 const CENSO_NIVEIS = ["1", "2", "3", "6"];
@@ -203,6 +211,9 @@ export const censoSchema = z.object({
     .describe(
       "Selecionar apenas algumas colunas por rótulo, separadas por vírgula (ex: 'Valor,Ano'). Reduz o volume da resposta."
     ),
+  estatisticas: estatisticasParam,
+  agruparPor: agruparPorParam,
+  topN: topNParam,
 });
 
 export type CensoInput = z.infer<typeof censoSchema>;
@@ -218,6 +229,7 @@ export const censoOutputSchema = z.object({
   registros: z
     .array(z.record(z.string(), z.string()))
     .describe("Registros: cada um mapeia rótulo da coluna -> valor"),
+  estatisticas: estatisticasBlocoSchema.optional(),
 });
 
 /** Minimal valid payload for non-data success responses (e.g. the table catalog). */
@@ -331,14 +343,37 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
         };
       }
 
-      // Apply optional field selection (1.2) to both channels.
-      const filtered = selectSidraColumns(data, input.campos);
-
       // Format output
       let output = `## Censo Demográfico - ${tema.charAt(0).toUpperCase() + tema.slice(1).replace("_", " ")}\n\n`;
       output += `**Tabela SIDRA:** ${tabelaInfo.tabela}\n`;
       output += `**Descrição:** ${tabelaInfo.descricao}\n`;
       output += `**Ano(s):** ${input.ano || "Série histórica"}\n\n`;
+
+      // Statistics mode (D2): full distribution over ALL data rows, before any
+      // truncation or field selection — `campos`/`formato` are ignored.
+      if (input.estatisticas) {
+        const dados = sidraRecords(data);
+        const resultado = estatisticasSidra(dados, {
+          agruparPor: input.agruparPor,
+          topN: input.topN ?? TOP_N_DEFAULT,
+        });
+        if (!resultado.ok) {
+          return { markdown: output + resultado.erro, isError: true };
+        }
+        return {
+          markdown: output + resultado.markdown,
+          structured: {
+            ...meta,
+            totalRegistros: dados.totalRegistros,
+            colunas: dados.colunas,
+            registros: [],
+            estatisticas: resultado.bloco,
+          },
+        };
+      }
+
+      // Apply optional field selection (1.2) to both channels.
+      const filtered = selectSidraColumns(data, input.campos);
 
       const structured = { ...meta, ...sidraRecords(filtered) };
 

@@ -7,6 +7,14 @@ import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidPeriod, isValidTerritorialLevel, formatValidationError } from "../validation.js";
 import { territorialLevelHint, territorialLevelList, ALL_TERRITORIAL_LEVELS } from "../config.js";
 import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
+import {
+  agruparPorParam,
+  estatisticasBlocoSchema,
+  estatisticasParam,
+  estatisticasSidra,
+  topNParam,
+  TOP_N_DEFAULT,
+} from "../stats.js";
 
 /** Data rows returned per page in the structured payload and Markdown table. */
 const PAGE_SIZE = 100;
@@ -62,6 +70,9 @@ export const sidraSchema = z.object({
     .describe(
       "Selecionar apenas algumas colunas por rótulo, separadas por vírgula (ex: 'Valor,Ano'). Reduz o volume da resposta. Omitir traz todas."
     ),
+  estatisticas: estatisticasParam,
+  agruparPor: agruparPorParam,
+  topN: topNParam,
 });
 
 export type SidraInput = z.infer<typeof sidraSchema>;
@@ -86,6 +97,7 @@ export const sidraOutputSchema = z.object({
       temMais: z.boolean(),
     })
     .describe("Metadados de paginação para continuação"),
+  estatisticas: estatisticasBlocoSchema.optional(),
 });
 
 // Common SIDRA tables reference
@@ -186,6 +198,12 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
         };
       }
 
+      // Statistics mode (D2): full distribution over ALL data rows, before any
+      // pagination or field selection — `pagina`/`campos`/`formato` are ignored.
+      if (input.estatisticas) {
+        return buildSidraStatsResult(data, input);
+      }
+
       return buildSidraResult(
         selectSidraColumns(data, input.campos),
         input.tabela,
@@ -278,6 +296,46 @@ function buildSidraResult(
   }
 
   return { markdown: output, structured };
+}
+
+/**
+ * Builds the `estatisticas=true` response: the shared block from `stats.ts`
+ * plus the tool's usual metadata. `registros` stays empty — the aggregates
+ * replace the listing (use the default mode to page through raw records).
+ */
+function buildSidraStatsResult(data: SidraRecord[], input: SidraInput): StructuredToolResult {
+  const tabelaNome = TABELAS_COMUNS[input.tabela] || `Tabela ${input.tabela}`;
+  const dados = sidraRecords(data);
+  const resultado = estatisticasSidra(dados, {
+    agruparPor: input.agruparPor,
+    topN: input.topN ?? TOP_N_DEFAULT,
+  });
+
+  if (!resultado.ok) {
+    return { markdown: `## SIDRA - ${tabelaNome}\n\n${resultado.erro}`, isError: true };
+  }
+
+  const structured = {
+    tabela: input.tabela,
+    nome: tabelaNome,
+    totalRegistros: dados.totalRegistros,
+    colunas: dados.colunas,
+    registros: [],
+    paginacao: {
+      pagina: 1,
+      porPagina: PAGE_SIZE,
+      totalPaginas: Math.max(1, Math.ceil(dados.totalRegistros / PAGE_SIZE)),
+      temMais: false,
+    },
+    estatisticas: resultado.bloco,
+  };
+
+  const markdown =
+    `## SIDRA - ${tabelaNome}\n\n` +
+    `Total de registros: ${dados.totalRegistros}\n\n` +
+    resultado.markdown;
+
+  return { markdown, structured };
 }
 
 /**
