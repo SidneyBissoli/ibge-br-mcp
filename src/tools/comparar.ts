@@ -11,7 +11,7 @@ const NOTA_DERIVACAO_COMPARACAO =
   "Comparação, ranking e variação computados pelo servidor a partir dos valores brutos do SIDRA; os valores individuais permanecem os originais do IBGE.";
 
 // Pre-defined comparison templates
-const TEMPLATES_COMPARACAO: Record<
+export const TEMPLATES_COMPARACAO: Record<
   string,
   {
     nome: string;

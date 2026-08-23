@@ -26,7 +26,7 @@ import {
 const DATASAUDE_NIVEIS = ["1", "2", "3", "6"];
 
 // Health indicators available via IBGE SIDRA
-const INDICADORES_SAUDE: Record<
+export const INDICADORES_SAUDE: Record<
   string,
   {
     tabela: string;
@@ -37,10 +37,10 @@ const INDICADORES_SAUDE: Record<
   }
 > = {
   mortalidade_infantil: {
-    tabela: "793",
+    tabela: "7362",
     nome: "Mortalidade Infantil",
     descricao: "Taxa de mortalidade infantil (por mil nascidos vivos)",
-    fonte: "IBGE - Estatísticas do Registro Civil",
+    fonte: "IBGE - Projeções da População",
   },
   esperanca_vida: {
     tabela: "7362",
@@ -60,17 +60,11 @@ const INDICADORES_SAUDE: Record<
     descricao: "Óbitos por local de residência",
     fonte: "IBGE - Estatísticas do Registro Civil",
   },
-  obitos_causas: {
-    tabela: "5457",
-    nome: "Óbitos por Causas",
-    descricao: "Óbitos por grupos de causas - CID-10",
-    fonte: "IBGE - Estatísticas do Registro Civil",
-  },
   fecundidade: {
-    tabela: "7358",
+    tabela: "3727",
     nome: "Taxa de Fecundidade",
     descricao: "Taxa de fecundidade total",
-    fonte: "IBGE - Projeções da População",
+    fonte: "IBGE - Indicadores de Desenvolvimento Sustentável",
   },
   saneamento_agua: {
     tabela: "1395",
@@ -85,15 +79,15 @@ const INDICADORES_SAUDE: Record<
     fonte: "IBGE - Censo Demográfico 2022",
   },
   plano_saude: {
-    tabela: "6037",
+    tabela: "4938",
     nome: "Cobertura de Plano de Saúde",
-    descricao: "Pessoas com plano de saúde",
-    fonte: "IBGE - PNAD",
+    descricao: "Pessoas que tinham algum plano de saúde (médico ou odontológico)",
+    fonte: "IBGE - PNS",
   },
   autoavaliacao_saude: {
-    tabela: "6034",
+    tabela: "4751",
     nome: "Autoavaliação de Saúde",
-    descricao: "Pessoas por autoavaliação do estado de saúde",
+    descricao: "Pessoas de 18 anos ou mais com autoavaliação de saúde boa ou muito boa",
     fonte: "IBGE - PNS",
   },
 };
@@ -105,7 +99,6 @@ export const datasaudeSchema = z.object({
 - esperanca_vida: Esperança de vida ao nascer
 - nascidos_vivos: Nascidos vivos
 - obitos: Óbitos por local de residência
-- obitos_causas: Óbitos por causas (CID-10)
 - fecundidade: Taxa de fecundidade
 - saneamento_agua: Abastecimento de água
 - saneamento_esgoto: Esgotamento sanitário
@@ -337,11 +330,6 @@ function listHealthIndicators(): string {
         INDICADORES_SAUDE.nascidos_vivos.descricao,
       ],
       ["`obitos`", INDICADORES_SAUDE.obitos.nome, INDICADORES_SAUDE.obitos.descricao],
-      [
-        "`obitos_causas`",
-        INDICADORES_SAUDE.obitos_causas.nome,
-        INDICADORES_SAUDE.obitos_causas.descricao,
-      ],
     ],
     { alignment: ["left", "left", "left"] }
   );

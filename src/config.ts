@@ -296,7 +296,7 @@ export const SIDRA_TABLES = {
   POPULACAO_CENSO_2022: "9514",
   POPULACAO_CENSOS_HISTORICO: "200",
   // Economy
-  PIB_CORRENTE: "6706",
+  PIB_CORRENTE: "1846",
   PIB_PER_CAPITA: "5938",
   AREA_TERRITORIAL: "4714",
   DENSIDADE_DEMOGRAFICA: "4714",
@@ -304,11 +304,11 @@ export const SIDRA_TABLES = {
   TAXA_DESOCUPACAO: "4099",
   RENDIMENTO_MEDIO: "5436",
   // Prices
-  IPCA_MENSAL: "1737",
-  IPCA_ACUMULADO: "1736",
+  IPCA_MENSAL: "7060",
+  IPCA_ACUMULADO: "1737",
   // Census themes
-  ALFABETIZACAO: "4312",
-  DOMICILIOS: "4311",
+  ALFABETIZACAO: "9543",
+  DOMICILIOS: "4711",
 } as const;
 
 // ============================================================================

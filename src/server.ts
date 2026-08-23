@@ -883,7 +883,6 @@ Mortality and Birth:
 - mortalidade_infantil: Infant mortality rate
 - nascidos_vivos: Live births by location
 - obitos: Deaths by residence
-- obitos_causas: Deaths by cause (ICD-10)
 
 Demographic Indicators:
 - esperanca_vida: Life expectancy at birth

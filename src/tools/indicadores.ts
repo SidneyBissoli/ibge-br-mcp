@@ -25,7 +25,7 @@ import {
 const INDICADORES_NIVEIS = ["1", "2", "3"];
 
 // Common indicators with their SIDRA tables
-const INDICADORES_CONHECIDOS: Record<
+export const INDICADORES_CONHECIDOS: Record<
   string,
   {
     tabela: string;
@@ -45,7 +45,7 @@ const INDICADORES_CONHECIDOS: Record<
     categoria: "economico",
   },
   pib_variacao: {
-    tabela: "6612",
+    tabela: "5932",
     nome: "PIB - Variação",
     descricao: "Taxa de variação do PIB (% em relação ao mesmo trimestre do ano anterior)",
     periodicidade: "Trimestral",
@@ -88,7 +88,8 @@ const INDICADORES_CONHECIDOS: Record<
     categoria: "precos",
   },
   ipca_acumulado: {
-    tabela: "7062",
+    tabela: "7060",
+    variavel: "2265",
     nome: "IPCA - Acumulado 12 meses",
     descricao: "IPCA acumulado nos últimos 12 meses",
     periodicidade: "Mensal",
@@ -125,11 +126,11 @@ const INDICADORES_CONHECIDOS: Record<
     categoria: "trabalho",
   },
   informalidade: {
-    tabela: "4099",
-    variavel: "4100",
+    tabela: "4708",
+    variavel: "12466",
     nome: "Taxa de Informalidade",
     descricao: "Taxa de informalidade da população ocupada",
-    periodicidade: "Trimestral",
+    periodicidade: "Anual",
     categoria: "trabalho",
   },
   // População

@@ -1,0 +1,41 @@
+name: Integration tests (live IBGE APIs)
+
+# Valida o CONTRATO DO CATÁLOGO contra a API real de agregados: cada código
+# de tabela SIDRA declarado nos catálogos do servidor precisa apontar para a
+# tabela que o rótulo promete (tests/catalog-contract.integration.test.ts).
+#
+# História que motivou este workflow: em 2026-08 o monitor do portfólio
+# descobriu que ~13 códigos estavam errados desde o commit inicial — a API
+# responde 200 com dados válidos de OUTRA tabela, então nenhum teste offline
+# pega esse erro. Roda em cron (não gateia PRs) para também capturar o dia em
+# que o IBGE aposentar/substituir uma tabela.
+
+on:
+  # segunda 08:00 UTC = 05:00 BRT, antes da rodada semanal do monitor (09:00 BRT)
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Catalog contract against live IBGE API
+        env:
+          INTEGRATION_TESTS: '1'
+        run: npx vitest run tests/catalog-contract.integration.test.ts
