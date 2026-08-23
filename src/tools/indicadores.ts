@@ -141,7 +141,8 @@ const INDICADORES_CONHECIDOS: Record<
     categoria: "populacao",
   },
   densidade: {
-    tabela: "1712",
+    tabela: "4714",
+    variavel: "614",
     nome: "Densidade Demográfica",
     descricao: "Densidade demográfica (hab/km²)",
     periodicidade: "Decenal",

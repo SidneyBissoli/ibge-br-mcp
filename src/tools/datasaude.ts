@@ -79,10 +79,10 @@ const INDICADORES_SAUDE: Record<
     fonte: "IBGE - Censo Demográfico / PNAD",
   },
   saneamento_esgoto: {
-    tabela: "1396",
+    tabela: "6805",
     nome: "Esgotamento Sanitário",
     descricao: "Domicílios por tipo de esgotamento sanitário",
-    fonte: "IBGE - Censo Demográfico / PNAD",
+    fonte: "IBGE - Censo Demográfico 2022",
   },
   plano_saude: {
     tabela: "6037",

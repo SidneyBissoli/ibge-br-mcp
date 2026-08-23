@@ -111,10 +111,9 @@ const TABELAS_COMUNS: Record<string, string> = {
   "6579": "Estimativas de população",
   "9514": "População residente (Censo 2022)",
   "200": "População residente (Censos 1970-2010)",
-  "1705": "Área territorial",
-  "1712": "Densidade demográfica",
-  "4714": "PNAD Contínua - Taxa de desocupação",
-  "6381": "PNAD Contínua - Rendimento médio",
+  "4714": "População, área territorial e densidade (Censo 2022)",
+  "4099": "PNAD Contínua - Taxa de desocupação (trimestral)",
+  "5436": "PNAD Contínua - Rendimento médio real habitual (trimestral)",
   "6706": "PIB a preços correntes",
   "5938": "Produto Interno Bruto per capita",
 };

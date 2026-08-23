@@ -309,8 +309,9 @@ Common tables:
 - 6579: Population estimates (annual)
 - 9514: Census 2022 population
 - 200: Census population (1970-2010)
-- 4714: Unemployment rate (PNAD Contínua)
-- 6381: Average income (PNAD Contínua)
+- 4714: Population, territorial area and density (Census 2022)
+- 4099: Unemployment rate (PNAD Contínua, quarterly)
+- 5436: Average real income (PNAD Contínua, quarterly)
 - 6706: GDP at current prices
 - 5938: GDP per capita
 
