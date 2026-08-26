@@ -1,5 +1,3 @@
-[![Verified on MseeP](https://mseep.net/pr/sidneybissoli-ibge-br-mcp-badge.png)](https://mseep.ai/app/sidneybissoli-ibge-br-mcp)
-
 # ibge-br-mcp
 
 [![npm version](https://img.shields.io/npm/v/ibge-br-mcp.svg)](https://www.npmjs.com/package/ibge-br-mcp)
@@ -9,8 +7,8 @@
 [![LobeHub](https://lobehub.com/badge/mcp/sidneybissoli-ibge-br-mcp)](https://lobehub.com/mcp/sidneybissoli-ibge-br-mcp)
 [![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
 [![ibge-br-mcp MCP server](https://glama.ai/mcp/servers/@SidneyBissoli/ibge-br-mcp/badges/score.svg)](https://glama.ai/mcp/servers/@SidneyBissoli/ibge-br-mcp)
-[![Tests](https://img.shields.io/badge/tests-456%20passed-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
-[![Coverage](https://img.shields.io/badge/coverage-core%2097%25-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
+[![CI](https://github.com/SidneyBissoli/ibge-br-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/SidneyBissoli/ibge-br-mcp/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
 [![GitHub stars](https://img.shields.io/github/stars/SidneyBissoli/ibge-br-mcp?style=flat&logo=github)](https://github.com/SidneyBissoli/ibge-br-mcp)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/SidneyBissoli?logo=githubsponsors&label=Sponsor&color=db61a2)](https://github.com/sponsors/SidneyBissoli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -37,7 +35,7 @@ As respostas vêm ao vivo das APIs oficiais do IBGE — valores exatos com a tab
 
 - **22 ferramentas especializadas** cobrindo todos os principais domínios de dados do IBGE
 - **Resources de referência & prompts de análise** (catálogos MCP + templates prontos)
-- **460 testes automatizados** com 97%+ de cobertura no core
+- **565 testes automatizados** — 88% de cobertura geral, 92% nas tools
 - **Cache automático** com TTL configurável para performance otimizada
 - **Mecanismo de retry** com backoff exponencial para resiliência de rede
 - **Validação abrangente** para todos os parâmetros de entrada
@@ -538,7 +536,7 @@ ibge-br-mcp/
 
 ## Testes
 
-O projeto inclui uma suíte de testes abrangente com 227 testes cobrindo:
+O projeto inclui uma suíte de testes abrangente com 565 testes cobrindo:
 
 - Funções de validação
 - Mecanismo de retry
@@ -555,8 +553,8 @@ npm test
 
 Este projeto mantém altos padrões de qualidade de código:
 
-- **227 testes automatizados** cobrindo validação, cache, retry, formatação e integrações
-- **97%+ de cobertura de testes** nos módulos core (cache, validation, errors, types)
+- **565 testes automatizados** cobrindo validação, cache, retry, formatação e integrações
+- **88% de cobertura de testes no total** — os módulos cache e validation acima de 97%
 - **ESLint** para linting de código sem warnings
 - **Prettier** para formatação consistente
 - **TypeScript modo strict** para segurança de tipos

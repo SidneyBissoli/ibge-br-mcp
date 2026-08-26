@@ -1,5 +1,3 @@
-[![Verified on MseeP](https://mseep.net/pr/sidneybissoli-ibge-br-mcp-badge.png)](https://mseep.ai/app/sidneybissoli-ibge-br-mcp)
-
 # IBGE Brasil MCP Server
 
 [![npm version](https://img.shields.io/npm/v/ibge-br-mcp.svg)](https://www.npmjs.com/package/ibge-br-mcp)
@@ -9,8 +7,8 @@
 [![LobeHub](https://lobehub.com/badge/mcp/sidneybissoli-ibge-br-mcp)](https://lobehub.com/mcp/sidneybissoli-ibge-br-mcp)
 [![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
 [![ibge-br-mcp MCP server](https://glama.ai/mcp/servers/@SidneyBissoli/ibge-br-mcp/badges/score.svg)](https://glama.ai/mcp/servers/@SidneyBissoli/ibge-br-mcp)
-[![Tests](https://img.shields.io/badge/tests-456%20passed-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
-[![Coverage](https://img.shields.io/badge/coverage-core%2097%25-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
+[![CI](https://github.com/SidneyBissoli/ibge-br-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/SidneyBissoli/ibge-br-mcp/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
 [![GitHub stars](https://img.shields.io/github/stars/SidneyBissoli/ibge-br-mcp?style=flat&logo=github)](https://github.com/SidneyBissoli/ibge-br-mcp)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/SidneyBissoli?logo=githubsponsors&label=Sponsor&color=db61a2)](https://github.com/sponsors/SidneyBissoli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -25,11 +23,11 @@ This server implements the [Model Context Protocol (MCP)](https://modelcontextpr
 
 ## See it in action
 
-Ask your assistant, in plain Portuguese:
+Ask your assistant, in English or Portuguese:
 
-- *"Qual era a população de Belo Horizonte no Censo 2022?"* → `ibge_cidades` / `ibge_censo`
-- *"Liste os municípios do Espírito Santo."* → `ibge_municipios`
-- *"Compare o PIB per capita das capitais do Sudeste."* → `ibge_comparar`
+- *"What was Belo Horizonte's population in the 2022 Census?"* → `ibge_cidades` / `ibge_censo`
+- *"List the municipalities of Espírito Santo."* → `ibge_municipios`
+- *"Compare GDP per capita across the Southeast state capitals."* → `ibge_comparar`
 
 The answers come live from the official IBGE APIs — exact figures with the table and period they came from, not numbers guessed from training data.
 
@@ -40,7 +38,7 @@ The answers come live from the official IBGE APIs — exact figures with the tab
   period, real extraction timestamp, ready-to-use citation, and legal regime
   (see [Data provenance](#data-provenance))
 - **Reference resources & analysis prompts** (MCP catalogs + ready-made templates)
-- **460 automated tests** with 97%+ core coverage
+- **565 automated tests** — 88% overall coverage, 92% across the tools
 - **Automatic caching** with configurable TTL for optimal performance
 - **Retry mechanism** with exponential backoff for network resilience
 - **Comprehensive validation** for all input parameters
@@ -562,7 +560,7 @@ ibge-br-mcp/
 
 ## Testing
 
-The project includes a comprehensive test suite with 227 tests covering:
+The project includes a comprehensive test suite with 565 tests covering:
 
 - Validation functions
 - Retry mechanism
@@ -579,8 +577,8 @@ npm test
 
 This project maintains high code quality standards:
 
-- **227 automated tests** covering validation, caching, retry logic, formatting, and integrations
-- **97%+ test coverage** on core modules (cache, validation, errors, types)
+- **565 automated tests** covering validation, caching, retry logic, formatting, and integrations
+- **88% overall test coverage** — cache and validation modules above 97%
 - **ESLint** for code linting with zero warnings
 - **Prettier** for consistent code formatting
 - **TypeScript strict mode** for type safety
