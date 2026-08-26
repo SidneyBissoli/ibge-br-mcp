@@ -8,7 +8,7 @@
 [![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
 [![ibge-br-mcp MCP server](https://glama.ai/mcp/servers/@SidneyBissoli/ibge-br-mcp/badges/score.svg)](https://glama.ai/mcp/servers/@SidneyBissoli/ibge-br-mcp)
 [![CI](https://github.com/SidneyBissoli/ibge-br-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/SidneyBissoli/ibge-br-mcp/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp)
+[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A588%25-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp/blob/main/vitest.config.ts)
 [![GitHub stars](https://img.shields.io/github/stars/SidneyBissoli/ibge-br-mcp?style=flat&logo=github)](https://github.com/SidneyBissoli/ibge-br-mcp)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/SidneyBissoli?logo=githubsponsors&label=Sponsor&color=db61a2)](https://github.com/sponsors/SidneyBissoli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

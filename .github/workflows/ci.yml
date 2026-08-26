@@ -40,17 +40,11 @@ jobs:
       - name: Run tests
         run: npm test
 
+      # Falha se a cobertura cair abaixo do piso de vitest.config.ts — é este
+      # passo que impede o número do README de virar ficção.
       - name: Run tests with coverage
         if: matrix.node-version == '20.x'
         run: npm run test:coverage
-
-      - name: Upload coverage reports
-        if: matrix.node-version == '20.x'
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-        continue-on-error: true
 
   type-check:
     runs-on: ubuntu-latest
@@ -87,6 +81,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # SEM continue-on-error: com ele o passo nunca reprovava nada, e cinco
+      # advisories high ficaram meses no repositório sem ninguém notar — foi o
+      # que derrubou a nota do MseeP para 2,7 ("Moderate Risk", scan 13/08/2026),
+      # embora todas fossem transitivas do eslint e `npm audit --omit=dev` desse
+      # zero. Diretório de MCP pontua a superfície do audit, não só o runtime.
       - name: Run npm audit
         run: npm audit --audit-level=high
-        continue-on-error: true
