@@ -28,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
@@ -41,9 +41,9 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
-    # id-token: write is required for npm --provenance: GitHub Actions mints an
-    # OIDC token that npm uses to sign the SLSA attestation asserting the
-    # package was built from this repo at this commit.
+    # id-token: write enables TRUSTED PUBLISHING: GitHub Actions mints a
+    # short-lived OIDC token that npm accepts in place of a stored credential,
+    # and the SLSA provenance attestation is generated from it automatically.
     permissions:
       contents: read
       id-token: write
@@ -52,7 +52,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
@@ -62,13 +62,20 @@ jobs:
         run: npm version ${{ github.event.inputs.version }} --no-git-tag-version --allow-same-version
       # npm publish is not idempotent (EPUBLISHCONFLICT on a re-run). Skip when
       # npm already has this exact version so a re-dispatch doesn't die here.
+      # Trusted publishing exige npm >= 11.5.1, e qual npm vem embutido muda a
+      # cada release do Node. Instalar explicitamente tira a dependencia dessa
+      # coincidencia — e o log registra a versao que de fato publicou.
+      - name: npm recente o bastante para trusted publishing
+        run: |
+          npm install -g npm@latest
+          echo "npm $(npm --version) / node $(node --version)"
       - name: Publish to npm
         run: |
           VERSION=$(node -p "require('./package.json').version")
           if [ "$(npm view ibge-br-mcp@$VERSION version 2>/dev/null || true)" = "$VERSION" ]; then
             echo "npm already has $VERSION — skipping publish"
           else
-            npm publish --access public --provenance
+            npm publish --access public
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
