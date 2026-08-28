@@ -100,17 +100,10 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-      - name: Sync server.json version
-        run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION=$(node -p "require('./package.json').version")
-          fi
-          VERSION="${VERSION#v}"
-          jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json > server.tmp
-          mv server.tmp server.json
-          echo "server.json now declares version $VERSION"
+      # O server.json commitado JA declara a versao correta: quem a mantem e
+      # scripts/sync-version.mjs, no hook `version` do npm, com guarda em teste.
+      # Reescrever aqui fazia o arquivo do repositorio mentir (chegou a ficar
+      # 3 minor atrasado) enquanto so o registro via a versao certa.
       - name: Wait for npm to expose the new version
         run: |
           VERSION=$(node -p "require('./server.json').version")

@@ -12,6 +12,7 @@
     "dist"
   ],
   "scripts": {
+    "version": "node scripts/sync-version.mjs && git add -u",
     "build": "tsc",
     "watch": "tsc --watch",
     "start": "node dist/index.js",
