@@ -215,7 +215,7 @@ Add to your Claude Desktop configuration file (`claude_desktop_config.json`):
   "mcpServers": {
     "ibge-br-mcp": {
       "command": "npx",
-      "args": ["ibge-br-mcp"]
+      "args": ["-y", "ibge-br-mcp"]
     }
   }
 }
@@ -241,7 +241,7 @@ Or if installed from source:
   "mcpServers": {
     "ibge-br-mcp": {
       "command": "npx",
-      "args": ["ibge-br-mcp"]
+      "args": ["-y", "ibge-br-mcp"]
     }
   }
 }

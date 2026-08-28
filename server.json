@@ -3,7 +3,7 @@
   "name": "io.github.SidneyBissoli/ibge-br-mcp",
   "title": "IBGE Brasil MCP",
   "description": "MCP server for live, sourced Brazilian public data from the official IBGE APIs.",
-  "websiteUrl": "https://github.com/SidneyBissoli/ibge-br-mcp#readme",
+  "websiteUrl": "https://ibge.sidneybissoli.com",
   "repository": {
     "url": "https://github.com/SidneyBissoli/ibge-br-mcp",
     "source": "github"
