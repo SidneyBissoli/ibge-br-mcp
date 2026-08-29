@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.2] - 2026-08-29
+
+### Changed
+
+- The icon is now served from the server's OWN domain: a new public
+  `GET /icon.png` route on the Worker, and `icons[0].src` in `server.json`
+  pointing at `https://ibge.sidneybissoli.com/icon.png`. It previously pointed at
+  `raw.githubusercontent.com`, which works but puts a third-party host in the
+  path of every directory that renders the listing — and the MCP schema
+  explicitly recommends the server's own domain. This matches the arrangement
+  senado-br-mcp-cloudflare already used.
+
+### Added
+
+- `tests/icon-sync.test.ts` — a gate against icon drift: asset bytes vs. the
+  base64 inlined in the Worker, manifest URL vs. the route the code serves, and
+  `mimeType`/`sizes` checked against the PNG's real IHDR header. It lives in the
+  root suite because this repo's CI does not run `worker/tests/`.
+
 ## [4.0.1] - 2026-08-29
 
 ### Added
