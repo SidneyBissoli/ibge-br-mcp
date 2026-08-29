@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-08-29
+
+### Added
+
+- `icons` in `server.json`: a flat silhouette of Brazil in PNG, served from the
+  repository itself (`assets/icon.png`). The mcpindex.ai Quality Score awards 5
+  completeness points for a declared icon, and without the field the server
+  stopped at 95/100 — measured 2026-08-29. A published version is immutable in
+  the MCP Registry (`cannot publish duplicate version`), so new metadata only
+  reaches it through a release.
+
 ## [4.0.0] - 2026-08-28
 
 **Breaking:** `ibge_populacao` was removed — the server surface goes from 22 to
