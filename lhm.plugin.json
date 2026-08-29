@@ -1,8 +1,8 @@
 {
   "identifier": "sidneybissoli-ibge-br-mcp",
   "name": "IBGE Brasil MCP",
-  "version": "3.3.0",
-  "description": "MCP server for live, sourced Brazilian public data from the official IBGE APIs - geography, census, economy, names, health (via SIDRA) and maps.",
+  "version": "4.0.0",
+  "description": "MCP server giving AI assistants live, sourced access to Brazilian public data — geography, census, economy and health — from the official IBGE APIs. Exact figures with provenance, not approximations.",
   "author": "Sidney Bissoli",
   "authorUrl": "https://github.com/SidneyBissoli",
   "homepage": "https://github.com/SidneyBissoli/ibge-br-mcp",

@@ -30,6 +30,11 @@ if (!/^\d+\.\d+\.\d+/.test(version)) {
 
 const targets = [
   { file: "server.json", re: /("version":\s*")\d+\.\d+\.\d+[^"]*(")/g },
+  // O manifesto do LobeHub era bumpado À MÃO e por isso ficou em 3.3.0 com o
+  // pacote em 4.0.0 (achado em 28/08/2026, ao auditar a qualidade das
+  // listagens). É a ficha que o diretório exibe: versão errada ali é versão
+  // errada para quem procura. Entra como alvo para o problema não voltar.
+  { file: "lhm.plugin.json", re: /("version":\s*")\d+\.\d+\.\d+[^"]*(")/ },
   { file: "src/version.ts", re: /(export const VERSION = ")\d+\.\d+\.\d+[^"]*(")/ },
   { file: "src/config.ts", re: /(\bversion:\s*")\d+\.\d+\.\d+[^"]*(")/ },
 ];
