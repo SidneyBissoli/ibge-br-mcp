@@ -4,6 +4,13 @@
   "title": "IBGE Brasil MCP",
   "description": "MCP server giving AI assistants live, sourced access to Brazilian public data — geography, census, economy and health — from the official IBGE APIs. Exact figures with provenance, not approximations.",
   "websiteUrl": "https://ibge.sidneybissoli.com",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/SidneyBissoli/ibge-br-mcp/main/assets/icon.png",
+      "mimeType": "image/png",
+      "sizes": ["512x512"]
+    }
+  ],
   "repository": {
     "url": "https://github.com/SidneyBissoli/ibge-br-mcp",
     "source": "github"
