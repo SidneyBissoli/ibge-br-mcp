@@ -6,7 +6,7 @@
   "websiteUrl": "https://ibge.sidneybissoli.com",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/SidneyBissoli/ibge-br-mcp/main/assets/icon.png",
+      "src": "https://ibge.sidneybissoli.com/icon.png",
       "mimeType": "image/png",
       "sizes": ["512x512"]
     }

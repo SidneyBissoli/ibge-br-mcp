@@ -19,7 +19,11 @@ import { checkRateLimit } from "./rate-limit.js";
 import { buildServer } from "./server.js";
 import { buildStatus } from "./status.js";
 import type { Env } from "./types.js";
+import { ICON_PNG_BASE64 } from "./icon.js";
 import { createUsageRecorder, usageSnapshot, UsageTracker } from "./usage.js";
+
+// Decodificado uma vez por isolate, nao por request.
+const ICON_PNG = Uint8Array.from(atob(ICON_PNG_BASE64), (c) => c.charCodeAt(0));
 
 // O runtime instancia o Durable Object a partir do export do entrypoint.
 export { UsageTracker };
@@ -44,6 +48,17 @@ export default {
     }
     if (url.pathname === "/status") {
       return json(buildStatus(env), { "Cache-Control": "no-store" });
+    }
+    // Icone do servidor — publico: e o que server.json declara e o que os
+    // diretorios buscam. Mesmo host do servidor, como o schema do MCP recomenda.
+    if (url.pathname === "/icon.png") {
+      return new Response(ICON_PNG, {
+        status: 200,
+        headers: {
+          "Content-Type": "image/png",
+          "Cache-Control": "public, max-age=86400",
+        },
+      });
     }
     if (url.pathname === "/metrics") {
       const snap = await usageSnapshot(env);
