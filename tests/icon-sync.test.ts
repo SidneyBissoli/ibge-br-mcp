@@ -1,18 +1,18 @@
 /**
- * The server icon lives in THREE places and all three must agree:
+ * The server icon is declared in TWO places that must never disagree:
  *
- *   1. `assets/icon.png`     — the source; the file you actually edit;
- *   2. `worker/src/icon.ts`  — a base64 copy, because the Worker cannot read a
- *                              file at runtime without an assets binding;
- *   3. `server.json`         — what the MCP Registry publishes and what every
- *                              directory mirrors (`icons[0]`).
+ *   1. `worker/src/icon.ts` — the bytes, base64-inlined, served by the
+ *      `/icon.png` route. It is THE source: there is no `assets/` copy;
+ *   2. `server.json`        — what the MCP Registry publishes and what every
+ *      directory mirrors (`icons[0]`).
  *
- * WHY THIS EXISTS. The duplicated bytes are deliberate and cannot go away, so
- * the risk is DRIFT: swap the icon in `assets/` and forget to regenerate the
- * Worker module, and the `/icon.png` route serves the old image while
- * `server.json` promises the new one — invisibly, because both answer 200. The
- * header comment in `worker/src/icon.ts` asks for the regeneration; a comment
- * is not a gate. This file is.
+ * WHY THIS EXISTS. Until 4.0.2 the bytes lived in two places — a file in
+ * `assets/icon.png` and the Worker's base64 copy — because the Worker cannot
+ * read a file at runtime without an assets binding. Duplication that cannot go
+ * away becomes drift risk: swap one and forget the other, and the route serves
+ * one image while the manifest promises another, with no error on either side,
+ * because both answer 200. The copy is gone; what is left to guard is the
+ * manifest agreeing with what the code actually serves.
  *
  * It lives in the ROOT suite on purpose: this repo's CI runs `npm test` at the
  * root and never runs `worker/tests/`, so a guard placed there would never fire.
@@ -29,9 +29,7 @@ import { describe, expect, it } from "vitest";
 
 const raiz = join(__dirname, "..");
 
-const bytesDoAtivo = (): Buffer => readFileSync(join(raiz, "assets", "icon.png"));
-
-function bytesDoWorker(): Buffer {
+function bytesDoIcone(): Buffer {
   const fonte = readFileSync(join(raiz, "worker", "src", "icon.ts"), "utf8");
   // Match the exported literal instead of importing the module: this test runs
   // under the ROOT vitest, which does not have the worker's tsconfig on path.
@@ -58,9 +56,14 @@ const manifesto = (): ManifestoIcone[] | undefined =>
   (JSON.parse(readFileSync(join(raiz, "server.json"), "utf8")) as { icons?: ManifestoIcone[] })
     .icons;
 
-describe("server icon: asset x worker x manifest", () => {
-  it("the Worker base64 is byte-for-byte assets/icon.png", () => {
-    expect(bytesDoWorker().equals(bytesDoAtivo())).toBe(true);
+describe("server icon: bytes x manifest x route", () => {
+  it("the inlined bytes are a valid PNG, and the only copy", () => {
+    expect(() => dimensoesPng(bytesDoIcone())).not.toThrow();
+    // An assets/ copy would reintroduce the drift 4.0.2 removed.
+    expect(
+      () => readFileSync(join(raiz, "assets", "icon.png")),
+      "a second copy of the icon is back — worker/src/icon.ts is the single source",
+    ).toThrow();
   });
 
   it("server.json declares the icon served by the server's own domain", () => {
@@ -75,12 +78,12 @@ describe("server icon: asset x worker x manifest", () => {
   });
 
   it("mimeType and sizes describe the image that exists, not a promise", () => {
-    const { largura, altura } = dimensoesPng(bytesDoAtivo());
+    const { largura, altura } = dimensoesPng(bytesDoIcone());
     expect(manifesto()![0]!.mimeType).toBe("image/png");
     expect(manifesto()![0]!.sizes).toEqual([`${largura}x${altura}`]);
   });
 
   it("the icon fits under Smithery's 1 MB ceiling", () => {
-    expect(bytesDoAtivo().byteLength).toBeLessThan(1024 * 1024);
+    expect(bytesDoIcone().byteLength).toBeLessThan(1024 * 1024);
   });
 });
