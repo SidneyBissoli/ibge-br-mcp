@@ -92,10 +92,26 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
 
+      # A GUARDA QUE O SMOKE NÃO DÁ. O smoke abaixo exercita a superfície, mas
+      # passaria IGUAL servindo a versão anterior — que é justamente a deriva
+      # que este workflow existe para impedir, e que aconteceu de novo no
+      # senado-br-mcp-cloudflare (npm 3.5.1, hospedado 3.5.0 por cinco dias,
+      # medido em 29/08/2026). Comparar o que /status reporta com o
+      # package.json torna a deriva vermelha em vez de silenciosa.
+      - if: steps.cf.outputs.ok == 'true'
+        name: Versão hospedada bate com o package.json
+        run: |
+          sleep 20
+          ESPERADA=$(node -p "require('./package.json').version")
+          NO_AR=$(curl -sS --max-time 30 https://ibge.sidneybissoli.com/status | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
+          echo "package.json=$ESPERADA  hospedado=$NO_AR"
+          if [ "$ESPERADA" != "$NO_AR" ]; then
+            echo "::error::deriva: o endpoint serve $NO_AR e o repositório está em $ESPERADA"
+            exit 1
+          fi
+
       # Fecha o ciclo: se o deploy subir um worker quebrado, o job falha aqui e
       # não em silêncio na próxima vez que alguém abrir o endpoint.
       - if: steps.cf.outputs.ok == 'true'
         name: Smoke em produção
-        run: |
-          sleep 20
-          node scripts/smoke-mcp.mjs
+        run: node scripts/smoke-mcp.mjs
