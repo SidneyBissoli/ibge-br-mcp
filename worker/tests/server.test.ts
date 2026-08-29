@@ -29,12 +29,12 @@ afterEach(() => {
 });
 
 describe("buildServer (worker)", () => {
-  it("expõe a superfície completa do pacote pai (22 tools, 5 resources, 2 prompts)", async () => {
+  it("expõe a superfície completa do pacote pai (21 tools, 5 resources, 2 prompts)", async () => {
     const client = await connect(buildServer());
     const { tools } = await client.listTools();
     const { resources } = await client.listResources();
     const { prompts } = await client.listPrompts();
-    expect(tools).toHaveLength(22);
+    expect(tools).toHaveLength(21);
     expect(resources).toHaveLength(5);
     expect(prompts).toHaveLength(2);
     await client.close();
