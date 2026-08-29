@@ -46,6 +46,41 @@ jobs:
         if: matrix.node-version == '20.x'
         run: npm run test:coverage
 
+  # O worker tem suite propria (6 arquivos, 32 testes) que ate 29/08/2026 nunca
+  # rodava no CI: `build-and-test` so cobre a raiz. Teste que nunca roda e pior
+  # que teste ausente — cria confianca sem dar garantia, e apodrece calado.
+  worker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+
+      # A raiz vem primeiro: o worker importa ../../dist/server.js e resolve o
+      # SDK do node_modules da raiz (desenho de copia unica).
+      - name: Install + build (raiz)
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install (worker)
+        run: npm ci
+        working-directory: worker
+
+      - name: Typecheck (worker)
+        run: npm run typecheck
+        working-directory: worker
+
+      - name: Test (worker)
+        run: npm test
+        working-directory: worker
+
   type-check:
     runs-on: ubuntu-latest
 
