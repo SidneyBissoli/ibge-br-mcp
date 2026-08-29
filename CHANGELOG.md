@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-08-28
+
+**Breaking:** `ibge_populacao` was removed — the server surface goes from 22 to
+21 tools. Clients calling it must move to `ibge_censo` or `ibge_indicadores`
+(`indicador='populacao'`).
+
+### Removed
+- **`ibge_populacao` retired.** The IBGE real-time population-projection API it
+  depended on was taken down: `/api/v1/projecoes/populacao/BR` answers 404, the
+  `/api/v1/projecoes` root answers 404 too, and `/api/docs/projecoes` now
+  redirects to the docs index — it was withdrawn, not temporarily down.
+  What survives in SIDRA is the **2018 revision** (aggregates 7358 and 7360):
+  annual, eight years stale, and with no clock, birth interval, or daily
+  increment. Repointing there would have kept the tool's name while quietly
+  changing what it means — the "plausible wrong" this project refuses. The
+  server surface goes from 22 to 21 tools; `SERVER_INSTRUCTIONS` no longer
+  opens the population disambiguation with a dead tool, and routes to
+  `ibge_censo` and `ibge_indicadores` (`indicador='populacao'`), which answer
+  from live data.
+
+### Fixed
+- **`ibge_comparar` returned unusable data for every indicator pinned to
+  `variaveis: "allxp"`.** On `pib` (table 5938, 46 variables) the query pulled
+  the sectoral value-added series alongside the GDP total — 200 records instead
+  of 5, the same municipality repeated, and Mil Reais mixed with percentages in
+  one comparison, which made the aggregate statistics meaningless
+  (`variacaoPct: 152403586328.6`). Every template now pins its variable id
+  (`populacao` 9324, `populacao_censo` 93, `pib` 37, `alfabetizacao` 2513,
+  `domicilios` 617), matching `area` and `densidade`, which always did.
+  Table 5938 publishes no per-capita variable, so `pib` is now described for
+  what it returns: GDP at current prices, in Mil Reais.
+- **`ibge_comparar` tagged every locality with the wrong code.** The row's
+  locality code was read by taking the first column whose label contained
+  "código", which in a SIDRA response is `Unidade de Medida (Código)` — so the
+  payload came back with the *unit* code (28 = inhab./km², 40 = Mil Reais)
+  where the IBGE locality code belonged. Anything joining `structuredContent`
+  to another dataset joined on the wrong key.
+- **`ibge_comparar` turned SIDRA absence markers into zero.** `"..."`, `"-"`,
+  `".."` and `"X"` were coerced to `0` by a `parseFloat(...) || 0`, entering
+  the ranking and the average as if they were measurements. Values now parse
+  through the shared `valorSidra()` helper; an absent value is `null` (the
+  `outputSchema` says so), sorts last in a ranking instead of at the bottom of
+  a scale it never joined, and stays out of the statistics.
+- **`ibge_cidades` (`tipo="panorama"`) timed out for every municipality.** The
+  eight indicator lookups ran sequentially with the default retry policy (4
+  attempts, backoff from 2s), so the two that the IBGE Pesquisas API was
+  answering with HTTP 500 — `escolarizacao` (40/60045) and `salario_medio`
+  (33/29765) — consumed roughly 30s each and blew the client's budget, while
+  the other six answered in ~0.2s. The lookups now run in parallel with the
+  quick retry preset: a failing indicator drops out of the panel instead of
+  taking the panel down. Measured after the fix: 2.3–2.7s end to end, against
+  the real API, with the two indicators still failing upstream.
+
+### Added
+- **`docs/demo.md` / `docs/demo.pt-BR.md`** — one real question worked end to
+  end (which state grew most between the 2010 and 2022 Censuses, and what drove
+  it), every figure captured live, including the cross-check that the 15
+  Roraima municipalities sum exactly to the state total across two different
+  SIDRA tables.
+- **`examples/README.md` / `examples/README.pt-BR.md`** — six short recipes with
+  real output, including a full distribution over all 5,570 municipalities in a
+  single call.
+
 ## [3.3.0] - 2026-08-08
 
 Dedicated provenance release: every successful response of the 22 tools now

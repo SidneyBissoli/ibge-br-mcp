@@ -1,5 +1,5 @@
 /**
- * Portão de release da proveniência (contrato v1.0): TODAS as 22 ferramentas
+ * Portão de release da proveniência (contrato v1.0): TODAS as 21 ferramentas
  * devem anexar o bloco `provenance` no caminho de SUCESSO. Cada caso chama a
  * ferramenta UMA vez no seu caminho principal de dados, com `global.fetch`
  * mockado (nunca a rede), e verifica o bloco canônico:
@@ -18,8 +18,6 @@ import {
   municipiosSchema,
   ibgeLocalidade,
   localidadeSchema,
-  ibgePopulacao,
-  populacaoSchema,
   ibgeSidra,
   sidraSchema,
   ibgeNomes,
@@ -114,14 +112,6 @@ const sidraComparar = sidraResponse(
   { D1C: "3304557", D1N: "Rio de Janeiro", V: "6700000" }
 );
 
-const estimativaPopulacao = {
-  localidade: "BR",
-  horario: "18/06/2026 10:00:00",
-  projecao: {
-    populacao: 215300000,
-    periodoMedio: { incrementoPopulacional: 5000, nascimento: 20, obito: 3700 },
-  },
-};
 
 const rankingNomes = [
   {
@@ -279,11 +269,6 @@ const casos: Caso[] = [
     executar: () => ibgeLocalidade(localidadeSchema.parse({ codigo: 3550308 })),
   },
   {
-    nome: "ibge_populacao",
-    mock: () => mockFetch.mockResolvedValue(mockResponse(estimativaPopulacao)),
-    executar: () => ibgePopulacao(populacaoSchema.parse({})),
-  },
-  {
     nome: "ibge_sidra",
     mock: () => mockFetch.mockResolvedValue(mockResponse(sidraPop)),
     executar: () => ibgeSidra(sidraSchema.parse({ tabela: "6579", nivel_territorial: "3" })),
@@ -402,7 +387,7 @@ const casos: Caso[] = [
 // Portão de release: as 22 ferramentas emitem o bloco canônico
 // ---------------------------------------------------------------------------
 
-describe("proveniência — fiação nas 22 ferramentas (portão de release)", () => {
+describe("proveniência — fiação nas 21 ferramentas (portão de release)", () => {
   beforeEach(() => {
     cache.clear();
     mockFetch.mockReset();
@@ -413,9 +398,9 @@ describe("proveniência — fiação nas 22 ferramentas (portão de release)", (
     vi.unstubAllGlobals();
   });
 
-  it("cobre exatamente as 22 ferramentas do servidor", () => {
-    expect(casos).toHaveLength(22);
-    expect(new Set(casos.map((c) => c.nome)).size).toBe(22);
+  it("cobre exatamente as 21 ferramentas do servidor", () => {
+    expect(casos).toHaveLength(21);
+    expect(new Set(casos.map((c) => c.nome)).size).toBe(21);
   });
 
   for (const caso of casos) {

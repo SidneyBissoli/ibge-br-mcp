@@ -111,10 +111,10 @@ await rpc("notifications/initialized", {}, true).catch(() => {});
 
 const { tools } = await rpc("tools/list", {});
 console.log(`tools/list: ${tools.length} tools`);
-if (tools.length !== 22) fail(`esperava 22 tools, veio ${tools.length}`);
+if (tools.length !== 21) fail(`esperava 21 tools, veio ${tools.length}`);
 const semTitle = tools.filter((t) => !t.title);
 if (semTitle.length > 0) fail(`tools sem title: ${semTitle.map((t) => t.name).join(", ")}`);
-console.log("titles: ok nas 22");
+console.log("titles: ok nas 21");
 
 // 1) Tool simples + bloco de proveniência (contrato v1.0, três canais)
 const estados = await rpc("tools/call", {

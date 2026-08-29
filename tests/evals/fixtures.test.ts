@@ -12,8 +12,8 @@ import { AREA_BY_TOOL, CATALOG } from "../../evals/catalog.js";
 import { FIXTURES } from "../../evals/fixtures/queries.js";
 
 describe("eval catalog (live, via registerAll)", () => {
-  it("captures exactly the 22 tools", () => {
-    expect(CATALOG.tools).toHaveLength(22);
+  it("captures exactly the 21 tools", () => {
+    expect(CATALOG.tools).toHaveLength(21);
   });
 
   it("every tool carries the ibge_ prefix", () => {
@@ -52,12 +52,11 @@ describe("eval fixtures (consolidation check)", () => {
     expect([...prefixes].sort()).toEqual(["ctrl", "eco", "loc", "malha", "pop", "sidra"]);
   });
 
-  it("the população cluster (worst case) exercises all 6 overlapping tools", () => {
+  it("the população cluster (worst case) exercises all 5 overlapping tools", () => {
     const popTools = new Set(
       FIXTURES.filter((f) => f.id.startsWith("pop-")).flatMap((f) => f.expectedTools)
     );
     for (const tool of [
-      "ibge_populacao",
       "ibge_cidades",
       "ibge_censo",
       "ibge_comparar",

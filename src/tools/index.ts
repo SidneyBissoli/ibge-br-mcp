@@ -2,7 +2,6 @@
 export { ibgeEstados, estadosSchema, estadosOutputSchema } from "./estados.js";
 export { ibgeMunicipios, municipiosSchema, municipiosOutputSchema } from "./municipios.js";
 export { ibgeLocalidade, localidadeSchema, localidadeOutputSchema } from "./localidade.js";
-export { ibgePopulacao, populacaoSchema, populacaoOutputSchema } from "./populacao.js";
 export { ibgeSidra, sidraSchema, sidraOutputSchema } from "./sidra.js";
 export { ibgeNomes, nomesSchema, nomesOutputSchema } from "./nomes.js";
 export { ibgeNoticias, noticiasSchema, noticiasOutputSchema } from "./noticias.js";

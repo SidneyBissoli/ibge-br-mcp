@@ -78,14 +78,6 @@ const sidraComparar = sidraResponse(
   { D1C: "3304557", D1N: "Rio de Janeiro", V: "6700000" }
 );
 
-const estimativaPopulacao = {
-  localidade: "BR",
-  horario: "18/06/2026 10:00:00",
-  projecao: {
-    populacao: 215300000,
-    periodoMedio: { incrementoPopulacional: 5000, nascimento: 20, obito: 3700 },
-  },
-};
 
 const rankingNomes = [
   {
@@ -284,7 +276,6 @@ const CASOS: Caso[] = [
   { nome: "ibge_localidade", cobre: "hierarquia completa", mock: um(municipioSP), args: { codigo: 3550308 } },
   { nome: "ibge_localidade", cobre: "município sem as hierarquias opcionais", mock: um(municipioMagro), args: { codigo: 3550308 } },
 
-  { nome: "ibge_populacao", cobre: "projeção", mock: um(estimativaPopulacao), args: {} },
 
   { nome: "ibge_sidra", cobre: "série com valores", mock: um(sidraPop), args: { tabela: "6579", nivel_territorial: "3" } },
   { nome: "ibge_sidra", cobre: "recorte sem linha de dado", mock: um(sidraVazio), args: { tabela: "6579", nivel_territorial: "3" } },

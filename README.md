@@ -27,13 +27,20 @@ Ask your assistant, in English or Portuguese:
 
 - *"What was Belo Horizonte's population in the 2022 Census?"* → `ibge_cidades` / `ibge_censo`
 - *"List the municipalities of Espírito Santo."* → `ibge_municipios`
-- *"Compare GDP per capita across the Southeast state capitals."* → `ibge_comparar`
+- *"Compare GDP across the Southeast state capitals."* → `ibge_comparar`
 
 The answers come live from the official IBGE APIs — exact figures with the table and period they came from, not numbers guessed from training data.
 
+Want to see a whole analysis rather than a single answer? The
+[**end-to-end demo**](docs/demo.md) works one real question — *which state grew
+most between the 2010 and 2022 Censuses, and what drove it* — from first call to
+conclusion, with every figure as it came back. The
+[**practical examples**](examples/README.md) are seven shorter recipes, including
+ranking all 5,570 municipalities in a single call.
+
 ## Features
 
-- **22 specialized tools** covering all major IBGE data domains
+- **21 specialized tools** covering all major IBGE data domains
 - **Provenance block on every response** — source, canonical URL, reference
   period, real extraction timestamp, ready-to-use citation, and legal regime
   (see [Data provenance](#data-provenance))
@@ -109,7 +116,6 @@ aggregates are computed server-side from the raw IBGE values.
 ### Demographics
 | Tool | Description |
 |:-----|:------------|
-| `ibge_populacao` | Real-time Brazilian population projection |
 | `ibge_nomes` | Name frequency and rankings in Brazil |
 
 ### Classifications
@@ -136,13 +142,12 @@ aggregates are computed server-side from the raw IBGE values.
 
 ## Which tool should I use?
 
-With 22 tools, several can touch the same topic. Quick guide for the common overlaps:
+With 21 tools, several can touch the same topic. Quick guide for the common overlaps:
 
 ### Population & demographics
 
 | You want… | Use |
 |:----------|:----|
-| Brazil's population right now (real-time) | `ibge_populacao` |
 | A single municipality/state panel (population, HDI, GDP…) | `ibge_cidades` |
 | Census data or historical series (1970–2022) | `ibge_censo` |
 | Rank/compare 2–10 localities on one indicator | `ibge_comparar` |
@@ -533,7 +538,6 @@ ibge-br-mcp/
 │       ├── localidade.ts     # ibge_localidade
 │       ├── geocodigo.ts      # ibge_geocodigo
 │       ├── censo.ts          # ibge_censo
-│       ├── populacao.ts      # ibge_populacao
 │       ├── sidra.ts          # ibge_sidra
 │       ├── sidra-tabelas.ts  # ibge_sidra_tabelas
 │       ├── sidra-metadados.ts# ibge_sidra_metadados

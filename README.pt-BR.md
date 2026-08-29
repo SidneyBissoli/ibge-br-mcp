@@ -27,13 +27,20 @@ Pergunte ao seu assistente, em português:
 
 - *"Qual era a população de Belo Horizonte no Censo 2022?"* → `ibge_cidades` / `ibge_censo`
 - *"Liste os municípios do Espírito Santo."* → `ibge_municipios`
-- *"Compare o PIB per capita das capitais do Sudeste."* → `ibge_comparar`
+- *"Compare o PIB das capitais do Sudeste."* → `ibge_comparar`
 
 As respostas vêm ao vivo das APIs oficiais do IBGE — valores exatos com a tabela e o período de onde vieram, não números chutados do treino.
 
+Quer ver uma análise inteira, e não uma resposta só? A
+[**demo ponta a ponta**](docs/demo.pt-BR.md) percorre uma pergunta real — *qual
+estado mais cresceu entre os Censos de 2010 e 2022, e o que puxou o crescimento*
+— da primeira chamada à conclusão, com cada número como ele voltou. Os
+[**exemplos práticos**](examples/README.pt-BR.md) são sete receitas mais curtas,
+entre elas ranquear os 5.570 municípios numa chamada só.
+
 ## Recursos
 
-- **22 ferramentas especializadas** cobrindo todos os principais domínios de dados do IBGE
+- **21 ferramentas especializadas** cobrindo todos os principais domínios de dados do IBGE
 - **Resources de referência & prompts de análise** (catálogos MCP + templates prontos)
 - **565 testes automatizados** — 88% de cobertura geral, 92% nas tools
 - **Cache automático** com TTL configurável para performance otimizada
@@ -81,7 +88,6 @@ As respostas vêm ao vivo das APIs oficiais do IBGE — valores exatos com a tab
 ### Demografia
 | Ferramenta | Descrição |
 |:-----------|:----------|
-| `ibge_populacao` | Projeção populacional brasileira em tempo real |
 | `ibge_nomes` | Frequência e rankings de nomes no Brasil |
 
 ### Classificações
@@ -108,13 +114,12 @@ As respostas vêm ao vivo das APIs oficiais do IBGE — valores exatos com a tab
 
 ## Qual ferramenta usar?
 
-Com 22 ferramentas, várias podem tocar no mesmo assunto. Guia rápido para as sobreposições comuns:
+Com 21 ferramentas, várias podem tocar no mesmo assunto. Guia rápido para as sobreposições comuns:
 
 ### População e demografia
 
 | Você quer… | Use |
 |:-----------|:----|
-| População do Brasil agora (tempo real) | `ibge_populacao` |
 | Painel de um único município/UF (população, IDH, PIB…) | `ibge_cidades` |
 | Dados censitários ou série histórica (1970–2022) | `ibge_censo` |
 | Ranquear/comparar 2–10 localidades num indicador | `ibge_comparar` |
@@ -509,7 +514,6 @@ ibge-br-mcp/
 │       ├── localidade.ts     # ibge_localidade
 │       ├── geocodigo.ts      # ibge_geocodigo
 │       ├── censo.ts          # ibge_censo
-│       ├── populacao.ts      # ibge_populacao
 │       ├── sidra.ts          # ibge_sidra
 │       ├── sidra-tabelas.ts  # ibge_sidra_tabelas
 │       ├── sidra-metadados.ts# ibge_sidra_metadados

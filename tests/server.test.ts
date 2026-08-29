@@ -28,7 +28,7 @@ describe("MCP server protocol surface", () => {
     it("marks every tool read-only, idempotent, and open-world", async () => {
       const { tools } = await client.listTools();
 
-      expect(tools.length).toBeGreaterThanOrEqual(22);
+      expect(tools.length).toBeGreaterThanOrEqual(21);
       for (const tool of tools) {
         expect(tool.annotations, `tool ${tool.name} missing annotations`).toBeDefined();
         expect(tool.annotations?.readOnlyHint, `tool ${tool.name}`).toBe(true);

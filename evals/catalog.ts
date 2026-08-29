@@ -35,7 +35,6 @@ const GROUPS: CatalogGroup[] = [
  */
 export const AREA_BY_TOOL: Record<string, string> = {
   // população (worst-case cluster: 6 overlapping tools; primary members here)
-  ibge_populacao: "populacao",
   ibge_censo: "populacao",
   ibge_cidades: "populacao",
   // econômico

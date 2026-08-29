@@ -16,9 +16,6 @@ import {
   localidadeSchema,
   localidadeOutputSchema,
   ibgeLocalidade,
-  populacaoSchema,
-  populacaoOutputSchema,
-  ibgePopulacao,
   sidraSchema,
   sidraOutputSchema,
   ibgeSidra,
@@ -95,7 +92,7 @@ export const SERVER_VERSION = pkg.version;
  */
 export const SERVER_INSTRUCTIONS = [
   "Use este servidor para responder perguntas com dados oficiais do IBGE: geografia e localidades, população e Censo, indicadores econômicos e sociais, tabelas SIDRA, malhas (mapas), nomes, CNAE, saúde e notícias.",
-  "Para população, escolha pela pergunta: `ibge_populacao` retorna SÓ a projeção nacional do Brasil em tempo real; o panorama de UM município (população, IDH, PIB) é `ibge_cidades`; dados do Censo (1970–2022) são `ibge_censo`; estimativas e séries são `ibge_indicadores` (indicador='populacao'); comparar/ranquear 2–10 localidades é `ibge_comparar`; qualquer tabela arbitrária é `ibge_sidra`.",
+  "Para população, escolha pela pergunta: o panorama de UM município (população, IDH, PIB) é `ibge_cidades`; dados do Censo (1970–2022) são `ibge_censo`; estimativas e séries são `ibge_indicadores` (indicador='populacao'); comparar/ranquear 2–10 localidades é `ibge_comparar`; qualquer tabela arbitrária é `ibge_sidra`.",
   "Para indicadores econômicos (PIB, IPCA, desemprego, rendimento, produção): `ibge_indicadores`. Comparação entre localidades específicas → `ibge_comparar`; tabela SIDRA que você já conhece → `ibge_sidra`.",
   "Para localidades: listar/buscar municípios é `ibge_municipios`; resolver nome→código ou decompor a estrutura de um código é `ibge_geocodigo`; o registro completo de UMA localidade cujo código você já tem é `ibge_localidade`; municípios próximos é `ibge_vizinhos`.",
   "Fluxo SIDRA em 3 passos quando não souber a tabela: `ibge_sidra_tabelas` (achar o código) → `ibge_sidra_metadados` (estrutura, níveis territoriais e períodos) → `ibge_sidra` (consultar os dados).",
@@ -262,38 +259,6 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Locali
       annotations: READ_ONLY,
     },
     handle("ibge_localidade", ibgeLocalidade)
-  );
-
-  // Register ibge_populacao tool
-  server.registerTool(
-    "ibge_populacao",
-    {
-      title: "População do Brasil em tempo real",
-      description: `Returns real-time Brazilian population projection.
-
-Features:
-- Current population estimate
-- Birth rate (average time between births)
-- Death rate (average time between deaths)
-- Daily population increment
-
-Source: IBGE - Brazilian Population Projection
-
-This tool ONLY returns Brazil's real-time national projection.
-
-Use a different tool when:
-- Population of a specific municipality/state → ibge_cidades (panorama)
-- Census or historical population → ibge_censo
-- Comparing/ranking multiple localities → ibge_comparar
-- Population time series → ibge_indicadores
-- An arbitrary SIDRA table → ibge_sidra
-
-Behavior: read-only and idempotent — a live GET against the public IBGE population-projection API. Returns Markdown plus a typed structuredContent payload.`,
-      inputSchema: populacaoSchema,
-      outputSchema: comProveniencia(populacaoOutputSchema),
-      annotations: READ_ONLY,
-    },
-    handle("ibge_populacao", ibgePopulacao)
   );
 
   // Register ibge_sidra tool
@@ -585,7 +550,6 @@ Examples:
 Statistics mode: for largest/smallest/mean/median/distribution/ranking questions over census data ("which municipality had the largest 2022 population?") use estatisticas=true — full distribution + top/bottom computed over ALL rows before truncation; agruparPor="<column label>" ranks groups by descending sum. In this mode campos/formato are ignored and registros comes empty.
 
 Use a different tool when:
-- Current real-time Brazil population → ibge_populacao
 - One municipality's current panel (estimate, HDI, GDP) → ibge_cidades
 - Comparing/ranking localities → ibge_comparar
 - An arbitrary SIDRA table → ibge_sidra
@@ -974,7 +938,6 @@ Examples:
 
 This tool is the panel for a SINGLE municipality (Cidades@).
 Use a different tool when:
-- Real-time Brazil population → ibge_populacao
 - Census themes / historical series → ibge_censo
 - Comparing multiple municipalities → ibge_comparar
 - A macro indicator time series → ibge_indicadores

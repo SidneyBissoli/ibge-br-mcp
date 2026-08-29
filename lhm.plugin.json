@@ -43,13 +43,6 @@
       }
     },
     {
-      "name": "ibge_populacao",
-      "description": "Real-time Brazilian national population projection (estimate, birth/death rates, daily increment).",
-      "inputSchema": {
-        "type": "object"
-      }
-    },
-    {
       "name": "ibge_sidra",
       "description": "Query any SIDRA table (Census, PNAD, GDP, etc.) by table code, territorial level and period.",
       "inputSchema": {

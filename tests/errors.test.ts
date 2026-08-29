@@ -247,9 +247,9 @@ describe("timeoutError", () => {
 
 describe("networkError", () => {
   it("should format network error", () => {
-    const result = networkError("ibge_populacao");
+    const result = networkError("ibge_censo");
 
-    expect(result).toContain("## Erro: ibge_populacao");
+    expect(result).toContain("## Erro: ibge_censo");
     expect(result).toContain("Erro de conexão");
     expect(result).toContain("API do IBGE");
   });

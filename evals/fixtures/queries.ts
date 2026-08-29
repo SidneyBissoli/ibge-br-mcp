@@ -21,18 +21,18 @@
 import type { EvalFixture } from "@sbissoli/mcp-evals";
 
 export const FIXTURES: EvalFixture[] = [
-  // ── população (6 tools em sobreposição — o pior caso mapeado) ────────────
+  // ── população (5 tools em sobreposição — o pior caso mapeado) ────────────
   {
     id: "pop-01",
     query: "Qual é a população do Brasil neste momento?",
-    expectedTools: ["ibge_populacao"],
-    note: "Projeção nacional em tempo real é exclusiva de ibge_populacao; as irmãs servem município, censo ou série.",
+    expectedTools: ["ibge_indicadores"],
+    note: "A estimativa nacional mais recente é ibge_indicadores (indicador='populacao'). Era de ibge_populacao até 28/08/2026, quando a ferramenta foi aposentada — o IBGE retirou a API de projeções em tempo real.",
   },
   {
     id: "pop-02",
     query: "Qual a população atual de Campinas? Aproveita e me diz o IDH.",
     expectedTools: ["ibge_cidades"],
-    note: "Panorama de UM município (população + IDH) é ibge_cidades; populacao é só Brasil, censo é histórico.",
+    note: "Panorama de UM município (população + IDH) é ibge_cidades; indicadores dá a série, censo é histórico.",
   },
   {
     id: "pop-03",
