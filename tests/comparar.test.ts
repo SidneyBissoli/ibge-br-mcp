@@ -160,6 +160,98 @@ describe("ibge_comparar", () => {
     });
   });
 
+  // Regressões de 2026-08-28, medidas contra o servidor no ar.
+  describe("shape real do SIDRA", () => {
+    // A resposta real traz "Unidade de Medida (Código)" ANTES de
+    // "Município (Código)". Pegar a primeira coluna com "código" no rótulo
+    // marcava toda localidade com o código da UNIDADE (28 = hab/km²,
+    // 40 = Mil Reais), e não com o código IBGE dela.
+    it("usa o código da LOCALIDADE, não o da unidade de medida", async () => {
+      const real = sidraResponse(
+        {
+          NC: "Nível Territorial (Código)",
+          MC: "Unidade de Medida (Código)",
+          MN: "Unidade de Medida",
+          V: "Valor",
+          D1C: "Município (Código)",
+          D1N: "Município",
+        },
+        {
+          NC: "6",
+          MC: "28",
+          MN: "Habitante por quilômetro quadrado",
+          V: "7528.26",
+          D1C: "3550308",
+          D1N: "São Paulo - SP",
+        },
+        {
+          NC: "6",
+          MC: "28",
+          MN: "Habitante por quilômetro quadrado",
+          V: "181.01",
+          D1C: "1302603",
+          D1N: "Manaus - AM",
+        }
+      );
+
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(real))
+        .mockResolvedValueOnce(mockResponse({ nome: "São Paulo" }))
+        .mockResolvedValueOnce(mockResponse({ nome: "Manaus" }));
+
+      const result = await ibgeComparar({
+        localidades: "3550308,1302603",
+        indicador: "densidade",
+        formato: "tabela",
+      });
+
+      const locs = (result.structured as Record<string, unknown>).localidades as Array<{
+        codigo: string;
+      }>;
+      expect(locs.map((l) => l.codigo)).toEqual(["3550308", "1302603"]);
+      expect(locs.map((l) => l.codigo)).not.toContain("28");
+      expect(compararOutputSchema.safeParse(result.structured).success).toBe(true);
+    });
+
+    // Marcador de ausência do SIDRA virava 0 e entrava na média e no ranking
+    // como se fosse medição — errar alto, não plausível.
+    it("não converte marcador de ausência em zero", async () => {
+      const comAusencia = sidraResponse(
+        { D1C: "Município (Código)", D1N: "Município", V: "Valor" },
+        { D1C: "3550308", D1N: "São Paulo", V: "12300000" },
+        { D1C: "3304557", D1N: "Rio de Janeiro", V: "6700000" },
+        { D1C: "1400100", D1N: "Boa Vista", V: "..." }
+      );
+
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(comAusencia))
+        .mockResolvedValueOnce(mockResponse({ nome: "São Paulo" }))
+        .mockResolvedValueOnce(mockResponse({ nome: "Rio de Janeiro" }))
+        .mockResolvedValueOnce(mockResponse({ nome: "Boa Vista" }));
+
+      const result = await ibgeComparar({
+        localidades: "3550308,3304557,1400100",
+        indicador: "populacao",
+        formato: "ranking",
+      });
+
+      const s = result.structured as Record<string, unknown>;
+      const locs = s.localidades as Array<{ nome: string; valor: number | null }>;
+
+      const semValor = locs.find((l) => l.nome === "Boa Vista");
+      expect(semValor?.valor).toBeNull();
+      expect(locs.map((l) => l.valor)).not.toContain(0);
+      // ausência vai para o fim do ranking, não para o fundo da escala
+      expect(locs.at(-1)?.nome).toBe("Boa Vista");
+
+      // e fica fora das estatísticas
+      const est = s.estatisticas as { menor: number; media: number };
+      expect(est.menor).toBe(6700000);
+      expect(est.media).toBe((12300000 + 6700000) / 2);
+      expect(compararOutputSchema.safeParse(result.structured).success).toBe(true);
+    });
+  });
+
   describe("json format", () => {
     it("emits a JSON code block", async () => {
       mockFetch

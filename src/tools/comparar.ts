@@ -4,6 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { type StructuredToolResult, sidraRecords } from "../structured.js";
+import { valorSidra } from "../stats.js";
 import { extrairPeriodoSidra, provenienciaIbge } from "../provenance.js";
 
 /** Derivation note for the data-comparison paths (server-side computation). */
@@ -26,7 +27,7 @@ export const TEMPLATES_COMPARACAO: Record<
     nome: "População",
     descricao: "Estimativa populacional",
     tabela: "6579",
-    variaveis: "allxp",
+    variaveis: "9324",
     periodos: "last",
     nivel_territorial: "6",
   },
@@ -34,15 +35,19 @@ export const TEMPLATES_COMPARACAO: Record<
     nome: "População (Censo 2022)",
     descricao: "População do Censo Demográfico 2022",
     tabela: "9514",
-    variaveis: "allxp",
+    variaveis: "93",
     periodos: "last",
     nivel_territorial: "6",
   },
   pib: {
+    // Table 5938 carries 46 variables, and only the percentage ones are dropped
+    // by "allxp" — the sectoral value-added series are in Mil Reais and survive,
+    // so an unpinned query returns several units mixed in one comparison.
+    // v37 is the PIB total; the table publishes no per-capita variable.
     nome: "PIB",
-    descricao: "Produto Interno Bruto per capita",
+    descricao: "Produto Interno Bruto a preços correntes (Mil Reais)",
     tabela: "5938",
-    variaveis: "allxp",
+    variaveis: "37",
     periodos: "last",
     nivel_territorial: "6",
   },
@@ -66,7 +71,7 @@ export const TEMPLATES_COMPARACAO: Record<
     nome: "Taxa de Alfabetização",
     descricao: "Taxa de alfabetização da população",
     tabela: "9543",
-    variaveis: "allxp",
+    variaveis: "2513",
     periodos: "last",
     nivel_territorial: "6",
   },
@@ -74,7 +79,7 @@ export const TEMPLATES_COMPARACAO: Record<
     nome: "Domicílios",
     descricao: "Número de domicílios",
     tabela: "4711",
-    variaveis: "allxp",
+    variaveis: "617",
     periodos: "last",
     nivel_territorial: "6",
   },
@@ -99,7 +104,7 @@ Use 7 dígitos para municípios, 2 dígitos para UFs.`),
     .default("populacao").describe(`Indicador para comparação:
 - populacao: Estimativa populacional atual
 - populacao_censo: População do Censo 2022
-- pib: PIB per capita
+- pib: PIB a preços correntes (Mil Reais)
 - area: Área territorial (km²)
 - densidade: Densidade demográfica (hab/km²)
 - alfabetizacao: Taxa de alfabetização
@@ -125,7 +130,7 @@ export const compararOutputSchema = z.object({
       z.object({
         codigo: z.string(),
         nome: z.string(),
-        valor: z.number(),
+        valor: z.number().nullable(),
         valorTexto: z.string(),
       })
     )
@@ -341,40 +346,55 @@ function formatCompararResponse(
     }
   }
 
+  // The LOCALITY code column, specifically. Matching any header containing
+  // "código" picks up "Unidade de Medida (Código)" first, which is why every
+  // locality used to come back tagged with the unit code (28 = hab/km²,
+  // 40 = Mil Reais) instead of its own IBGE code.
+  let codigoCol = "";
+  for (const key of Object.keys(headerRow)) {
+    const header = headerRow[key].toLowerCase();
+    if (
+      header.includes("código") &&
+      (header.includes("município") ||
+        header.includes("unidade da federação") ||
+        /\buf\b/.test(header))
+    ) {
+      codigoCol = key;
+      break;
+    }
+  }
+
   // Prepare comparison data
   interface ComparisonRow {
     codigo: string;
     nome: string;
-    valor: number;
+    /** null when SIDRA published an absence marker — never coerced to zero. */
+    valor: number | null;
     valorStr: string;
   }
 
   const comparisonData: ComparisonRow[] = [];
 
   for (const row of dataRows) {
-    // Find the locality code in the row
-    let codigo = "";
-    for (const [key, value] of Object.entries(row)) {
-      if (headerRow[key]?.toLowerCase().includes("código") && value.length >= 2) {
-        codigo = value;
-        break;
-      }
-    }
-
+    const codigo = codigoCol ? row[codigoCol] : "";
     const valorStr = valueCol ? row[valueCol] : "-";
-    const valor = parseFloat(valorStr.replace(/[^\d,.-]/g, "").replace(",", ".")) || 0;
 
     comparisonData.push({
       codigo,
       nome: names[codigo] || (localCol ? row[localCol] : codigo),
-      valor,
+      valor: valorSidra(valorStr),
       valorStr,
     });
   }
 
-  // Sort by value for ranking format
+  // Sort by value for ranking format; localities without a value sort last
+  // rather than to the bottom of a numeric scale they never joined.
   if (formato === "ranking") {
-    comparisonData.sort((a, b) => b.valor - a.valor);
+    comparisonData.sort((a, b) => {
+      if (a.valor === null) return b.valor === null ? 0 : 1;
+      if (b.valor === null) return -1;
+      return b.valor - a.valor;
+    });
   }
 
   // Build structured payload
@@ -387,8 +407,8 @@ function formatCompararResponse(
 
   let estatisticas:
     { maior: number; menor: number; media: number; variacaoPct: number } | undefined;
-  if (comparisonData.length >= 2 && comparisonData[0].valor > 0) {
-    const valores = comparisonData.map((d) => d.valor).filter((v) => v > 0);
+  const valores = comparisonData.map((d) => d.valor).filter((v): v is number => v !== null);
+  if (valores.length >= 2) {
     const max = Math.max(...valores);
     const min = Math.min(...valores);
     const avg = valores.reduce((a, b) => a + b, 0) / valores.length;
@@ -428,7 +448,7 @@ function formatCompararResponse(
 
   // Build table
   const rows = comparisonData.map((item, index) => {
-    const valorFormatado = item.valor > 0 ? formatNumber(item.valor) : item.valorStr;
+    const valorFormatado = item.valor !== null ? formatNumber(item.valor) : item.valorStr;
     return [String(index + 1), item.nome, valorFormatado];
   });
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IBGE_API, PesquisaResultado, PesquisaIndicador, PesquisaDetalhe } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { RETRY_PRESETS } from "../retry.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
@@ -184,15 +185,44 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
 
   const resultados: Array<{ nome: string; valor: string; ano: string }> = [];
 
-  for (const indKey of indicadoresParaBuscar) {
-    const indInfo = INDICADORES_PANORAMA[indKey];
-    if (!indInfo) continue;
+  // Os indicadores do panorama são buscados EM PARALELO e com retry curto.
+  // Em série e com o retry padrão (4 tentativas, backoff a partir de 2s), um
+  // indicador que a origem devolve com 500 consome ~30s sozinho: dois deles
+  // estouram o tempo do cliente e derrubam o painel INTEIRO, mesmo com os
+  // demais respondendo em ~0,2s. Medido em 28/08/2026, quando `escolarizacao`
+  // (pesquisa 40, indicador 60045) e `salario_medio` (33/29765) estavam nesse
+  // estado — o panorama não respondia para município nenhum. Painel com 6 de 8
+  // indicadores é muito melhor que painel nenhum.
+  type BuscaPanorama = {
+    indKey: string;
+    indInfo: (typeof INDICADORES_PANORAMA)[string];
+    data: PesquisaResultado[] | null;
+  };
 
+  const respostas: BuscaPanorama[] = await Promise.all(
+    indicadoresParaBuscar
+      .filter((indKey) => INDICADORES_PANORAMA[indKey])
+      .map(async (indKey) => {
+        const indInfo = INDICADORES_PANORAMA[indKey];
+        const url = `${IBGE_API.PESQUISAS}/${indInfo.pesquisa}/indicadores/${indInfo.id}/resultados/${codigoMunicipio}`;
+        try {
+          const key = cacheKey(url);
+          const data = await cachedFetch<PesquisaResultado[]>(
+            url,
+            key,
+            CACHE_TTL.MEDIUM,
+            RETRY_PRESETS.QUICK
+          );
+          return { indKey, indInfo, data };
+        } catch {
+          // Indicador indisponível sai do painel; não leva os outros junto.
+          return { indKey, indInfo, data: null };
+        }
+      })
+  );
+
+  for (const { indKey, indInfo, data } of respostas) {
     try {
-      const url = `${IBGE_API.PESQUISAS}/${indInfo.pesquisa}/indicadores/${indInfo.id}/resultados/${codigoMunicipio}`;
-      const key = cacheKey(url);
-      const data = await cachedFetch<PesquisaResultado[]>(url, key, CACHE_TTL.MEDIUM);
-
       if (data && data.length > 0 && data[0].res && data[0].res.length > 0) {
         const resultado = data[0].res[0].res;
         const anos = Object.keys(resultado).sort().reverse();
@@ -215,8 +245,15 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
                 valorFormatado = "R$ " + formatNumber(num, { maximumFractionDigits: 2 });
               } else if (indKey === "idh" || indKey.startsWith("idhm")) {
                 valorFormatado = formatNumber(num, { maximumFractionDigits: 3 });
-              } else if (indKey === "escolarizacao" || indKey === "mortalidade") {
+              } else if (indKey === "escolarizacao") {
                 valorFormatado = formatNumber(num, { maximumFractionDigits: 1 }) + "%";
+              } else if (indKey === "mortalidade") {
+                // A unidade do IBGE é óbitos por mil nascidos vivos, não
+                // porcentagem: "14,5%" lia como 14,5% das crianças, ~15x o
+                // valor real.
+                valorFormatado =
+                  formatNumber(num, { maximumFractionDigits: 1 }) +
+                  " óbitos por mil nascidos vivos";
               } else {
                 valorFormatado = formatNumber(num);
               }

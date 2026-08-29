@@ -67,6 +67,26 @@ describe("ibge_cidades", () => {
       expect(cidadesOutputSchema.safeParse(result.structured).success).toBe(true);
     });
 
+    // Regressão de 2026-08-28: o panorama não respondia para município NENHUM
+    // porque dois dos oito indicadores estavam com 500 na origem e, buscados em
+    // série com o retry padrão, consumiam sozinhos o tempo do cliente.
+    it("ainda entrega o painel quando indicadores individuais falham na origem", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(municipioLocalidade));
+      // populacao responde; os demais devolvem 500, como escolarizacao e
+      // salario_medio faziam de fato.
+      mockFetch.mockResolvedValueOnce(mockResponse(pesquisaResultado({ "2026": "11911337" })));
+      mockFetch.mockResolvedValue(mockResponse({ erro: "erro interno" }, 500));
+
+      const result = await ibgeCidades({ tipo: "panorama", municipio: "3550308" });
+
+      expect(result.isError).toBeFalsy();
+      expect(result.markdown).toContain("População estimada");
+      expect(result.markdown).toContain("11.911.337 pessoas");
+      const s = result.structured as Record<string, unknown>;
+      expect((s.indicadores as unknown[]).length).toBe(1);
+      expect(cidadesOutputSchema.safeParse(result.structured).success).toBe(true);
+    });
+
     it("reports empty result when no indicators are returned", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(municipioLocalidade));
       mockFetch.mockResolvedValue(mockResponse(pesquisaResultado({})));
