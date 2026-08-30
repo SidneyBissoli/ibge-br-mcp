@@ -275,7 +275,9 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
 
     // Determine which table to use based on year
     let tabelaInfo: { tabela: string; descricao: string } | undefined;
-    let periodos = "last";
+    // Sem inicializador: os dois ramos abaixo atribuem, e quem prova isso é o
+    // compilador. O "last" que ficava aqui nunca chegava a ser lido.
+    let periodos: string;
 
     if (input.ano === "todos" || !input.ano) {
       // Try to find a table with historical series
