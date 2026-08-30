@@ -71,7 +71,7 @@ jobs:
         name: Install + typecheck + build (raiz)
         run: |
           npm ci
-          npx tsc --noEmit
+          npm run typecheck
           npm run build
 
       - if: steps.cf.outputs.ok == 'true'
