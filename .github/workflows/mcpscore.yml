@@ -1,0 +1,57 @@
+name: mcpscore (contrato de qualidade)
+
+# O QUE ISTO GUARDA, e por que é contrato e não métrica.
+#
+# `mcpscore` é auditor determinístico (sem juiz LLM): conecta como cliente MCP
+# real e verifica conformidade de protocolo, qualidade das tools, segurança/auth
+# e prontidão para a spec 2026-07-28. É o ÚNICO dos quatro agregadores que mede
+# o SERVIDOR RODANDO — mcpindex, Glama e LobeHub leem ficha e repositório.
+# Por isso aqui ele deixa de ser número no painel e vira gate.
+#
+# CATRACA, não meta. O piso é o valor MEDIDO em 29/08/2026, arredondado para
+# baixo: impede regressão sem prometer melhora. Ao subir a nota de verdade,
+# suba o piso na mesma passada — senão a catraca protege um patamar que o
+# servidor já não tem.
+#
+# DOIS PISOS, e a diferença não é arbitrária: no stdio várias regras de HTTP
+# não se aplicam e o denominador muda, então a mesma implementação pontua
+# diferente nos dois transportes. Medido aqui: stdio 137/148 = 92,6%; remoto 95,4%.
+# Um piso único reprovaria o stdio no primeiro PR.
+#
+# O gate do PR mede o CÓDIGO DO PR (stdio, servidor local). O pós-deploy mede
+# o que FOI AO AR. São perguntas diferentes e por isso são dois jobs.
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  stdio:
+    name: contrato no código do PR (stdio)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Build (o auditor precisa do bundle, não do fonte)
+        run: npm run build
+      - uses: astral-sh/setup-uv@v5
+      - name: Auditar o servidor local
+        run: uvx mcpscore --fail-under 92 --stdio node dist/index.js
+
+  remoto:
+    name: contrato no que está no ar (streamable http)
+    # Só no push: num PR o endpoint ainda serve o código anterior, e reprovar
+    # o PR por isso mediria a coisa errada.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Auditar o endpoint em produção
+        run: uvx mcpscore --fail-under 95 https://ibge.sidneybissoli.com/mcp
