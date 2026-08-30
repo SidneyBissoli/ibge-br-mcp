@@ -32,7 +32,7 @@ jobs:
     name: contrato no código do PR (stdio)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -51,7 +51,7 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
       - name: Auditar o endpoint em produção
         run: uvx mcpscore --fail-under 95 https://ibge.sidneybissoli.com/mcp
