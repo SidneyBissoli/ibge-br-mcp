@@ -384,7 +384,7 @@ const casos: Caso[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Portão de release: as 22 ferramentas emitem o bloco canônico
+// Portão de release: as 21 ferramentas emitem o bloco canônico
 // ---------------------------------------------------------------------------
 
 describe("proveniência — fiação nas 21 ferramentas (portão de release)", () => {

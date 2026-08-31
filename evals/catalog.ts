@@ -27,7 +27,7 @@ const GROUPS: CatalogGroup[] = [
 ];
 
 /**
- * Primary area per tool — a PARTITION of the 22 tools aligned with the
+ * Primary area per tool — a PARTITION of the 21 tools aligned with the
  * overlap clusters of the consolidation check (`ibge/docs/03` §4). Tools that
  * belong to more than one cluster are assigned to the one where confusion
  * would be most diagnostic; fixture ids carry the cluster tag for the

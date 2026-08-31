@@ -49,6 +49,33 @@ entre elas ranquear os 5.570 municípios numa chamada só.
 - **Tratamento de erros padronizado** com sugestões úteis
 - **Suporte completo a TypeScript** com tipagem estrita
 
+📖 **Artigo:** [Como achar a tabela certa no SIDRA — e como saber que é a certa](docs/artigo-sidra-tabela-certa.pt-BR.md) — os três passos da busca, os metadados que decidem, um exemplo completo com dado de 2022 e as quatro armadilhas que mais custam caro.
+
+## Procedência dos dados
+
+Desde a v3.3.0 toda resposta bem-sucedida carrega um **bloco de procedência**
+([contrato do portfólio v1.0](https://www.npmjs.com/package/@sbissoli/mcp-provenance)),
+de modo que cada número é citavel, auditável e reproduzível. O bloco sai por
+três canais:
+
+1. `structuredContent.provenance` (analisável, visível ao modelo) — exatamente
+   seis chaves: `source` (a API do IBGE consultada), `source_url` (URL canônica
+   que reproduz a consulta), `data_vintage` (período de referência quando a
+   fonte publica um; `null` caso contrário), `retrieved_at` (o instante REAL da
+   extração na origem, preservado através do cache, horário de Brasília),
+   `citation` ("Fonte: IBGE — [pesquisa/tabela], [URL], extraído em [data].") e
+   `license` — mais `attribution`, a lista canônica de URLs de origem.
+2. `_meta` sob `br.com.sidneybissoli.ibge/provenance` e `.../attribution`
+   (espelho fora de banda para auditoria/UI, custo zero em tokens do modelo).
+3. Um rodapé de texto compacto anexado ao Markdown, para clientes só-texto.
+
+As APIs do IBGE não declaram licença própria; o regime jurídico é o arcabouço
+brasileiro de dados abertos — Lei 12.527/2011 (LAI) e Decreto 8.777/2016
+(reuso irrestrito, uso livre, obrigação limitada a creditar a fonte). Respostas
+em modo estatístico (`estatisticas=true`) e `ibge_comparar` vêm marcadas como
+`derived`, com nota explicativa no bloco canônico, porque os agregados são
+calculados no servidor a partir dos valores brutos do IBGE.
+
 ## Ferramentas Disponíveis
 
 ### Localidades e Geografia

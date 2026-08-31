@@ -52,6 +52,8 @@ ranking all 5,570 municipalities in a single call.
 - **Standardized error handling** with helpful suggestions
 - **Full TypeScript support** with strict typing
 
+📖 **Article (in Portuguese):** [Como achar a tabela certa no SIDRA — e como saber que é a certa](docs/artigo-sidra-tabela-certa.pt-BR.md) — finding the right SIDRA table, the metadata that settles it, a full worked example on 2022 Census data, and the four traps that cost the most.
+
 ## Data provenance
 
 Since v3.3.0 every successful tool response carries a **provenance block**
