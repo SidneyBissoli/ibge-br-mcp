@@ -34,6 +34,11 @@ export const SERVER_CONFIG = {
    * handshake para o GitHub.
    */
   websiteUrl: "https://ibge.sidneybissoli.com",
+  /**
+   * Chave do IndexNow. É PÚBLICA por desenho: ela prova posse do domínio por
+   * estar servida em `/<chave>.txt`, então versionar aqui não é vazamento.
+   */
+  indexNowKey: "9d22f92e5508b317f749929e1e139669",
   /** Rota do endpoint MCP (Streamable HTTP). */
   mcpRoute: "/mcp",
   /**
