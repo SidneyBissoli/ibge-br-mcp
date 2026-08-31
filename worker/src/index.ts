@@ -21,6 +21,7 @@ import { buildStatus } from "./status.js";
 import type { Env } from "./types.js";
 import { ICON_PNG_BASE64 } from "./icon.js";
 import { createUsageRecorder, usageSnapshot, UsageTracker } from "./usage.js";
+import { unknownCursorError } from "../../dist/pagination.js";
 
 // Decodificado uma vez por isolate, nao por request.
 const ICON_PNG = Uint8Array.from(atob(ICON_PNG_BASE64), (c) => c.charCodeAt(0));
@@ -119,6 +120,17 @@ export default {
     // Engine pegando carona no hook de uso — ver src/analytics.ts.
     const recordWithAnalytics = withAnalytics(record, env.ANALYTICS, tagRequest(request, env.SELF_MARKER));
 
+    // Cópia do corpo tirada ANTES do handler consumir o stream — é dela que o
+    // guarda de cursor abaixo decide. Só para o POST do endpoint MCP; corpo que
+    // não é JSON não é assunto daqui.
+    const corpoMcp =
+      request.method === "POST" && url.pathname === SERVER_CONFIG.mcpRoute
+        ? await request
+            .clone()
+            .json()
+            .catch(() => undefined)
+        : undefined;
+
     const handler = createMcpHandler(() => buildServer(recordWithAnalytics), {
       route: SERVER_CONFIG.mcpRoute,
       // Sem a opção, o handler aceita localhost e *.workers.dev. Ao definir
@@ -135,7 +147,37 @@ export default {
       },
     });
 
-    const response = await handler(request, env, ctx);
+    // Cursor de paginação inválido -> JSON-RPC -32602 (ver ../../src/pagination.ts).
+    //
+    // POR QUE DEPOIS DO HANDLER. Quem valida `Host` e `Origin` é o próprio
+    // `createMcpHandler`; um guarda colocado antes responderia -32602 a uma
+    // requisição que a checagem de segurança ia recusar com 403 — recusa de
+    // protocolo passando à frente da recusa de segurança. Rodando depois, só
+    // substituímos uma resposta que já passou por Host, Origin, auth e rate
+    // limit.
+    const doHandler = await handler(request, env, ctx);
+    const recusaDeCursor =
+      doHandler.status === 200 && corpoMcp !== undefined ? unknownCursorError(corpoMcp) : undefined;
+
+    let response = doHandler;
+    if (recusaDeCursor) {
+      record("invalid_cursor", url.pathname);
+      // A lista que o handler acabou de montar não vai ser usada; sem cancelar,
+      // o corpo fica pendurado.
+      void doHandler.body?.cancel();
+      // 200 com erro JSON-RPC no corpo: a falha é de protocolo, não de HTTP — é
+      // assim que o cliente MCP lê o código -32602. O CORS é o que o handler já
+      // resolveu para esta requisição.
+      const corsOrigin = doHandler.headers.get("Access-Control-Allow-Origin");
+      response = new Response(JSON.stringify(recusaDeCursor), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...(corsOrigin ? { "Access-Control-Allow-Origin": corsOrigin } : {}),
+        },
+      });
+    }
+
     logger.info("request", {
       method: request.method,
       path: url.pathname,

@@ -78,9 +78,18 @@ import {
 
 import { registerResources } from "./resources.js";
 import { registerPrompts } from "./prompts.js";
+import { announceServedVersions } from "./discover.js";
 
 // Server metadata
 export const SERVER_NAME = "ibge-br-mcp";
+
+/**
+ * Identidade de exibição do handshake. Espelha `server.json` — que é o que o
+ * MCP Registry publica e os diretórios copiam — e `tests/icon-sync.test.ts`
+ * prende os dois juntos.
+ */
+export const SERVER_TITLE = "IBGE Brasil MCP";
+export const SERVER_WEBSITE_URL = "https://ibge.sidneybissoli.com";
 export const SERVER_VERSION = pkg.version;
 
 /**
@@ -131,10 +140,22 @@ export function createServer(): McpServer {
     {
       name: SERVER_NAME,
       version: SERVER_VERSION,
+      // `title`, `websiteUrl` e `icons` no serverInfo do handshake. Os três já
+      // existiam no `server.json` — o que os diretórios leem — mas NÃO no que o
+      // cliente MCP recebe ao conectar, e são coisas diferentes: o mcpscore
+      // reprovava `server_title_present` e `server_icons_present` medindo o
+      // handshake. `tests/icon-sync.test.ts` prende o ícone contra o manifesto,
+      // para o handshake e os diretórios nunca mostrarem imagens diferentes.
+      title: SERVER_TITLE,
+      websiteUrl: SERVER_WEBSITE_URL,
+      icons: [{ src: `${SERVER_WEBSITE_URL}/icon.png`, mimeType: "image/png", sizes: ["512x512"] }],
     },
     { instructions: SERVER_INSTRUCTIONS }
   );
   registerAll(server);
+  // Anuncia no `server/discover` TODAS as revisões atendidas, não só as
+  // modernas que o SDK filtra — ver src/discover.ts.
+  announceServedVersions(server);
   return server;
 }
 
