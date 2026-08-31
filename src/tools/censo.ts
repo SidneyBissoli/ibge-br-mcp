@@ -40,7 +40,10 @@ const CENSO_NIVEIS = ["1", "2", "3", "6"];
  * mentia. Nada quebrava: código e descrição moram lado a lado e nunca foram
  * confrontados com a fonte.
  */
-export const CENSO_TABELAS: Record<string, Record<string, { tabela: string; descricao: string }>> = {
+export const CENSO_TABELAS: Record<
+  string,
+  Record<string, { tabela: string; descricao: string }>
+> = {
   // População
   populacao: {
     "1970-2010": {
@@ -176,7 +179,8 @@ export const CENSO_TABELAS: Record<string, Record<string, { tabela: string; desc
   saneamento: {
     "2000": {
       tabela: "1453",
-      descricao: "Domicílios particulares permanentes por esgotamento sanitário e abastecimento de água",
+      descricao:
+        "Domicílios particulares permanentes por esgotamento sanitário e abastecimento de água",
     },
     "2010": {
       tabela: "3218",
