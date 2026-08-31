@@ -61,7 +61,7 @@
     "@modelcontextprotocol/server": "^2.0.0",
     "@sbissoli/mcp-provenance": "^0.1.0",
     "@sbissoli/mcp-stats": "^0.2.0",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -76,7 +76,7 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-7": "npm:typescript@^7.0.2",
     "typescript-eslint": "^8.53.0",
-    "vitest": "^4.0.17"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=20"
