@@ -25,7 +25,22 @@ import {
 const CENSO_NIVEIS = ["1", "2", "3", "6"];
 
 // Mapping of census data themes to SIDRA tables
-const CENSO_TABELAS: Record<string, Record<string, { tabela: string; descricao: string }>> = {
+/**
+ * Tema → tabela SIDRA. EXPORTADO para que `tests/censo-mapa-de-tabelas.test.ts`
+ * prove, contra o catálogo oficial do Censo, que cada código daqui é mesmo do
+ * Censo Demográfico e mesmo do assunto que a `descricao` promete.
+ *
+ * POR QUE ISSO PRECISA SER PROVADO. Em 2026-08-31 uma varredura contra a API de
+ * Agregados achou **13 das 41 tabelas deste mapa fora do Censo Demográfico**:
+ * `saneamento`/2022 apontava para uma tabela da PNAD Contínua sobre renda em
+ * domicílios com TV por assinatura; `fecundidade`/2010, para o INPC;
+ * `rendimento`/2000, para o Censo Agropecuário; `quilombolas`/2022, para uso de
+ * Internet. A tool respondia normalmente, com a `descricao` escrita à mão no
+ * cabeçalho — ou seja, devolvia dado de outra pesquisa sob um rótulo que
+ * mentia. Nada quebrava: código e descrição moram lado a lado e nunca foram
+ * confrontados com a fonte.
+ */
+export const CENSO_TABELAS: Record<string, Record<string, { tabela: string; descricao: string }>> = {
   // População
   populacao: {
     "1970-2010": {
@@ -50,22 +65,28 @@ const CENSO_TABELAS: Record<string, Record<string, { tabela: string; descricao: 
       tabela: "204",
       descricao: "População de 5 anos ou mais por alfabetização e idade",
     },
-    "2000": {
-      tabela: "752",
-      descricao: "População de 5 anos ou mais por alfabetização, sexo e idade",
-    },
+    // 2000 não tem entrada: a tabela 752, que estava aqui, não é do Censo
+    // Demográfico. Sem substituta conferida, é melhor não ter tema para o ano
+    // do que servir outra pesquisa com este rótulo.
     "2010": {
       tabela: "1383",
-      descricao: "População de 5 anos ou mais por alfabetização e grupos de idade",
+      descricao: "Taxa de alfabetização das pessoas de 10 anos ou mais por sexo",
     },
     "2022": { tabela: "9543", descricao: "Taxa de alfabetização por idade, cor/raça e sexo" },
   },
   // Domicílios
   domicilios: {
-    "2000": { tabela: "753", descricao: "Domicílios por tipo e situação" },
-    "2010": { tabela: "3164", descricao: "Domicílios por tipo, situação e número de moradores" },
-    "2022": { tabela: "4711", descricao: "Domicílios - primeiros resultados" },
-    "2022-detalhado": { tabela: "9605", descricao: "Domicílios particulares permanentes" },
+    "2000": {
+      tabela: "1310",
+      descricao: "Domicílios recenseados, por espécie e situação do domicílio",
+    },
+    "2010": {
+      tabela: "1310",
+      descricao: "Domicílios recenseados, por espécie e situação do domicílio",
+    },
+    "2022": { tabela: "4711", descricao: "Domicílios recenseados, por espécie" },
+    // "2022-detalhado" não existe mais: apontava para a 9605, que é a tabela de
+    // COR OU RAÇA — o mesmo código que o tema cor_raca usa, e corretamente.
   },
   // Idade e sexo
   idade_sexo: {
@@ -87,18 +108,38 @@ const CENSO_TABELAS: Record<string, Record<string, { tabela: string; descricao: 
   },
   // Rendimento
   rendimento: {
-    "2000": { tabela: "857", descricao: "Rendimento médio mensal" },
-    "2010": { tabela: "3548", descricao: "Rendimento nominal mensal per capita" },
+    // 2000 não tem entrada: a 857, que estava aqui, é do Censo AGROPECUÁRIO.
+    "2010": {
+      tabela: "3548",
+      descricao: "Rendimento nominal médio e mediano das pessoas de 10 anos ou mais",
+    },
+    "2022": {
+      tabela: "10293",
+      // Só nível Brasil (N1) na origem — pedir UF ou município devolve erro do
+      // SIDRA, que é o comportamento honesto.
+      descricao: "Distribuição da massa de rendimento nominal mensal domiciliar per capita",
+    },
   },
   // Migração
   migracao: {
     "2000": { tabela: "631", descricao: "População por lugar de nascimento" },
-    "2010": { tabela: "1505", descricao: "Emigrantes internacionais" },
+    "2010": {
+      tabela: "1505",
+      descricao: "População residente por naturalidade em relação ao município e à UF",
+    },
   },
   // Educação
   educacao: {
-    "2000": { tabela: "706", descricao: "População por nível de instrução" },
-    "2010": { tabela: "3540", descricao: "População por nível de instrução e sexo" },
+    // 2000 não tem entrada: a 706, que estava aqui, é das Estatísticas do
+    // Registro Civil (nascidos vivos).
+    "2010": {
+      tabela: "3540",
+      descricao: "Pessoas de 10 anos ou mais por nível de instrução",
+    },
+    "2022": {
+      tabela: "10061",
+      descricao: "Pessoas de 18 anos ou mais por nível de instrução, idade, sexo e cor ou raça",
+    },
   },
   // Trabalho
   trabalho: {
@@ -107,35 +148,80 @@ const CENSO_TABELAS: Record<string, Record<string, { tabela: string; descricao: 
   },
   // Indígenas (novo)
   indigenas: {
-    "2010": { tabela: "3451", descricao: "População indígena por etnia e localização" },
-    "2022": { tabela: "9587", descricao: "População indígena por etnia, sexo e idade" },
-    "2022-terras": { tabela: "9588", descricao: "População indígena em terras indígenas" },
+    "2010": {
+      tabela: "3452",
+      descricao: "Pessoas indígenas por situação e localização do domicílio, sexo e idade",
+    },
+    "2022": {
+      tabela: "10395",
+      descricao: "Pessoas indígenas por sexo e grupos de idade, segundo etnia, povo ou grupo",
+    },
+    "2022-terras": {
+      tabela: "10396",
+      descricao: "Pessoas indígenas residentes em Terras Indígenas, por sexo, idade e etnia",
+    },
   },
   // Quilombolas (novo)
   quilombolas: {
-    "2022": { tabela: "9674", descricao: "População quilombola por sexo e idade" },
-    "2022-territorios": { tabela: "9675", descricao: "População em territórios quilombolas" },
+    "2022": {
+      tabela: "10089",
+      descricao: "População residente, total e quilombola, por sexo e grupos de idade",
+    },
+    "2022-territorios": {
+      tabela: "10090",
+      descricao: "População, total e quilombola, residente em Territórios Quilombolas",
+    },
   },
   // Saneamento (novo)
   saneamento: {
-    "2000": { tabela: "764", descricao: "Domicílios por forma de abastecimento de água" },
-    "2010": { tabela: "3218", descricao: "Domicílios por tipo de saneamento" },
-    "2022": { tabela: "9696", descricao: "Domicílios por abastecimento de água e esgotamento" },
+    "2000": {
+      tabela: "1453",
+      descricao: "Domicílios particulares permanentes por esgotamento sanitário e abastecimento de água",
+    },
+    "2010": {
+      tabela: "3218",
+      descricao: "Domicílios particulares permanentes por forma de abastecimento de água",
+    },
+    "2022": {
+      tabela: "6803",
+      descricao: "Domicílios particulares permanentes ocupados por ligação à rede de esgoto",
+    },
   },
   // Deficiência (novo)
   deficiencia: {
-    "2000": { tabela: "2649", descricao: "Pessoas com deficiência por tipo" },
-    "2010": { tabela: "3426", descricao: "População com deficiência por tipo e grau" },
+    // 2000 não tem entrada: a 2649, que estava aqui, é da Pesquisa Anual de
+    // Serviços (transportes).
+    "2010": {
+      tabela: "3426",
+      descricao: "População residente por tipo de deficiência, segundo sexo e cor ou raça",
+    },
+    "2022": {
+      tabela: "10125",
+      descricao: "Pessoas de 2 anos ou mais, total e com deficiência, por sexo e grupos de idade",
+    },
   },
   // Nupcialidade/Estado civil (novo)
   nupcialidade: {
-    "2000": { tabela: "594", descricao: "Pessoas de 10 anos ou mais por estado civil" },
-    "2010": { tabela: "1488", descricao: "Pessoas por estado civil e sexo" },
+    "2000": {
+      tabela: "1624",
+      descricao: "Pessoas de 10 anos ou mais de idade por sexo e estado civil",
+    },
+    "2010": {
+      tabela: "1541",
+      descricao: "Pessoas de 10 anos ou mais de idade, por estado civil",
+    },
   },
   // Fecundidade (novo)
   fecundidade: {
-    "2000": { tabela: "2443", descricao: "Mulheres por número de filhos nascidos vivos" },
-    "2010": { tabela: "1691", descricao: "Taxa de fecundidade" },
+    // 2000 não tem entrada: a 2443, que estava aqui, é de FAMÍLIAS por tipo.
+    "2010": {
+      tabela: "10075",
+      descricao: "Mulheres de 12 anos ou mais por número de filhos tidos nascidos vivos",
+    },
+    "2022": {
+      tabela: "10075",
+      descricao: "Mulheres de 12 anos ou mais por número de filhos tidos nascidos vivos",
+    },
   },
 };
 
