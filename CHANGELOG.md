@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-08-31
+
+Conserta um defeito silencioso de `ibge_censo` que fazia a tool devolver dados
+de OUTRA PESQUISA sob o rótulo do tema pedido, e publica a superfície do
+produto em português.
+
+### Fixed
+
+- **15 das 41 tabelas do mapa de temas de `ibge_censo` apontavam para a
+  pesquisa errada ou para o assunto errado.** A tool traduz `tema` + `ano` em
+  código de tabela SIDRA por um mapa escrito à mão — o código de um lado, uma
+  `descricao` também escrita à mão do outro — e nada jamais confrontou o par
+  com o catálogo do IBGE. `tema="saneamento"` com `ano="2022"` respondia com a
+  tabela 9696, que é da **PNAD Contínua** e mede rendimento em domicílio com
+  televisão por assinatura; `fecundidade`/2010 apontava para o **INPC** de 1990;
+  `rendimento`/2000, para o **Censo Agropecuário**; `quilombolas`/2022, para uso
+  de Internet; `educacao`/2000, para nascidos vivos do Registro Civil;
+  `deficiencia`/2000, para transportes da Pesquisa Anual de Serviços; e mais
+  nove. Nada quebrava: a resposta vinha normal, com a descrição escrita à mão no
+  cabeçalho.
+  Onde havia substituta conferida, a tabela foi trocada (saneamento/2022 → 6803,
+  quilombolas → 10089 e 10090, indígenas → 3452, 10395 e 10396, educação/2022 →
+  10061, deficiência/2022 → 10125, fecundidade → 10075, nupcialidade → 1624 e
+  1541, domicílios → 1310, rendimento/2022 → 10293). Onde não havia, a entrada
+  foi **removida**: `alfabetizacao`/2000, `rendimento`/2000, `educacao`/2000,
+  `deficiencia`/2000, `fecundidade`/2000 e `domicilios`/2022-detalhado deixam de
+  existir. É melhor a tool dizer que não cobre aquele ano do que servir outra
+  pesquisa com o rótulo do tema — e quem chamava essas combinações estava
+  recebendo dado errado, não dado.
+- A landing anunciava "22 ferramentas" com 21 registradas.
+- O `README.pt-BR.md` não tinha a seção de procedência dos dados, que o inglês
+  tem desde a v3.3.0.
+
+### Added
+
+- **`tests/censo-mapa-de-tabelas.test.ts`**, 88 casos, com duas provas por
+  entrada contra a fonte: o código existe no catálogo do Censo Demográfico
+  (espelho em `tests/fixtures/censo-agregados.json`, regenerável por
+  `node scripts/atualiza-catalogo-censo.mjs`) e o NOME OFICIAL da tabela contém
+  um termo do assunto que o tema promete. A segunda prova é a que pega o caso
+  traiçoeiro — universo certo, assunto errado.
+- **`tests/contagem-nos-textos.test.ts`**: toda afirmação "N ferramentas/tools"
+  em texto público conferida contra a contagem derivada do `registerAll` real,
+  mais paridade pt/en dos READMEs.
+- **`docs/artigo-sidra-tabela-certa.pt-BR.md`**: como achar a tabela certa no
+  SIDRA e como saber que é a certa, com um exemplo completo em dado de 2022 e
+  todos os números capturados ao vivo.
+
+### Changed
+
+- **Landing page** com `meta description`, canonical, og:, JSON-LD
+  `SoftwareApplication`, perguntas reais, destaques, links para repositório,
+  pacote e artigo, e o segundo idioma como seção própria. Antes eram oito
+  linhas de corpo, sem nada disso.
+
+
 ## [4.1.0] - 2026-08-30
 
 Fecha os SETE achados de conformidade do `mcpscore`. Produção de **165/173
