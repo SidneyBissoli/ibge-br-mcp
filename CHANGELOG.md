@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-08-30
+
+Fecha os SETE achados de conformidade do `mcpscore`. Produção de **165/173
+(95,4%) para 173/173 = 100%**; stdio de 137/148 para 146/148, com zero falhas —
+os 2 pontos restantes são limite do SDK, não deste repositório.
+
+### Added
+
+- `serverInfo` do handshake passa a declarar `title`, `icons` e `websiteUrl`.
+  Os três já existiam no `server.json` — que é o que o MCP Registry publica e os
+  diretórios copiam — mas não no que o cliente MCP recebe ao conectar. São
+  lugares diferentes, e é o handshake que o auditor mede.
+- Cursor de paginação inválido passa a ser recusado com JSON-RPC `-32602` nos
+  quatro endpoints de lista (`src/pagination.ts`). Toda lista deste servidor cabe
+  numa página, então nenhum cursor é válido — mas os handlers do SDK ignoram
+  `params.cursor` e devolviam a lista inteira, contra a spec §Pagination.
+- `server/discover` passa a anunciar TODAS as revisões atendidas, não só as
+  modernas que o SDK filtra (`src/discover.ts`). Anunciar a verdade em vez de
+  desligar o ciclo legado, que trocaria 1 ponto por uma regressão de
+  compatibilidade com quase todos os clientes.
+
+### Fixed
+
+- O `websiteUrl` do handshake apontava para o repositório no GitHub enquanto o
+  `server.json` apontava para o domínio próprio — duas respostas para "onde fica
+  este servidor", e o domínio é quem serve o ícone.
+- `no-useless-assignment` (regra nova do `@eslint/js` 10) achou uma atribuição
+  morta em `src/tools/censo.ts`: um `let periodos = "last"` cujo valor nunca era
+  lido, porque os dois ramos seguintes atribuem incondicionalmente.
+
+### Changed
+
+- **TypeScript 7.0.2**. Este repositório é o único do portfólio com
+  `typescript-eslint`, que RECUSA a 7 no import — daí o arranjo lado a lado
+  recomendado pela própria equipe do TypeScript: `typescript` é o shim
+  `@typescript/typescript6`, para o eslint, e `typescript-7` é o compilador.
+  **`npx tsc` aqui é a 6.0.3**; quem compila é o binário chamado pelo caminho.
+  Guarda derivado em `tests/toolchain-typescript.test.ts`.
+- `zod` 4.5.4, `@types/node` 26.4.0, `eslint` 10, `agents` 0.22 no `worker/`, e
+  o ferramental na última estável.
+
+### CI
+
+- Catraca do `mcpscore` em 98 (stdio) e **100** (produção).
+- `worker/tests/serverinfo-sync.test.ts`: compara a identidade do Worker, da raiz
+  e do `server.json` entre si. Existe porque corrigir só a raiz levou o stdio a
+  146/148 e deixou produção em 169/173 — com CI verde e deploy bem-sucedido.
+- `dependabot.yml` passa a vigiar o `worker/`; Actions agrupadas e em v7.
+
 ## [4.0.2] - 2026-08-29
 
 ### Changed
