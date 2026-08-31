@@ -8,15 +8,37 @@ name: mcpscore (contrato de qualidade)
 # o SERVIDOR RODANDO — mcpindex, Glama e LobeHub leem ficha e repositório.
 # Por isso aqui ele deixa de ser número no painel e vira gate.
 #
-# CATRACA, não meta. O piso é o valor MEDIDO em 29/08/2026, arredondado para
-# baixo: impede regressão sem prometer melhora. Ao subir a nota de verdade,
-# suba o piso na mesma passada — senão a catraca protege um patamar que o
-# servidor já não tem.
+# CATRACA, não meta. O piso é o valor MEDIDO, arredondado para baixo: impede
+# regressão sem prometer melhora. Ao subir a nota de verdade, suba o piso na
+# mesma passada — senão a catraca protege um patamar que o servidor já não tem.
 #
 # DOIS PISOS, e a diferença não é arbitrária: no stdio várias regras de HTTP
 # não se aplicam e o denominador muda, então a mesma implementação pontua
-# diferente nos dois transportes. Medido aqui: stdio 137/148 = 92,6%; remoto 95,4%.
-# Um piso único reprovaria o stdio no primeiro PR.
+# diferente nos dois transportes. Um piso único reprovaria o stdio.
+#
+# HISTÓRICO DOS PISOS
+#  - 29/08/2026: stdio 137/148 = 92,6%; remoto 95,4% -> pisos 92 e 95.
+#  - 30/08/2026: fechados os sete achados — os quatro cursores de paginação, o
+#    `title` e os `icons` no serverInfo e o `server/discover`. Stdio medido em
+#    146/148 = 98,6% -> piso 98. Produção em 173/173 -> piso 100.
+#    ATENÇÃO ao que custou dois deploys aqui: `title`/`icons`/`discover` moram
+#    em DOIS lugares — `src/server.ts` (stdio) e `worker/src/server.ts` (HTTP).
+#    Corrigir só a raiz levou o stdio a 146/148 e deixou produção em 169/173,
+#    com CI verde e deploy bem-sucedido. O guarda contra isso é
+#    `worker/tests/serverinfo-sync.test.ts`.
+#
+# UM PISO DE 100 É DESCONFORTÁVEL DE PROPÓSITO. Ele fica vermelho tanto numa
+# regressão nossa quanto numa REGRA NOVA do auditor que ainda não atendemos — e
+# a segunda também é notícia, não ruído. Quem baixar este piso está decidindo
+# não saber.
+#
+# O QUE SOBRA NO STDIO: os 2 pontos que faltam são
+# `readiness_2026_unsupported_version_error` — versão de protocolo desconhecida
+# não vira -32022. No stdio o `serveStdio` do SDK classifica um `initialize` sem
+# envelope moderno como ciclo LEGADO e responde com a revisão que suporta, que é
+# o que a spec de 2025 pede; não há opção que mude isso sem desligar o ciclo
+# legado e quebrar a maioria dos clientes. bcb e ilo reprovam a mesma regra no
+# mesmo transporte. É limite do SDK, não deste repositório.
 #
 # O gate do PR mede o CÓDIGO DO PR (stdio, servidor local). O pós-deploy mede
 # o que FOI AO AR. São perguntas diferentes e por isso são dois jobs.
@@ -42,7 +64,7 @@ jobs:
         run: npm run build
       - uses: astral-sh/setup-uv@v5
       - name: Auditar o servidor local
-        run: uvx mcpscore --fail-under 92 --stdio node dist/index.js
+        run: uvx mcpscore --fail-under 98 --stdio node dist/index.js
 
   remoto:
     name: contrato no que está no ar (streamable http)
@@ -54,4 +76,4 @@ jobs:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
       - name: Auditar o endpoint em produção
-        run: uvx mcpscore --fail-under 95 https://ibge.sidneybissoli.com/mcp
+        run: uvx mcpscore --fail-under 100 https://ibge.sidneybissoli.com/mcp
