@@ -14,7 +14,10 @@ export const SERVER_CONFIG = {
   /** Versão do servidor — única fonte: package.json do pacote pai. */
   version: SERVER_VERSION,
   /** Título de exibição (landing page). */
-  title: "ibge-br-mcp — dados públicos do IBGE via MCP",
+  // Mesmo texto do `server.json` — que é o que o MCP Registry publica e os
+  // diretórios copiam. Divergir aqui faria o handshake e as fichas mostrarem
+  // nomes diferentes do mesmo produto.
+  title: "IBGE Brasil MCP",
   /** Uma frase: o que o servidor serve e de qual fonte. */
   description:
     "Servidor MCP com 22 ferramentas de dados públicos oficiais do IBGE — geografia, " +
@@ -24,8 +27,13 @@ export const SERVER_CONFIG = {
    * veem — precisa resolver para identificação humana + contato.
    */
   contactEmail: "sbissoli76@gmail.com",
-  /** Repositório público (serverInfo.websiteUrl + landing). */
-  websiteUrl: "https://github.com/SidneyBissoli/ibge-br-mcp",
+  /**
+   * Site do servidor no handshake (`serverInfo.websiteUrl`). É o DOMÍNIO
+   * PRÓPRIO, não o repositório: é o que `server.json` declara e o que serve o
+   * ícone. O par estava desalinhado — o manifesto apontava para o domínio e o
+   * handshake para o GitHub.
+   */
+  websiteUrl: "https://ibge.sidneybissoli.com",
   /** Rota do endpoint MCP (Streamable HTTP). */
   mcpRoute: "/mcp",
   /**

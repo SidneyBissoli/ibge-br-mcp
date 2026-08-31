@@ -37,7 +37,7 @@ export const PAGINATED_LIST_METHODS = [
   "tools/list",
   "resources/list",
   "resources/templates/list",
-  "prompts/list"
+  "prompts/list",
 ] as const;
 
 /** Resposta de erro JSON-RPC — a forma que os dois transportes enviam. */
@@ -68,7 +68,8 @@ export function unknownCursorError(message: unknown): JsonRpcErrorResponse | und
   if (typeof id !== "string" && typeof id !== "number") return undefined;
   if (typeof method !== "string") return undefined;
   if (!(PAGINATED_LIST_METHODS as readonly string[]).includes(method)) return undefined;
-  if (params === null || typeof params !== "object" || params.cursor === undefined) return undefined;
+  if (params === null || typeof params !== "object" || params.cursor === undefined)
+    return undefined;
 
   return {
     jsonrpc: "2.0",
@@ -78,7 +79,7 @@ export function unknownCursorError(message: unknown): JsonRpcErrorResponse | und
       message:
         `Invalid params: unknown pagination cursor for ${method}. ` +
         "This server returns every list in a single page and never issues a nextCursor, " +
-        "so no cursor value is valid — retry without one."
-    }
+        "so no cursor value is valid — retry without one.",
+    },
   };
 }

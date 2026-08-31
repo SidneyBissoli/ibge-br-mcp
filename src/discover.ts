@@ -62,7 +62,7 @@ export function announceServedVersions(server: McpServer): void {
     throw new Error(
       "SDK mudou: Server._ondiscover sumiu — o anúncio de versões em src/discover.ts " +
         "deixaria de aplicar em silêncio. Reveja o módulo contra a versão nova do " +
-        "@modelcontextprotocol/server antes de seguir.",
+        "@modelcontextprotocol/server antes de seguir."
     );
   }
   if (
@@ -71,7 +71,7 @@ export function announceServedVersions(server: McpServer): void {
   ) {
     throw new Error(
       "SDK mudou: Server._supportedProtocolVersions não é mais uma lista de strings — " +
-        "src/discover.ts não tem de onde tirar as revisões atendidas.",
+        "src/discover.ts não tem de onde tirar as revisões atendidas."
     );
   }
 
