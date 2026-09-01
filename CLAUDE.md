@@ -86,6 +86,17 @@ Note `SERVER_VERSION` in `src/server.ts` is sourced from `package.json` (`import
 
 `evals/` holds a tool-selection eval on `@sbissoli/mcp-evals`: `catalog.ts` extracts the live catalog by running the real `registerAll` (single group; per-tool areas reassigned from the cluster map `AREA_BY_TOOL` — keep it covering every tool, `tests/evals/fixtures.test.ts` enforces the partition), and `fixtures/queries.ts` has 40 pt-BR queries tagged by disambiguation cluster (`pop-`/`eco-`/`loc-`/`sidra-`/`malha-`/`ctrl-`). The catalog/fixtures validation runs offline inside `npm test`. The live run (`npx tsx evals/run.ts`) calls the Anthropic Messages API with `ANTHROPIC_API_KEY` and **bills API usage — never run or suggest it unless the user explicitly asks**.
 
+## Baselines de superfície
+
+`baselines/` guarda dumps normalizados de `tools/list` + resources + prompts
+(`node scripts/dump-surface.mjs --stdio | --url <endpoint>`), prática
+transplantada do bcb-br-mcp. Na captura inicial (01/09/2026, v4.2.0) stdio e
+produção saíram byte-idênticos — o worker reutiliza o `registerAll` do build da
+raiz, então a única deriva possível é de deploy. Depois de mudança que possa
+mexer na superfície: `npm run build && node scripts/dump-surface.mjs --stdio` e
+diff contra o baseline vigente; toda diferença precisa ser deliberada e listada
+no CHANGELOG. Ver `baselines/README.md`.
+
 ## Tests
 
 Vitest, in `tests/`. Coverage spans the shared infrastructure (`cache`, `validation`, `retry`, `errors`, `formatters`, `structured`) and per-tool mock-based tests that stub `global.fetch` (every tool is ≥50% covered). Use the mock helper in `tests/helpers.ts` rather than hand-rolling `fetch` stubs. Note the two test styles: `xxx.test.ts` files often assert only the Zod schema, while `xxx.tool.test.ts` (and the integration files) actually invoke `ibgeXxx` against a mocked upstream — when adding a tool, write the latter.

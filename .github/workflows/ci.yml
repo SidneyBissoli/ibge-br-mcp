@@ -41,6 +41,11 @@ jobs:
       - name: Run tests
         run: npm test
 
+      # A superfície publicada é o produto: se o build não consegue nem levantar
+      # o servidor e listar as tools, o pacote não deve passar no gate.
+      - name: Dump da superfície (fumaça do build)
+        run: node scripts/dump-surface.mjs --stdio > /dev/null
+
       # Falha se a cobertura cair abaixo do piso de vitest.config.ts — é este
       # passo que impede o número do README de virar ficção.
       - name: Run tests with coverage
