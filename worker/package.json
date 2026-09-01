@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "description": "Cloudflare Worker that serves ibge-br-mcp over Streamable HTTP (Fase 0 hosting template: createMcpHandler + UsageTracker)",
   "scripts": {
     "dev": "wrangler dev",
