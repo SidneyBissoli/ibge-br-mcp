@@ -12,8 +12,9 @@ jobs:
 
     strategy:
       matrix:
-        # Floor is node >= 20 (package engines, MCP SDK v2 requirement).
-        node-version: [20.x, 22.x]
+        # Piso é node >= 22 (engines do package). O 20 saiu em 31/08/2026: fim
+        # de vida em 30/04/2026, sem correção de segurança desde então.
+        node-version: [22.x, 24.x]
 
     steps:
       - name: Checkout repository
@@ -43,7 +44,7 @@ jobs:
       # Falha se a cobertura cair abaixo do piso de vitest.config.ts — é este
       # passo que impede o número do README de virar ficção.
       - name: Run tests with coverage
-        if: matrix.node-version == '20.x'
+        if: matrix.node-version == '22.x'
         run: npm run test:coverage
 
   # O worker tem suite propria (6 arquivos, 32 testes) que ate 29/08/2026 nunca
@@ -59,7 +60,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "20.x"
+          node-version: "22.x"
           cache: "npm"
 
       # A raiz vem primeiro: o worker importa ../../dist/server.js e resolve o
@@ -91,7 +92,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "20.x"
+          node-version: "22.x"
           cache: "npm"
 
       - name: Install dependencies
@@ -110,7 +111,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "20.x"
+          node-version: "22.x"
           cache: "npm"
 
       - name: Install dependencies

@@ -188,7 +188,7 @@ Discover → inspect → query: `ibge_pesquisas` / `ibge_sidra_tabelas` (find a 
 
 ### Prerequisites
 
-- Node.js 18.x or higher
+- Node.js 22.x or higher (`engines.node`)
 - npm or yarn
 
 ### From npm (recommended)

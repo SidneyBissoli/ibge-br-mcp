@@ -185,7 +185,7 @@ Descobrir → inspecionar → consultar: `ibge_pesquisas` / `ibge_sidra_tabelas`
 
 ### Pré-requisitos
 
-- Node.js 18.x ou superior
+- Node.js 22.x ou superior (`engines.node`)
 - npm ou yarn
 
 ### Via npm (recomendado)
