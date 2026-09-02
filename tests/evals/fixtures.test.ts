@@ -8,17 +8,26 @@
 
 import { describe, it, expect } from "vitest";
 import { validateFixtures } from "@sbissoli/mcp-evals";
+import { DEEP_RESEARCH_TOOLS } from "@sbissoli/mcp-search";
 import { AREA_BY_TOOL, CATALOG } from "../../evals/catalog.js";
 import { FIXTURES } from "../../evals/fixtures/queries.js";
 
 describe("eval catalog (live, via registerAll)", () => {
-  it("captures exactly the 21 tools", () => {
-    expect(CATALOG.tools).toHaveLength(21);
+  it("captures exactly the 23 tools (21 ibge_* + the 2 of the Deep Research contract)", () => {
+    expect(CATALOG.tools).toHaveLength(23);
   });
 
-  it("every tool carries the ibge_ prefix", () => {
+  it("every tool carries the ibge_ prefix — except the two the ChatGPT contract names", () => {
+    // `search` and `fetch` are the ONLY allowed exceptions: their names are
+    // fixed by OpenAI (Deep Research contract, v4.3.0). Explicit allowlist from
+    // the package, not a looser regex — a third unprefixed tool still fails.
+    const excecoes = new Set<string>(DEEP_RESEARCH_TOOLS);
     for (const tool of CATALOG.tools) {
+      if (excecoes.has(tool.name)) continue;
       expect(tool.name).toMatch(/^ibge_/);
+    }
+    for (const nome of DEEP_RESEARCH_TOOLS) {
+      expect(CATALOG.toolNames, `${nome} missing from the catalog`).toContain(nome);
     }
   });
 

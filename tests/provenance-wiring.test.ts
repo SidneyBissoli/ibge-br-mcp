@@ -54,7 +54,13 @@ import {
   paisesSchema,
   ibgeCidades,
   cidadesSchema,
+  deepResearchSearch,
+  deepResearchFetch,
 } from "../src/tools/index.js";
+import { limparIndice } from "../src/tools/deep-research.js";
+import { createServer } from "../src/server.js";
+import { Client } from "@modelcontextprotocol/client";
+import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { cache } from "../src/cache.js";
 import type { StructuredToolResult } from "../src/structured.js";
 import { mockResponse, sidraResponse } from "./helpers.js";
@@ -381,15 +387,56 @@ const casos: Caso[] = [
     },
     executar: () => ibgeCidades(cidadesSchema.parse({ municipio: "3550308" })),
   },
+
+  // `search`/`fetch` (contrato Deep Research): a proveniência nasce dentro da
+  // chamada e vai ao envelope como extras — o mesmo bloco canônico das outras.
+  // O índice faz DOIS GETs em paralelo, então o mock despacha por URL.
+  {
+    nome: "search",
+    mock: () => mockFetch.mockImplementation(mockIndice()),
+    executar: async () => {
+      const { results, provenance } = await deepResearchSearch("população");
+      return { markdown: JSON.stringify({ results }), provenance };
+    },
+  },
+  {
+    nome: "fetch",
+    mock: () =>
+      mockFetch.mockImplementation(
+        mockIndice({ "/metadados$": metadadosSidra, "/periodos$": periodosSidra })
+      ),
+    executar: async () => {
+      const r = await deepResearchFetch("sidra:6579");
+      if (r === null) return { markdown: "id desconhecido", isError: true };
+      return { markdown: r.document.text, provenance: r.provenance };
+    },
+  },
 ];
 
+/** Despacho por URL: os GETs do índice + o que o caso acrescentar. Sem padrão → 404. */
+function mockIndice(extra: Record<string, unknown> = {}) {
+  const mapa: Record<string, unknown> = {
+    "/api/v3/agregados$": agregadosPesquisas,
+    "/localidades/municipios[?]orderBy=nome&view=nivelado$": [
+      { "municipio-id": 3550308, "municipio-nome": "São Paulo", "UF-sigla": "SP" },
+    ],
+    ...extra,
+  };
+  return async (url: string | URL) => {
+    const alvo = String(url);
+    const chave = Object.keys(mapa).find((padrao) => new RegExp(padrao).test(alvo));
+    return chave === undefined ? mockResponse({ erro: alvo }, 404) : mockResponse(mapa[chave]);
+  };
+}
+
 // ---------------------------------------------------------------------------
-// Portão de release: as 21 ferramentas emitem o bloco canônico
+// Portão de release: TODAS as ferramentas do servidor emitem o bloco canônico
 // ---------------------------------------------------------------------------
 
-describe("proveniência — fiação nas 21 ferramentas (portão de release)", () => {
+describe("proveniência — fiação em todas as ferramentas (portão de release)", () => {
   beforeEach(() => {
     cache.clear();
+    limparIndice();
     mockFetch.mockReset();
     vi.stubGlobal("fetch", mockFetch);
   });
@@ -398,9 +445,21 @@ describe("proveniência — fiação nas 21 ferramentas (portão de release)", (
     vi.unstubAllGlobals();
   });
 
-  it("cobre exatamente as 21 ferramentas do servidor", () => {
-    expect(casos).toHaveLength(21);
-    expect(new Set(casos.map((c) => c.nome)).size).toBe(21);
+  it("cobre exatamente as ferramentas que o servidor anuncia (nem uma a menos, nem sobra)", async () => {
+    // A lista de casos é escrita à mão; o que a prende ao servidor vivo é este
+    // confronto com tools/list — uma tool nova sem caso aqui reprova, em vez
+    // de deixar um buraco silencioso na cobertura (o "21" fixo deixava).
+    const server = createServer();
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "provenance-wiring", version: "0.0.0" });
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    const { tools } = await client.listTools();
+    await client.close();
+
+    const anunciadas = tools.map((t) => t.name).sort();
+    const cobertas = [...new Set(casos.map((c) => c.nome))].sort();
+    expect(cobertas).toEqual(anunciadas);
+    expect(casos).toHaveLength(anunciadas.length);
   });
 
   for (const caso of casos) {

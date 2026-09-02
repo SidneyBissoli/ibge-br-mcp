@@ -40,7 +40,7 @@ ranking all 5,570 municipalities in a single call.
 
 ## Features
 
-- **21 specialized tools** covering all major IBGE data domains
+- **23 tools** covering all major IBGE data domains — 21 `ibge_*` data tools plus `search`/`fetch` for ChatGPT Deep Research
 - **Provenance block on every response** — source, canonical URL, reference
   period, real extraction timestamp, ready-to-use citation, and legal regime
   (see [Data provenance](#data-provenance))
@@ -142,9 +142,17 @@ aggregates are computed server-side from the raw IBGE values.
 | `ibge_noticias` | IBGE news and press releases |
 | `ibge_calendario` | IBGE release and collection calendar |
 
+### ChatGPT Deep Research
+| Tool | Description |
+|:-----|:------------|
+| `search` | Searches the IBGE catalog (SIDRA tables, municipalities, known indicators) — OpenAI Deep Research contract |
+| `fetch` | Returns one catalog document (table metadata, municipality hierarchy + population, indicator series) with its public URL for citation |
+
+The two are the only tools without the `ibge_` prefix: their names are fixed by the OpenAI contract. For data queries keep using the `ibge_*` tools.
+
 ## Which tool should I use?
 
-With 21 tools, several can touch the same topic. Quick guide for the common overlaps:
+With 23 tools, several can touch the same topic. Quick guide for the common overlaps:
 
 ### Population & demographics
 
@@ -253,6 +261,16 @@ Or if installed from source:
   }
 }
 ```
+
+### ChatGPT (Deep Research)
+
+ChatGPT deep research (and company knowledge, and research workflows over the Responses API) only uses an MCP server that exposes exactly `search` and `fetch` — this server does, on top of the `ibge_*` tools. Point the connector at the hosted endpoint, no key required:
+
+```
+https://ibge.sidneybissoli.com/mcp
+```
+
+`search` ranks the query against SIDRA tables, municipalities and the known indicators and returns `{ id, title, url }`; `fetch` returns the document as readable Markdown with the canonical public URL (sidra.ibge.gov.br or cidades.ibge.gov.br), which is what ChatGPT cites. Both carry the same provenance block as every other tool. In ChatGPT's developer mode (Settings → Security and login → Developer mode) any tool is callable — the `ibge_*` tools remain the ones to use for data.
 
 ## Tool Usage Examples
 

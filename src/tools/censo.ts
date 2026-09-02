@@ -2,10 +2,15 @@ import { z } from "zod";
 import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
-import { createMarkdownTable, formatNumber } from "../utils/index.js";
+import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
-import { type StructuredToolResult, sidraRecords, selectSidraColumns } from "../structured.js";
+import {
+  type StructuredToolResult,
+  sidraRecords,
+  selectSidraColumns,
+  formatarCelulaSidra,
+} from "../structured.js";
 import {
   extrairPeriodoSidra,
   NOTA_DERIVACAO_ESTATISTICAS,
@@ -554,13 +559,7 @@ function formatCensoTable(data: Record<string, string>[]): string {
 
   const headers = columns.map((col) => headerRow[col] || col);
   const rows = displayRows.map((row) =>
-    columns.map((col) => {
-      const value = row[col];
-      if (value && !isNaN(Number(value)) && value.length > 3) {
-        return formatNumber(Number(value));
-      }
-      return value || "-";
-    })
+    columns.map((col) => formatarCelulaSidra(headerRow[col] || col, row[col]))
   );
 
   let output = createMarkdownTable(headers, rows);

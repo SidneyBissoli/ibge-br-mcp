@@ -34,3 +34,12 @@ export { ibgeDatasaude, datasaudeSchema, datasaudeOutputSchema } from "./datasau
 // Phase 4 tools (v1.9.0)
 export { ibgePaises, paisesSchema, paisesOutputSchema } from "./paises.js";
 export { ibgeCidades, cidadesSchema, cidadesOutputSchema } from "./cidades.js";
+
+// ChatGPT Deep Research contract (v4.3.0): the IBGE adapter behind `search`/`fetch`
+export {
+  DEEP_RESEARCH_LIMIT,
+  deepResearchFetch,
+  deepResearchSearch,
+  fetchParaFabrica,
+  searchParaFabrica,
+} from "./deep-research.js";

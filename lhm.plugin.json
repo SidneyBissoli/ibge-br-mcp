@@ -167,6 +167,20 @@
       "inputSchema": {
         "type": "object"
       }
+    },
+    {
+      "name": "search",
+      "description": "ChatGPT Deep Research contract: searches the IBGE catalog (SIDRA tables, municipalities, known indicators) and returns { id, title, url }.",
+      "inputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "name": "fetch",
+      "description": "ChatGPT Deep Research contract: returns one catalog document (table metadata, municipality hierarchy + population, indicator series) with its public URL for citation.",
+      "inputSchema": {
+        "type": "object"
+      }
     }
   ],
   "resources": [

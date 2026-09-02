@@ -27,7 +27,7 @@ const GROUPS: CatalogGroup[] = [
 ];
 
 /**
- * Primary area per tool — a PARTITION of the 21 tools aligned with the
+ * Primary area per tool — a PARTITION of the tools aligned with the
  * overlap clusters of the consolidation check (`ibge/docs/03` §4). Tools that
  * belong to more than one cluster are assigned to the one where confusion
  * would be most diagnostic; fixture ids carry the cluster tag for the
@@ -63,6 +63,10 @@ export const AREA_BY_TOOL: Record<string, string> = {
   // divulgação (sem irmã)
   ibge_noticias: "divulgacao",
   ibge_calendario: "divulgacao",
+  // contrato Deep Research do ChatGPT (sem prefixo — nomes fixados pela OpenAI);
+  // sem fixtures de propósito: o cliente que as chama não escolhe entre elas
+  search: "deep-research",
+  fetch: "deep-research",
 };
 
 const base = buildCatalog(GROUPS);

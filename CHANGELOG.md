@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-09-02
+
+Entrega as duas ferramentas que o Deep Research do ChatGPT exige — `search` e
+`fetch`, no contrato literal da OpenAI — sobre o catálogo do IBGE, e conserta
+um defeito de formatação que o documento de município expôs em quatro tools.
+
+### Added
+- **`search` e `fetch` (contrato Deep Research do ChatGPT).** ChatGPT deep
+  research, company knowledge e os workflows de pesquisa da API Responses só
+  usam um servidor MCP que exponha exatamente essas duas tools, com esse
+  formato: `search(query)` → `{ results: [{ id, title, url }] }`,
+  `fetch(id)` → `{ id, title, text, url, metadata }`, o objeto em
+  `structuredContent` e serializado em `content[0].text` (um bloco só — o
+  rodapé de proveniência fica fora do texto, porque a doc descreve
+  `content[0].text` como o objeto). São as ÚNICAS tools sem o prefixo `ibge_`
+  (nomes fixados pela OpenAI; `tests/evals/fixtures.test.ts` abre a exceção
+  por allowlist explícita). Contrato, envelope, ranking e registro vêm do
+  pacote novo do portfólio `@sbissoli/mcp-search`; o adapter IBGE é
+  `src/tools/deep-research.ts`: índice em memória (construído no primeiro
+  uso, refeito a cada 24 h) com todas as tabelas SIDRA (`sidra:<cod>`, url
+  sidra.ibge.gov.br/tabela), os 5.570 municípios (`mun:<cod7>`, url do
+  panorama no Cidades@) e os indicadores conhecidos de `ibge_indicadores`
+  (`ind:<chave>`). `fetch` renderiza com as tools reais — metadados da tabela
+  (`ibge_sidra_metadados`), hierarquia + população estimada (`ibge_localidade`
+  + `ibge_sidra` 6579) e série do indicador (`ibge_indicadores`) — e reutiliza
+  o bloco de proveniência delas nos canais `structuredContent` e `_meta`.
+  Título pt-BR, description em inglês dizendo que existem para o contrato e
+  apontando para as `ibge_*`, mesmas annotations somente-leitura e mesma
+  telemetria. Superfície: 23 tools (deriva contra o baseline 4.2.0 = só as
+  duas). Medido em 02/09: índice de 14.886 documentos construído em ~770 ms na
+  primeira chamada, buscas seguintes em <10 ms; `fetch` de tabela ~150 ms, de
+  município ~340 ms, de indicador ~150 ms.
+- Casos de contrato (`tests/output-contract.test.ts`, 7 pares/casos com mock
+  despachado por URL — o índice faz dois GETs em paralelo) e de proveniência
+  (`tests/provenance-wiring.test.ts`) para as duas.
+
+### Changed
+- O documento de município do `fetch` NÃO é o panorama do Cidades@
+  (`ibge_cidades`): medido em 02/09, a API do Cidades@ levou de 24 s a mais de
+  60 s por chamada, e o Deep Research busca documentos em série. O documento
+  traz a hierarquia e a última estimativa de população e aponta `ibge_cidades`
+  para o panorama completo. A lentidão do panorama fica registrada como achado
+  (não é desta release).
+- `tests/provenance-wiring.test.ts` deixou de pinar "21": a lista de casos é
+  confrontada com o `tools/list` do servidor vivo — tool nova sem caso reprova,
+  em vez de deixar um buraco silencioso na cobertura.
+- Contagens nos textos públicos (README en/pt, `server.json`, landing do
+  Worker) atualizadas para 23 pelo teste que as deriva; `worker/README.md`
+  dizia "22 tools" (errado desde sempre) e perdeu a contagem.
+
+### Fixed
+- **Códigos e anos formatados como número nas tabelas Markdown de quatro
+  tools** (`ibge_sidra`, `ibge_censo`, `ibge_datasaude`, `ibge_indicadores`):
+  a mesma heurística copiada — "célula numérica com mais de 3 caracteres ganha
+  separador de milhar" — transformava `Ano 2026` em `2.026` e `Município
+  (Código) 3106200` em `3.106.200`. Achado ao ler o documento de município do
+  Deep Research. Regra única em `structured.ts` (`formatarCelulaSidra`): as
+  colunas gêmeas "(Código)" e a família de período (Ano, Mês, Trimestre,
+  Semestre, Período — a mesma que `extrairPeriodoSidra` lê) ficam como estão;
+  quantidades seguem formatadas. O `structuredContent` nunca foi afetado.
+
 ## [4.2.0] - 2026-08-31
 
 Conserta um defeito silencioso de `ibge_censo` que fazia a tool devolver dados

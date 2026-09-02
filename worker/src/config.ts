@@ -20,7 +20,7 @@ export const SERVER_CONFIG = {
   title: "IBGE Brasil MCP",
   /** Uma frase: o que o servidor serve e de qual fonte. */
   description:
-    "Servidor MCP com 21 ferramentas de dados públicos oficiais do IBGE — geografia, " +
+    "Servidor MCP com 23 ferramentas de dados públicos oficiais do IBGE — geografia, " +
     "censo, economia e saúde — com valores exatos e fonte citada.",
   /**
    * Contato exibido na landing page. A URL raiz do Worker é o que sysadmins upstream
@@ -82,7 +82,7 @@ export const RATE_LIMIT = {
 export const LANDING = {
   lang: "pt-BR" as "pt-BR" | "en",
   resumo:
-    "Servidor MCP com 21 ferramentas de dados oficiais do IBGE — geografia, censo, " +
+    "Servidor MCP com 23 ferramentas de dados oficiais do IBGE — geografia, censo, " +
     "economia e saúde — com valor exato e a fonte citada em cada resposta.",
   exemplos: [
     "“Qual era a população de Belo Horizonte no Censo 2022?”",

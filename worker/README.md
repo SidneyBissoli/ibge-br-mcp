@@ -6,7 +6,7 @@ web/hosted MCP clients — instead of locally over STDIO.
 
 It reuses the package's tool/resource/prompt registrations verbatim via
 `registerAll` (from `../src/server.ts`), so the HTTP and STDIO transports always
-expose exactly the same 22 tools. The MCP handler is **stateless**
+expose exactly the same tools. The MCP handler is **stateless**
 (`createMcpHandler` builds a fresh server per request — MCP SDK v2 + `agents`);
 cross-request state lives only in the `UsageTracker` Durable Object (SQLite),
 which keeps privacy-preserving usage statistics: event kind, tool/route name,

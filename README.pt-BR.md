@@ -40,7 +40,7 @@ entre elas ranquear os 5.570 municípios numa chamada só.
 
 ## Recursos
 
-- **21 ferramentas especializadas** cobrindo todos os principais domínios de dados do IBGE
+- **23 ferramentas** cobrindo todos os principais domínios de dados do IBGE — 21 `ibge_*` de dados mais `search`/`fetch` para o Deep Research do ChatGPT
 - **Resources de referência & prompts de análise** (catálogos MCP + templates prontos)
 - **565 testes automatizados** — 88% de cobertura geral, 92% nas tools
 - **Cache automático** com TTL configurável para performance otimizada
@@ -139,9 +139,17 @@ calculados no servidor a partir dos valores brutos do IBGE.
 | `ibge_noticias` | Notícias e releases do IBGE |
 | `ibge_calendario` | Calendário de divulgações e coletas do IBGE |
 
+### Deep Research do ChatGPT
+| Ferramenta | Descrição |
+|:-----------|:----------|
+| `search` | Busca no catálogo do IBGE (tabelas SIDRA, municípios, indicadores conhecidos) — contrato Deep Research da OpenAI |
+| `fetch` | Devolve um documento do catálogo (metadados da tabela, hierarquia + população do município, série do indicador) com a URL pública para citação |
+
+As duas são as únicas ferramentas sem o prefixo `ibge_`: os nomes são fixados pelo contrato da OpenAI. Para consultar dados, continue usando as `ibge_*`.
+
 ## Qual ferramenta usar?
 
-Com 21 ferramentas, várias podem tocar no mesmo assunto. Guia rápido para as sobreposições comuns:
+Com 23 ferramentas, várias podem tocar no mesmo assunto. Guia rápido para as sobreposições comuns:
 
 ### População e demografia
 
@@ -250,6 +258,16 @@ Ou se instalado a partir do código-fonte:
   }
 }
 ```
+
+### ChatGPT (Deep Research)
+
+O Deep Research do ChatGPT (e o Company Knowledge, e os workflows de pesquisa da API Responses) só usa um servidor MCP que exponha exatamente `search` e `fetch` — este servidor expõe as duas, além das `ibge_*`. Aponte o conector para o endpoint hospedado, sem chave:
+
+```
+https://ibge.sidneybissoli.com/mcp
+```
+
+`search` ranqueia a consulta contra tabelas SIDRA, municípios e indicadores conhecidos e devolve `{ id, title, url }`; `fetch` devolve o documento em Markdown legível com a URL pública canônica (sidra.ibge.gov.br ou cidades.ibge.gov.br), que é o que o ChatGPT cita. As duas carregam o mesmo bloco de proveniência das demais ferramentas. No modo desenvolvedor do ChatGPT (Configurações → Segurança e login → Modo desenvolvedor) qualquer ferramenta pode ser chamada — para dados, as `ibge_*` continuam sendo as certas.
 
 ## Exemplos de Uso das Ferramentas
 

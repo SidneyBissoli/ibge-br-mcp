@@ -11,6 +11,7 @@
 
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { normalizeText } from "./config.js";
+import { formatNumber } from "./utils/index.js";
 import {
   ATTRIBUTION_META_KEY,
   PROVENANCE_META_KEY,
@@ -145,4 +146,29 @@ export function selectSidraColumns(
     }
     return filtered;
   });
+}
+
+/**
+ * Columns whose values are identifiers, not quantities: SIDRA's "(Código)"
+ * twins and the period columns (Ano, Mês, Trimestre, Semestre, Período — the
+ * same family `extrairPeriodoSidra` reads). Formatting these as numbers is
+ * what turned "2026" into "2.026" and "3106200" into "3.106.200" in the
+ * Markdown of four tools (found on 2026-09-02 through the Deep Research
+ * document of a municipality).
+ */
+export function colunaIdentificadora(coluna: string): boolean {
+  return /\(c[oó]digo\)\s*$/i.test(coluna) || /^(ano|trimestre|m[eê]s|semestre|per[ií]odo)\b/i.test(coluna);
+}
+
+/**
+ * One SIDRA cell for the Markdown table: quantities get the pt-BR thousands
+ * separator (values of 4+ characters, as before), identifiers and periods
+ * stay verbatim, empty stays "-". Shared by every SIDRA-backed table renderer
+ * — the rule lives here so the four tools cannot drift again.
+ */
+export function formatarCelulaSidra(coluna: string, valor: string | undefined): string {
+  if (!valor) return "-";
+  if (colunaIdentificadora(coluna)) return valor;
+  if (!isNaN(Number(valor)) && valor.length > 3) return formatNumber(Number(valor));
+  return valor;
 }

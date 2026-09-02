@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { toMcpResult, selectSidraColumns, sidraRecords } from "../src/structured.js";
+import {
+  toMcpResult,
+  selectSidraColumns,
+  sidraRecords,
+  colunaIdentificadora,
+  formatarCelulaSidra,
+} from "../src/structured.js";
 
 describe("toMcpResult", () => {
   it("maps a success result to text content + structuredContent", () => {
@@ -55,5 +61,37 @@ describe("selectSidraColumns", () => {
 
   it("returns the data unchanged when no column matches (never blanks out)", () => {
     expect(selectSidraColumns(data, "inexistente")).toBe(data);
+  });
+});
+
+describe("formatarCelulaSidra", () => {
+  it("formata quantidades com separador de milhar (4+ caracteres, como antes)", () => {
+    expect(formatarCelulaSidra("Valor", "2415451")).toBe("2.415.451");
+    expect(formatarCelulaSidra("Valor", "123")).toBe("123");
+    expect(formatarCelulaSidra("Valor", "12.5")).toBe("12,5");
+  });
+
+  it("deixa códigos e períodos como estão — era o que virava '2.026' e '3.106.200'", () => {
+    expect(formatarCelulaSidra("Ano", "2026")).toBe("2026");
+    expect(formatarCelulaSidra("Ano (Código)", "2026")).toBe("2026");
+    expect(formatarCelulaSidra("Município (Código)", "3106200")).toBe("3106200");
+    expect(formatarCelulaSidra("Variável (Código)", "9324")).toBe("9324");
+    expect(formatarCelulaSidra("Trimestre (Código)", "202401")).toBe("202401");
+    expect(formatarCelulaSidra("Mês", "202601")).toBe("202601");
+  });
+
+  it("valor ausente vira '-' e texto passa intacto", () => {
+    expect(formatarCelulaSidra("Valor", undefined)).toBe("-");
+    expect(formatarCelulaSidra("Valor", "")).toBe("-");
+    expect(formatarCelulaSidra("Município", "Belo Horizonte (MG)")).toBe("Belo Horizonte (MG)");
+  });
+
+  it("colunaIdentificadora reconhece só as gêmeas '(Código)' e a família de período", () => {
+    expect(colunaIdentificadora("Unidade da Federação (Código)")).toBe(true);
+    expect(colunaIdentificadora("Período")).toBe(true);
+    expect(colunaIdentificadora("Semestre")).toBe(true);
+    expect(colunaIdentificadora("Anomalia")).toBe(false);
+    expect(colunaIdentificadora("Valor")).toBe(false);
+    expect(colunaIdentificadora("Unidade da Federação")).toBe(false);
   });
 });

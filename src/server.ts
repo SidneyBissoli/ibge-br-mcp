@@ -3,6 +3,7 @@ import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
 // Node ESM reads it via the import attribute; esbuild inlines it for the Worker build.
 import pkg from "../package.json" with { type: "json" };
 
+import { registerDeepResearchTools } from "@sbissoli/mcp-search";
 import { toMcpResult, type StructuredToolResult } from "./structured.js";
 import { comProveniencia } from "./provenance.js";
 
@@ -74,6 +75,9 @@ import {
   cidadesSchema,
   cidadesOutputSchema,
   ibgeCidades,
+  DEEP_RESEARCH_LIMIT,
+  searchParaFabrica,
+  fetchParaFabrica,
 } from "./tools/index.js";
 
 import { registerResources } from "./resources.js";
@@ -970,6 +974,22 @@ Behavior: read-only and idempotent — a live GET against the public IBGE APIs (
     },
     handle("ibge_cidades", ibgeCidades)
   );
+
+  // `search` + `fetch` — the ChatGPT Deep Research contract (v4.3.0). The only
+  // tools without the `ibge_` prefix (names fixed by OpenAI). Contract, envelope
+  // and descriptions come from the portfolio package; the IBGE index and the
+  // document text come from `src/tools/deep-research.ts`. Same annotations,
+  // provenance channels and usage telemetry as the tools above.
+  registerDeepResearchTools(server, {
+    search: searchParaFabrica,
+    fetch: fetchParaFabrica,
+    corpus: "IBGE (Brazilian official statistics: SIDRA tables, municipalities, known indicators)",
+    richTools: "the `ibge_*` tools (`ibge_sidra`, `ibge_cidades`, `ibge_indicadores`, `ibge_comparar`…)",
+    limit: DEEP_RESEARCH_LIMIT,
+    annotations: READ_ONLY,
+    extendOutputSchema: comProveniencia,
+    ...(record !== undefined ? { record } : {}),
+  });
 
   // Reference catalogs (roadmap 1.6) and analysis templates
   registerResources(server);

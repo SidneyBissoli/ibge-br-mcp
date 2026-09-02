@@ -25,6 +25,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { CfWorkerJsonSchemaValidator } from "@modelcontextprotocol/server/validators/cf-worker";
 import { createServer } from "../src/server.js";
 import { cache } from "../src/cache.js";
+import { limparIndice } from "../src/tools/deep-research.js";
 import { mockResponse, sidraResponse } from "./helpers.js";
 
 const validador = new CfWorkerJsonSchemaValidator();
@@ -266,6 +267,28 @@ const um = (payload: unknown) => () => {
   mockFetch.mockResolvedValue(mockResponse(payload));
 };
 
+/**
+ * Mock por URL: cada chave é uma regex testada contra a URL pedida; a primeira
+ * que casar decide o payload. URL sem padrão devolve 404, para uma chamada
+ * inesperada aparecer como erro e não como sucesso vazio.
+ */
+const porUrl = (mapa: Record<string, unknown>) => () => {
+  mockFetch.mockImplementation(async (url: string | URL) => {
+    const alvo = String(url);
+    const chave = Object.keys(mapa).find((padrao) => new RegExp(padrao).test(alvo));
+    return chave === undefined ? mockResponse({ erro: `sem mock para ${alvo}` }, 404) : mockResponse(mapa[chave]);
+  });
+};
+
+/** Os dois GETs do índice de `search`/`fetch`: catálogo SIDRA + lista de municípios. */
+const mocksIndice = {
+  "/api/v3/agregados$": agregadosPesquisas,
+  "/localidades/municipios[?]orderBy=nome&view=nivelado$": [
+    { "municipio-id": 3550308, "municipio-nome": "São Paulo", "UF-sigla": "SP" },
+    { "municipio-id": 2927408, "municipio-nome": "Salvador", "UF-sigla": "BA" },
+  ],
+};
+
 const CASOS: Caso[] = [
   { nome: "ibge_estados", cobre: "lista completa", mock: um([estadoSP]), args: {} },
   { nome: "ibge_estados", cobre: "lista vazia (filtro sem resultado)", mock: um([]), args: { regiao: "N" } },
@@ -373,6 +396,42 @@ const CASOS: Caso[] = [
     },
     args: { municipio: "3550308" },
   },
+
+  // `search`/`fetch` (contrato Deep Research do ChatGPT): o índice nasce de
+  // DOIS GETs em paralelo (agregados + municípios), então o mock despacha
+  // por URL em vez de confiar na ordem das chamadas.
+  { nome: "search", cobre: "consulta com resultados", mock: porUrl(mocksIndice), args: { query: "população" } },
+  { nome: "search", cobre: "consulta sem casamento (results vazio)", mock: porUrl(mocksIndice), args: { query: "xyzzy" } },
+  {
+    nome: "fetch",
+    cobre: "tabela SIDRA (metadados + períodos)",
+    mock: porUrl({ ...mocksIndice, "/metadados$": metadadosSidra, "/periodos$": periodosSidra }),
+    args: { id: "sidra:6579" },
+  },
+  {
+    nome: "fetch",
+    cobre: "tabela SIDRA magra (sem URL/assunto, sem períodos)",
+    mock: porUrl({ ...mocksIndice, "/metadados$": metadadosMagro, "/periodos$": [] }),
+    args: { id: "sidra:6579" },
+  },
+  {
+    nome: "fetch",
+    cobre: "município (hierarquia + população estimada)",
+    mock: porUrl({ ...mocksIndice, "/municipios/3550308$": municipioSP, apisidra: sidraPop }),
+    args: { id: "mun:3550308" },
+  },
+  {
+    nome: "fetch",
+    cobre: "município magro (sem hierarquias opcionais, SIDRA sem linha de dado)",
+    mock: porUrl({ ...mocksIndice, "/municipios/3550308$": municipioMagro, apisidra: sidraVazio }),
+    args: { id: "mun:3550308" },
+  },
+  {
+    nome: "fetch",
+    cobre: "indicador conhecido (série do SIDRA)",
+    mock: porUrl({ ...mocksIndice, "apisidra": sidraPop }),
+    args: { id: "ind:populacao" },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -395,6 +454,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   cache.clear();
+  limparIndice();
   mockFetch.mockReset();
   vi.stubGlobal("fetch", mockFetch);
 });

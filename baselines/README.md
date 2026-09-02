@@ -10,8 +10,15 @@ descrições 12× menores em produção). Nenhum teste unitário pega essa class
 
 | Arquivo | Como foi capturado | O que representa |
 |:--|:--|:--|
-| `surface-stdio-4.2.0.json` | `--stdio` sobre `dist/index.js` do fonte atual | o que o canal npm publica |
-| `surface-http-prod-4.2.0.json` | `--url https://ibge.sidneybissoli.com/mcp` | o que o endpoint hospedado serve DE FATO |
+| `surface-stdio-4.3.0.json` | `--stdio` sobre `dist/index.js` do fonte atual | o que o canal npm publica |
+| `surface-http-prod-4.3.0.json` | `--url https://ibge.sidneybissoli.com/mcp` | o que o endpoint hospedado serve DE FATO |
+| `surface-*-4.2.0.json` | idem, na 4.2.0 | histórico: a superfície antes de `search`/`fetch` |
+
+## Recaptura 4.3.0 (2026-09-02)
+
+Diff stdio 4.2.0 → 4.3.0: exatamente duas tools novas (`search`, `fetch` — o
+contrato Deep Research do ChatGPT), nenhuma tool existente alterada, resources
+e prompts iguais. `toolCount` 21 → 23. Deliberado e listado no CHANGELOG.
 
 ## Medição da captura inicial (2026-09-01)
 
@@ -30,7 +37,7 @@ Depois de qualquer mudança que possa mexer na superfície:
 ```bash
 npm run build
 node scripts/dump-surface.mjs --stdio > depois.json
-# diff contra o baseline vigente (surface-stdio-4.2.0.json)
+# diff contra o baseline vigente (surface-stdio-4.3.0.json)
 ```
 
 Toda diferença precisa ser deliberada e listada no CHANGELOG. Depois de um
