@@ -26,4 +26,10 @@ export interface Env {
    * telemetria. Ausente = nenhuma requisição é marcada.
    */
   SELF_MARKER?: string;
+  /**
+   * Token temporário do claim no mcpindex.ai (`wrangler secret put
+   * MCPINDEX_CHALLENGE`), servido em /.well-known/mcpindex-challenge durante a
+   * janela de 15 min da verificação de posse. Ausente = a rota responde 404.
+   */
+  MCPINDEX_CHALLENGE?: string;
 }
