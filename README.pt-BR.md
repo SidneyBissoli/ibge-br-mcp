@@ -49,7 +49,7 @@ entre elas ranquear os 5.570 municípios numa chamada só.
 - **Tratamento de erros padronizado** com sugestões úteis
 - **Suporte completo a TypeScript** com tipagem estrita
 
-📖 **Artigo:** [Como achar a tabela certa no SIDRA — e como saber que é a certa](docs/artigo-sidra-tabela-certa.pt-BR.md) — os três passos da busca, os metadados que decidem, um exemplo completo com dado de 2022 e as quatro armadilhas que mais custam caro.
+📖 **Artigo:** [Como achar a tabela certa no SIDRA — e como saber que é a certa](docs/artigo-sidra-tabela-certa.pt-BR.md) — os três passos da busca, os metadados que decidem, um exemplo completo com dado de 2022 e as quatro armadilhas que mais custam caro. Também publicado no site: [sidneybissoli.com](https://sidneybissoli.com/blog/posts/sidra-tabela-certa/).
 
 ## Procedência dos dados
 
