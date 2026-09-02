@@ -31,10 +31,7 @@
  * the text points to `ibge_cidades` for the full panorama.
  */
 
-import {
-  attributionList,
-  renderConcise,
-} from "@sbissoli/mcp-provenance";
+import { attributionList, renderConcise } from "@sbissoli/mcp-provenance";
 import {
   createIndex,
   type EnvelopeExtras,
@@ -366,7 +363,9 @@ export async function deepResearchFetch(id: string): Promise<DeepResearchFetch |
         metadata: {
           tipo: "indicador",
           indicador: chave,
-          ...(ind ? { tabela: ind.tabela, periodicidade: ind.periodicidade, categoria: ind.categoria } : {}),
+          ...(ind
+            ? { tabela: ind.tabela, periodicidade: ind.periodicidade, categoria: ind.categoria }
+            : {}),
           consultar_com: "ibge_indicadores",
         },
       },

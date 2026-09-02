@@ -984,7 +984,8 @@ Behavior: read-only and idempotent — a live GET against the public IBGE APIs (
     search: searchParaFabrica,
     fetch: fetchParaFabrica,
     corpus: "IBGE (Brazilian official statistics: SIDRA tables, municipalities, known indicators)",
-    richTools: "the `ibge_*` tools (`ibge_sidra`, `ibge_cidades`, `ibge_indicadores`, `ibge_comparar`…)",
+    richTools:
+      "the `ibge_*` tools (`ibge_sidra`, `ibge_cidades`, `ibge_indicadores`, `ibge_comparar`…)",
     limit: DEEP_RESEARCH_LIMIT,
     annotations: READ_ONLY,
     extendOutputSchema: comProveniencia,

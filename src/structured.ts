@@ -157,7 +157,10 @@ export function selectSidraColumns(
  * document of a municipality).
  */
 export function colunaIdentificadora(coluna: string): boolean {
-  return /\(c[oó]digo\)\s*$/i.test(coluna) || /^(ano|trimestre|m[eê]s|semestre|per[ií]odo)\b/i.test(coluna);
+  return (
+    /\(c[oó]digo\)\s*$/i.test(coluna) ||
+    /^(ano|trimestre|m[eê]s|semestre|per[ií]odo)\b/i.test(coluna)
+  );
 }
 
 /**

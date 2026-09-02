@@ -13,6 +13,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
 
 const STDIO = process.argv[2] === "--stdio";
 const BASE = STDIO ? null : (process.argv[2] ?? "https://ibge.sidneybissoli.com");
@@ -109,12 +110,28 @@ console.log("instructions:", init.instructions.slice(0, 80) + "...");
 
 await rpc("notifications/initialized", {}, true).catch(() => {});
 
+// A contagem esperada NÃO é um literal: vem do baseline de superfície mais
+// recente (baselines/surface-stdio-<versão>.json, ver baselines/README.md).
+// Mudou a superfície sem recapturar o baseline → o smoke fica vermelho, que é
+// o combinado; um "21" pinado aqui ficou para trás na 4.3.0 e derrubou o
+// deploy com a produção certa.
+const versaoDe = (nome) => nome.match(/(\d+)\.(\d+)\.(\d+)/).slice(1).map(Number);
+const baselineMaisRecente = readdirSync("baselines")
+  .filter((f) => /^surface-stdio-\d+\.\d+\.\d+\.json$/.test(f))
+  .sort((a, b) => {
+    const [va, vb] = [versaoDe(a), versaoDe(b)];
+    return va[0] - vb[0] || va[1] - vb[1] || va[2] - vb[2];
+  })
+  .at(-1);
+if (!baselineMaisRecente) fail("nenhum baselines/surface-stdio-*.json para derivar a contagem");
+const esperado = JSON.parse(readFileSync(`baselines/${baselineMaisRecente}`, "utf8")).toolCount;
+
 const { tools } = await rpc("tools/list", {});
-console.log(`tools/list: ${tools.length} tools`);
-if (tools.length !== 21) fail(`esperava 21 tools, veio ${tools.length}`);
+console.log(`tools/list: ${tools.length} tools (baseline ${baselineMaisRecente}: ${esperado})`);
+if (tools.length !== esperado) fail(`esperava ${esperado} tools, veio ${tools.length}`);
 const semTitle = tools.filter((t) => !t.title);
 if (semTitle.length > 0) fail(`tools sem title: ${semTitle.map((t) => t.name).join(", ")}`);
-console.log("titles: ok nas 21");
+console.log(`titles: ok nas ${tools.length}`);
 
 // 1) Tool simples + bloco de proveniência (contrato v1.0, três canais)
 const estados = await rpc("tools/call", {
@@ -169,6 +186,31 @@ const erro = await rpc("tools/call", {
 });
 if (!erro.isError) fail("agruparPor inválido deveria retornar isError");
 console.log("agruparPor inválido → isError: true |", erro.content[0].text.slice(0, 80));
+
+// 5) Contrato Deep Research do ChatGPT: search → fetch. A primeira busca
+// constrói o índice (dois GETs + ranking) — no Worker é também a prova de
+// que o custo de CPU cabe no limite por requisição.
+const busca = await rpc("tools/call", { name: "search", arguments: { query: "população residente estimada" } });
+if (busca.isError) fail(`search retornou erro: ${busca.content?.[0]?.text?.slice(0, 200)}`);
+if (busca.content?.length !== 1) fail(`search: content deveria ter 1 bloco, veio ${busca.content?.length}`);
+const objetoBusca = JSON.parse(busca.content[0].text);
+if (!Array.isArray(objetoBusca.results) || objetoBusca.results.length === 0) fail("search: results vazio");
+if (JSON.stringify(objetoBusca.results) !== JSON.stringify(busca.structuredContent?.results))
+  fail("search: content[0].text e structuredContent.results divergem");
+if (!busca.structuredContent?.provenance) fail("search: proveniência ausente em structuredContent");
+const primeiro = objetoBusca.results[0];
+if (!primeiro.id || !primeiro.title || !primeiro.url) fail(`search: resultado fora do contrato: ${JSON.stringify(primeiro)}`);
+console.log(`search: ${objetoBusca.results.length} resultados | [0] = ${primeiro.id} — ${primeiro.title}`);
+
+const doc = await rpc("tools/call", { name: "fetch", arguments: { id: primeiro.id } });
+if (doc.isError) fail(`fetch retornou erro: ${doc.content?.[0]?.text?.slice(0, 200)}`);
+const objetoDoc = JSON.parse(doc.content[0].text);
+for (const chave of ["id", "title", "text", "url"]) {
+  if (typeof objetoDoc[chave] !== "string" || !objetoDoc[chave]) fail(`fetch: campo ${chave} ausente ou vazio`);
+}
+if (objetoDoc.id !== primeiro.id) fail("fetch: id devolvido difere do pedido");
+if (!doc.structuredContent?.provenance) fail("fetch: proveniência ausente em structuredContent");
+console.log(`fetch: ${objetoDoc.id} | text ${objetoDoc.text.length} chars | url ${objetoDoc.url}`);
 
 if (STDIO) child.kill();
 console.log("\nSMOKE OK");
