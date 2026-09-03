@@ -51,6 +51,8 @@ entre elas ranquear os 5.570 municípios numa chamada só.
 
 📖 **Artigo:** [Como achar a tabela certa no SIDRA — e como saber que é a certa](docs/artigo-sidra-tabela-certa.pt-BR.md) — os três passos da busca, os metadados que decidem, um exemplo completo com dado de 2022 e as quatro armadilhas que mais custam caro. Também publicado no site: [sidneybissoli.com](https://sidneybissoli.com/blog/posts/sidra-tabela-certa/).
 
+🔌 **Tutorial:** [Consultando o SIDRA por MCP no Claude e no ChatGPT](https://sidneybissoli.com/blog/posts/sidra-via-mcp/) — como conectar este servidor no claude.ai, Claude Desktop, Claude Code, ChatGPT (modo desenvolvedor e Deep Research), Cursor, VS Code e Gemini CLI, e uma consulta real de ponta a ponta com o bloco de procedência que ele devolve. [In English](https://sidneybissoli.com/en/blog/posts/sidra-via-mcp/).
+
 ## Procedência dos dados
 
 Desde a v3.3.0 toda resposta bem-sucedida carrega um **bloco de procedência**
@@ -218,6 +220,16 @@ npm run build
 
 ## Configuração
 
+### Endpoint remoto (sem instalar)
+
+O servidor também está hospedado, com as mesmas ferramentas, em Streamable HTTP e sem chave:
+
+```
+https://ibge.sidneybissoli.com/mcp
+```
+
+Serve para qualquer cliente que aceite servidor MCP remoto — conector personalizado no claude.ai (Configurações → Conectores → Adicionar conector personalizado), `claude mcp add --transport http ibge https://ibge.sidneybissoli.com/mcp` no Claude Code, app no ChatGPT, `mcp.json` do Cursor e do VS Code. O passo a passo de cada cliente está no [tutorial](https://sidneybissoli.com/blog/posts/sidra-via-mcp/). As seções abaixo cobrem a forma local, via `npx`.
+
 ### Claude Desktop
 
 Adicione ao seu arquivo de configuração do Claude Desktop (`claude_desktop_config.json`):
@@ -227,7 +239,7 @@ Adicione ao seu arquivo de configuração do Claude Desktop (`claude_desktop_con
   "mcpServers": {
     "ibge-br-mcp": {
       "command": "npx",
-      "args": ["ibge-br-mcp"]
+      "args": ["-y", "ibge-br-mcp"]
     }
   }
 }
@@ -253,7 +265,7 @@ Ou se instalado a partir do código-fonte:
   "mcpServers": {
     "ibge-br-mcp": {
       "command": "npx",
-      "args": ["ibge-br-mcp"]
+      "args": ["-y", "ibge-br-mcp"]
     }
   }
 }

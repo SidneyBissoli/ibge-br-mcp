@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Tutorial de conexão** publicado no site, em português e inglês
+  ([Consultando o SIDRA por MCP no Claude e no ChatGPT](https://sidneybissoli.com/blog/posts/sidra-via-mcp/)):
+  cliente por cliente (claude.ai, Claude Desktop, Claude Code, ChatGPT em
+  modo desenvolvedor e Deep Research, Cursor, VS Code, Gemini CLI) e uma
+  consulta de ponta a ponta com o bloco de procedência. Os READMEs linkam o
+  tutorial e ganham a seção "Endpoint remoto"; a landing do Worker
+  (`worker/src/config.ts` `tutorialUrl`) aponta para ele no "Como usar", na
+  lista de links e na seção do segundo idioma — `worker/tests/landing.test.ts`
+  vigia a presença.
+- `README.pt-BR.md`: os dois trechos de configuração via `npx` estavam sem o
+  `-y` (deriva em relação ao README em inglês; sem ele o `npx` para na
+  primeira execução esperando uma confirmação que o cliente MCP não mostra).
+
 ## [4.3.0] - 2026-09-02
 
 Entrega as duas ferramentas que o Deep Research do ChatGPT exige — `search` e

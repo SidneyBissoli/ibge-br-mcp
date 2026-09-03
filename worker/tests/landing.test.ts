@@ -81,6 +81,19 @@ describe("landing page — superfície de descoberta", () => {
     expect(html).toContain(`mailto:${SERVER_CONFIG.contactEmail}`);
   });
 
+  it("leva quem chega ao tutorial de conexão, nos dois idiomas", () => {
+    // O tutorial é a URL canônica que liga "MCP", "SIDRA" e "IBGE" num título
+    // indexável; a landing é a única superfície própria que pode apontar para
+    // ele. Duas ocorrências no idioma principal (o "Como usar" e a lista de
+    // links) e uma na seção do segundo idioma.
+    expect(LANDING.tutorialUrl, "LANDING sem tutorialUrl").toBeTruthy();
+    const noPrincipal = html.split(`href="${LANDING.tutorialUrl}"`).length - 1;
+    expect(noPrincipal).toBe(2);
+    expect(LANDING.emOutroIdioma.tutorialUrl, "segundo idioma sem tutorialUrl").toBeTruthy();
+    expect(LANDING.emOutroIdioma.tutorialUrl).not.toBe(LANDING.tutorialUrl);
+    expect(html).toContain(`href="${LANDING.emOutroIdioma.tutorialUrl}"`);
+  });
+
   it("traz o produto no SEGUNDO idioma, com resumo e exemplos próprios", () => {
     // É a metade que faltava: sem ela, metade do público chega e não entende, e
     // metade do texto indexável não existe.

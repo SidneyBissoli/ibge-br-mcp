@@ -100,6 +100,13 @@ export const LANDING = {
   npmUrl: "https://www.npmjs.com/package/ibge-br-mcp",
   docsUrl:
     "https://github.com/SidneyBissoli/ibge-br-mcp/blob/main/docs/artigo-sidra-tabela-certa.pt-BR.md",
+  /**
+   * O tutorial de conexão (site, URL canônica): cliente por cliente e uma
+   * consulta de ponta a ponta. É a página que liga "MCP", "SIDRA" e "IBGE"
+   * num só título, em português e em inglês — o que faltava para o produto
+   * aparecer numa busca sem o nome dele.
+   */
+  tutorialUrl: "https://sidneybissoli.com/blog/posts/sidra-via-mcp/",
   emOutroIdioma: {
     lang: "en" as "pt-BR" | "en",
     resumo:
@@ -110,5 +117,6 @@ export const LANDING = {
       "“What was the population of Belo Horizonte in the 2022 Census?”",
       "“Which Brazilian state grew the most between the 2010 and 2022 censuses?”",
     ] as readonly string[],
+    tutorialUrl: "https://sidneybissoli.com/en/blog/posts/sidra-via-mcp/",
   },
 } as const;

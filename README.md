@@ -54,6 +54,8 @@ ranking all 5,570 municipalities in a single call.
 
 📖 **Article (in Portuguese):** [Como achar a tabela certa no SIDRA — e como saber que é a certa](docs/artigo-sidra-tabela-certa.pt-BR.md) — finding the right SIDRA table, the metadata that settles it, a full worked example on 2022 Census data, and the four traps that cost the most. Also published on the site, in Portuguese and English: [sidneybissoli.com](https://sidneybissoli.com/en/blog/posts/sidra-tabela-certa/).
 
+🔌 **Tutorial:** [Querying SIDRA through MCP in Claude and ChatGPT](https://sidneybissoli.com/en/blog/posts/sidra-via-mcp/) — how to connect this server in claude.ai, Claude Desktop, Claude Code, ChatGPT (developer mode and Deep Research), Cursor, VS Code and Gemini CLI, then one real query end to end with the provenance block it returns. [Em português](https://sidneybissoli.com/blog/posts/sidra-via-mcp/).
+
 ## Data provenance
 
 Since v3.3.0 every successful tool response carries a **provenance block**
@@ -220,6 +222,16 @@ npm run build
 ```
 
 ## Configuration
+
+### Remote endpoint (nothing to install)
+
+The server is also hosted, with the same tools, over Streamable HTTP and without a key:
+
+```
+https://ibge.sidneybissoli.com/mcp
+```
+
+It works with any client that accepts a remote MCP server — a custom connector in claude.ai (Settings → Connectors → Add custom connector), `claude mcp add --transport http ibge https://ibge.sidneybissoli.com/mcp` in Claude Code, an app in ChatGPT, the `mcp.json` of Cursor and VS Code. The step-by-step for each client is in the [tutorial](https://sidneybissoli.com/en/blog/posts/sidra-via-mcp/). The sections below cover the local form, via `npx`.
 
 ### Claude Desktop
 

@@ -38,32 +38,44 @@ const T = {
   "pt-BR": {
     perguntas: "Perguntas que ele responde",
     comoUsar: "Como usar",
-    comoUsarTexto: (rota: string, site: string) =>
+    comoUsarTexto: (rota: string, site: string, tutorial?: string) =>
       `Aponte qualquer cliente MCP para <code>${esc(site)}${esc(rota)}</code> (Streamable HTTP). ` +
-      `Não é preciso instalar nada.`,
+      `Não é preciso instalar nada.` +
+      (tutorial
+        ? ` O passo a passo no claude.ai, Claude Desktop, Claude Code, ChatGPT, Cursor e VS Code, ` +
+          `e uma consulta de ponta a ponta, estão no <a href="${esc(tutorial)}">tutorial</a>.`
+        : ""),
     endpoints: "Endpoints",
     links: "Links",
     contato: "Contato",
     repo: "Código-fonte no GitHub",
     pacote: "Pacote no npm",
     docs: "Documentação",
+    tutorial: "Tutorial: consultando o SIDRA por MCP no Claude e no ChatGPT",
     protocolo: "Protocolo",
     tambem: "Also in English",
+    tutorialOutro: "Tutorial: querying SIDRA through MCP in Claude and ChatGPT",
   },
   en: {
     perguntas: "Questions it answers",
     comoUsar: "How to use it",
-    comoUsarTexto: (rota: string, site: string) =>
+    comoUsarTexto: (rota: string, site: string, tutorial?: string) =>
       `Point any MCP client at <code>${esc(site)}${esc(rota)}</code> (Streamable HTTP). ` +
-      `Nothing to install.`,
+      `Nothing to install.` +
+      (tutorial
+        ? ` The step-by-step for claude.ai, Claude Desktop, Claude Code, ChatGPT, Cursor and VS Code, ` +
+          `plus one query end to end, is in the <a href="${esc(tutorial)}">tutorial</a>.`
+        : ""),
     endpoints: "Endpoints",
     links: "Links",
     contato: "Contact",
     repo: "Source on GitHub",
     pacote: "Package on npm",
     docs: "Documentation",
+    tutorial: "Tutorial: querying SIDRA through MCP in Claude and ChatGPT",
     protocolo: "Protocol",
     tambem: "Também em português",
+    tutorialOutro: "Tutorial: consultando o SIDRA por MCP no Claude e no ChatGPT",
   },
 } as const;
 
@@ -96,6 +108,7 @@ export function landingHtml(): string {
   const listaLinks = [
     `<li><a href="${esc(l.repoUrl)}">${t.repo}</a></li>`,
     l.npmUrl ? `<li><a href="${esc(l.npmUrl)}">${t.pacote}</a></li>` : "",
+    l.tutorialUrl ? `<li><a href="${esc(l.tutorialUrl)}">${t.tutorial}</a></li>` : "",
     l.docsUrl ? `<li><a href="${esc(l.docsUrl)}">${t.docs}</a></li>` : "",
     `<li><a href="https://modelcontextprotocol.io">${t.protocolo}: Model Context Protocol</a></li>`,
   ]
@@ -147,7 +160,7 @@ export function landingHtml(): string {
 </ul>
 
 <h2>${t.comoUsar}</h2>
-<p>${t.comoUsarTexto(c.mcpRoute, site)}</p>
+<p>${t.comoUsarTexto(c.mcpRoute, site, l.tutorialUrl)}</p>
 <ul>
   ${l.destaques.map((d) => `<li>${esc(d)}</li>`).join("\n  ")}
 </ul>
@@ -173,6 +186,7 @@ export function landingHtml(): string {
 <ul>
   ${l.emOutroIdioma.exemplos.map((e) => `<li>${esc(e)}</li>`).join("\n  ")}
 </ul>
+${l.emOutroIdioma.tutorialUrl ? `<p><a href="${esc(l.emOutroIdioma.tutorialUrl)}">${t.tutorialOutro}</a></p>` : ""}
 </section>
 </main>
 </body>
