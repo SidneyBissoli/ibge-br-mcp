@@ -69,7 +69,7 @@
     "@modelcontextprotocol/client": "^2.0.0",
     "@sbissoli/mcp-evals": "^0.1.0",
     "@types/node": "^26.4.0",
-    "@vitest/coverage-v8": "^4.0.17",
+    "@vitest/coverage-v8": "^5.0.0",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
