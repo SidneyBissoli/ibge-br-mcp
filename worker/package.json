@@ -1,27 +1,30 @@
-{
-  "name": "ibge-br-mcp-worker",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
-  "description": "Cloudflare Worker that serves ibge-br-mcp over Streamable HTTP (Fase 0 hosting template: createMcpHandler + UsageTracker)",
-  "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
-  },
-  "//": "@modelcontextprotocol/server and zod are intentionally NOT listed here — they resolve from the parent package's node_modules so there is a single SDK copy (avoids duplicate-instance type clashes with registerAll). `agents` declares them as hard peers, so .npmrc pins legacy-peer-deps=true to stop npm from installing a second copy here. If you extract this Worker to its own repo, add them as dependencies and depend on the published ibge-br-mcp package.",
-  "dependencies": {
-    "agents": "^0.22.0"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260904.1",
-    "typescript": "^7.0.2",
-    "vite": "^8.2.2",
-    "vitest": "^5.0.0",
-    "wrangler": "^4.129.0"
-  }
-}
+{
+  "name": "ibge-br-mcp-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "description": "Cloudflare Worker that serves ibge-br-mcp over Streamable HTTP (Fase 0 hosting template: createMcpHandler + UsageTracker)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "//": "@modelcontextprotocol/server and zod are intentionally NOT listed here — they resolve from the parent package's node_modules so there is a single SDK copy (avoids duplicate-instance type clashes with registerAll). `agents` declares them as hard peers, so .npmrc pins legacy-peer-deps=true to stop npm from installing a second copy here. If you extract this Worker to its own repo, add them as dependencies and depend on the published ibge-br-mcp package.",
+  "dependencies": {
+    "agents": "^0.22.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260904.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0",
+    "wrangler": "^4.129.0"
+  },
+  "overrides": {
+    "sharp": "^0.35.4"
+  }
+}
