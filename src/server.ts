@@ -184,7 +184,7 @@ export interface FormaDaChamada {
 export type ToolUsageRecorder = (
   kind: "tool_call" | "tool_error",
   name: string,
-  forma?: FormaDaChamada,
+  forma?: FormaDaChamada
 ) => void;
 
 /**
