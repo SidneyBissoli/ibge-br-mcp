@@ -38,7 +38,12 @@ export function buildServer(record: RecordUsage = () => {}): McpServer {
     },
     { instructions: SERVER_INSTRUCTIONS }
   );
-  registerAll(server, (kind, name) => record(kind, name));
+  // A FORMA da chamada (3º argumento) tem de atravessar. Com aridade 2 este
+  // adaptador ENGOLE em silêncio o que o registerAll passa — foi o que fez a
+  // telemetria do medical-terminologies-mcp subir gravando vazio, e nenhum
+  // teste pega, porque os dois lados estão certos e só a costura perde.
+  const encaminhar: RecordUsage = (kind, name, forma) => record(kind, name, forma);
+  registerAll(server, encaminhar as Parameters<typeof registerAll>[1]);
   // Anuncia no `server/discover` todas as revisões atendidas — ver
   // ../../src/discover.ts. É no HTTP que esta regra aparece.
   announceServedVersions(server);

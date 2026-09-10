@@ -1,0 +1,113 @@
+/**
+ * A FORMA da chamada, nunca o conteúdo dela.
+ *
+ * Por que existe. Em 10/09/2026 o painel do portfólio passou a medir erro por
+ * chamada e apontou cinco ferramentas quebradas, uma delas aqui:
+ * `ibge_sidra`, com 47 erros em 122 chamadas — a porta principal do servidor. Diagnosticar custou vinte
+ * minutos de chamadas manuais porque a telemetria dizia QUE falhou e não DIZIA
+ * por quê. No senado, onde o mesmo campo foi ligado primeiro, uma linha
+ * respondeu o que a sonda levou meia hora para achar. Atenção a um limite que
+ * vale aqui também: erro de validação de esquema NÃO chega a esta camada — o
+ * SDK o responde antes do handler, e a chamada não é contada nem como chamada
+ * nem como erro.
+ *
+ * Por que não gravar os argumentos. O dado que este servidor serve é público; a
+ * PERGUNTA não é: o registro já guarda país e organização de rede, e parte dos
+ * parâmetros é texto livre (`nome`, `busca`), onde cabe qualquer coisa que a
+ * pessoa digitou. E ligar isso mudaria o que o serviço coleta sem
+ * mudar o que a página pública diz que ele coleta.
+ *
+ * O meio-termo: NOMES de parâmetro (que são o esquema publicado, não dado de
+ * ninguém) e a CLASSE do erro (vocabulário fechado, derivado da nossa própria
+ * mensagem). Isso separa "chamou sem o parâmetro obrigatório" de "chamou certo
+ * com um valor que não existe" — que é a bifurcação do conserto.
+ */
+
+/** Vocabulário FECHADO. Nada aqui carrega valor vindo do usuário. */
+export type ErrorClass =
+  /** Regra de contrato checada no código (o esquema não a expressa): parâmetro que falta, combinação proibida. */
+  | "contrato"
+  /** A fonte respondeu, e respondeu que não existe: 404, vazio, sem registros. */
+  | "nao_encontrado"
+  /** A fonte falhou ou demorou: 5xx, timeout, payload grande demais. */
+  | "fonte"
+  /** Falhou por outro motivo — se esta classe crescer, é sinal de que falta uma classe. */
+  | "outro";
+
+/**
+ * Classifica pela mensagem de erro, que é NOSSA. A ordem importa: "não
+ * encontrado" e "vazio" são mais específicos que "erro da fonte", e um 404
+ * casaria com os dois.
+ */
+export function classifyError(message: string): ErrorClass {
+  const m = message.toLowerCase();
+  // A fronteira de palavra vai só no INÍCIO. Os padrões são RADICAIS
+  // ("vazi", "obrigatóri", "indisponív") justamente porque a flexão muda o
+  // fim: `\bvazi\b` não casa "vazia", e foi assim que "Resposta upstream
+  // vazia" caiu em `fonte` na primeira versão — a palavra que casava era
+  // "upstream". Ordem também importa: "não encontrado" é mais específico que
+  // "erro da fonte", e a mensagem real do senado tem sinal das duas famílias.
+  if (/\b(obrigatóri|obrigatori|exige|requer|required|inválid|invalid|não aceita|nao aceita|no máximo|no maximo)/.test(m)) {
+    return "contrato";
+  }
+  if (
+    /\b(não encontrad|nao encontrad|não existe|nao existe|not.?found|inexistent|vazi|empty|sem registros|nenhuma reunião|nenhum resultado|404)/.test(
+      m,
+    )
+  ) {
+    return "nao_encontrado";
+  }
+  // `\b5\d\d\b` e não `5\d\d`: sem a fronteira final, qualquer número com um 5
+  // seguido de dois dígitos casava — um código de reunião "591234" citado na
+  // mensagem virava "erro 5xx". A intenção sempre foi o status HTTP.
+  if (
+    /\b(timeout|tempo esgotado|indisponív|indisponiv|upstream|\b5\d\d\b|payload|too large|grande demais|limite de tamanho)/.test(
+      m,
+    )
+  ) {
+    return "fonte";
+  }
+  return "outro";
+}
+
+/**
+ * Nomes dos parâmetros que a chamada trouxe, em ordem, separados por vírgula.
+ * Só os nomes de PRIMEIRO nível e só quando o argumento é objeto simples — o
+ * conteúdo nunca entra. Cortado em 200 caracteres porque blob do Analytics
+ * Engine tem teto de tamanho e um nome de parâmetro longo não vale a linha.
+ */
+export function paramNames(args: unknown): string {
+  const a = Array.isArray(args) ? args[0] : args;
+  if (!a || typeof a !== "object" || Array.isArray(a)) return "";
+  const nomes = Object.keys(a as Record<string, unknown>)
+    .filter((k) => (a as Record<string, unknown>)[k] !== undefined)
+    .sort();
+  return nomes.join(",").slice(0, 200);
+}
+
+/**
+ * Texto de erro de um resultado de tool, para classificar. Vazio quando não há.
+ *
+ * Lê o CAMPO `error` do envelope, não o payload serializado inteiro. O envelope
+ * padrão é `{ error, retryable, hint }`, e o `hint` de erro não recuperável
+ * termina com "a fonte oficial pode estar indisponível" — texto de formulário,
+ * igual em todos. Classificando o payload inteiro, esse "indisponível"
+ * arrastava TODO erro não recuperável para a classe `fonte`. Visto na produção
+ * do senado em 10/09/2026: a mensagem "Não existe reunião com o código X",
+ * que é `nao_encontrado` por definição, foi gravada como `fonte`.
+ */
+export function errorText(result: unknown): string {
+  if (!result || typeof result !== "object") return "";
+  const r = result as { content?: Array<{ text?: unknown }>; structuredContent?: { error?: unknown } };
+  const estruturado = r.structuredContent?.error;
+  if (typeof estruturado === "string") return estruturado;
+  const t = Array.isArray(r.content) ? r.content[0]?.text : undefined;
+  if (typeof t !== "string") return "";
+  try {
+    const j = JSON.parse(t) as { error?: unknown };
+    if (typeof j.error === "string") return j.error;
+  } catch {
+    // Não é o envelope JSON — vale o texto cru (é o caso de outros servidores).
+  }
+  return t;
+}

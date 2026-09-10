@@ -1,4 +1,5 @@
 import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
+import { classifyError, errorText, paramNames } from "./call-shape.js";
 // Version sourced from package.json (single source of truth — avoids drift).
 // Node ESM reads it via the import attribute; esbuild inlines it for the Worker build.
 import pkg from "../package.json" with { type: "json" };
@@ -170,7 +171,21 @@ export function createServer(): McpServer {
  * Object recorder (fire-and-forget telemetry — names and counts only, never
  * tool arguments or results).
  */
-export type ToolUsageRecorder = (kind: "tool_call" | "tool_error", name: string) => void;
+/**
+ * A FORMA da chamada, quando o chamador sabe informá-la: nomes dos parâmetros
+ * e classe do erro. Opcional para não quebrar quem registra só nome e desfecho
+ * (o stdio não passa recorder nenhum). Ver src/call-shape.ts.
+ */
+export interface FormaDaChamada {
+  params: string;
+  classe: string;
+}
+
+export type ToolUsageRecorder = (
+  kind: "tool_call" | "tool_error",
+  name: string,
+  forma?: FormaDaChamada,
+) => void;
 
 /**
  * Registers every tool, resource, and prompt onto a given `McpServer`. Kept
@@ -185,12 +200,19 @@ export function registerAll(server: McpServer, record?: ToolUsageRecorder): void
     async (args: A) => {
       try {
         const result = toMcpResult(await fn(args));
-        record?.("tool_call", name);
-        if (result.isError === true) record?.("tool_error", name);
+        const forma = { params: paramNames(args), classe: "" };
+        record?.("tool_call", name, forma);
+        if (result.isError === true) {
+          record?.("tool_error", name, { ...forma, classe: classifyError(errorText(result)) });
+        }
         return result;
       } catch (error) {
-        record?.("tool_call", name);
-        record?.("tool_error", name);
+        const forma = {
+          params: paramNames(args),
+          classe: classifyError(error instanceof Error ? error.message : String(error)),
+        };
+        record?.("tool_call", name, forma);
+        record?.("tool_error", name, forma);
         throw error;
       }
     };
