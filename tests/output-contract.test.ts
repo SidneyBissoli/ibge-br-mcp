@@ -182,11 +182,31 @@ const featureUnica = {
 /** Malha sem `properties` — a fonte devolve isso quando o formato pedido não os carrega. */
 const featureSemProperties = { type: "Feature", geometry: { type: "MultiPolygon", coordinates: [] } };
 
-const featureCollectionBiomas = {
+/**
+ * Resposta do WFS do Geosserviços como o GeoServer a devolve para
+ * `ibge_malhas_tema`: total + feições SEM geometria (a ferramenta pede
+ * `propertyName`, ver src/tools/malhas-tema.ts).
+ */
+const wfsBiomas = {
   type: "FeatureCollection",
+  numberMatched: 6,
+  numberReturned: 2,
+  totalFeatures: 6,
+  crs: { type: "name", properties: { name: "urn:ogc:def:crs:EPSG::4674" } },
   features: [
-    { type: "Feature", geometry: { type: "MultiPolygon", coordinates: [] }, properties: { codarea: "1", nome: "Amazônia" } },
+    { type: "Feature", geometry: null, properties: { cd_bioma: 1, nm_bioma: "Amazônia" }, bbox: [-73.9, -16.6, -43.3, 5.2] },
+    { type: "Feature", geometry: null, properties: { cd_bioma: 2, nm_bioma: "Caatinga" }, bbox: [-45.0, -16.7, -35.0, -2.7] },
   ],
+};
+
+/**
+ * A mesma coisa MAGRA: sem `crs`, sem `bbox` e sem `numberMatched` — o caso que
+ * o payload cheio não cobre, porque esses três são opcionais na fonte e a
+ * resposta tem de continuar válida sem eles.
+ */
+const wfsBiomasMagro = {
+  type: "FeatureCollection",
+  features: [{ type: "Feature", geometry: null, properties: { cd_bioma: 1, nm_bioma: "Amazônia" } }],
 };
 
 const secaoCnae = { id: "J", descricao: "Informação e comunicação", observacoes: ["nota 1"] };
@@ -357,7 +377,9 @@ const CASOS: Caso[] = [
     args: { localidades: "3550308,3304557" },
   },
 
-  { nome: "ibge_malhas_tema", cobre: "coleção de features", mock: um(featureCollectionBiomas), args: { tema: "biomas" } },
+  { nome: "ibge_malhas_tema", cobre: "recorte com total, crs e bbox", mock: um(wfsBiomas), args: { tema: "biomas" } },
+  { nome: "ibge_malhas_tema", cobre: "recorte sem crs, bbox nem total", mock: um(wfsBiomasMagro), args: { tema: "biomas" } },
+  { nome: "ibge_malhas_tema", cobre: "catálogo (não consulta a fonte)", mock: () => {}, args: { tema: "listar" } },
 
   {
     nome: "ibge_vizinhos",

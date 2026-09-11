@@ -33,6 +33,13 @@ export const API_ENDPOINTS = {
     NOMES: "https://servicodados.ibge.gov.br/api/v2/censos/nomes",
     AGREGADOS: "https://servicodados.ibge.gov.br/api/v3/agregados",
     MALHAS: "https://servicodados.ibge.gov.br/api/v3/malhas",
+    // Geosserviços (OGC WFS/WMS do IBGE Geociências). É OUTRO serviço, e não
+    // a API de malhas: os recortes TEMÁTICOS (biomas, Amazônia Legal,
+    // semiárido, zona costeira, faixa de fronteira, regiões metropolitanas,
+    // RIDEs) não existem na API de malhas — todo caminho temático dela
+    // responde 404 — e existem aqui, como camadas WFS. Conferido em
+    // 11/09/2026.
+    GEOSERVICOS: "https://geoservicos.ibge.gov.br/geoserver/ows",
     NOTICIAS: "https://servicodados.ibge.gov.br/api/v3/noticias",
     POPULACAO: "https://servicodados.ibge.gov.br/api/v1/projecoes/populacao",
     CNAE: "https://servicodados.ibge.gov.br/api/v2/cnae",

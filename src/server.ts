@@ -110,7 +110,7 @@ export const SERVER_INSTRUCTIONS = [
   "Para indicadores econômicos (PIB, IPCA, desemprego, rendimento, produção): `ibge_indicadores`. Comparação entre localidades específicas → `ibge_comparar`; tabela SIDRA que você já conhece → `ibge_sidra`.",
   "Para localidades: listar/buscar municípios é `ibge_municipios`; resolver nome→código ou decompor a estrutura de um código é `ibge_geocodigo`; o registro completo de UMA localidade cujo código você já tem é `ibge_localidade`; municípios próximos é `ibge_vizinhos`.",
   "Fluxo SIDRA em 3 passos quando não souber a tabela: `ibge_sidra_tabelas` (achar o código) → `ibge_sidra_metadados` (estrutura, níveis territoriais e períodos) → `ibge_sidra` (consultar os dados).",
-  "Para mapas: malhas administrativas (Brasil/região/UF/município) é `ibge_malhas`; recortes temáticos (biomas, Amazônia Legal, semiárido, regiões metropolitanas) é `ibge_malhas_tema`.",
+  "Para mapas: malhas administrativas com geometria (Brasil/região/UF/município) é `ibge_malhas`; o que um recorte temático CONTÉM (biomas, Amazônia Legal, semiárido, zona costeira, faixa de fronteira, regiões metropolitanas, RIDEs) — e a URL para baixar a geometria dele — é `ibge_malhas_tema`.",
   "Para perguntas de maior/menor/média/mediana/distribuição/ranking sobre dados tabulares ('qual município tem a maior população?', 'mediana do desemprego por UF'), use `estatisticas: true` em `ibge_sidra`, `ibge_censo`, `ibge_indicadores` ou `ibge_datasaude` — o servidor computa a distribuição completa ANTES da paginação e devolve top/bottom (`topN`) e agrupamento por coluna (`agruparPor`). Nunca pagine registros procurando o extremo ou a média.",
   "Ao apresentar estatísticas ao usuário, escreva na linguagem do leitor: cada percentil já vem com um campo `rotulo` em português claro — verbalize a partir dele e nunca use a forma abreviada 'p99', 'p95' etc. Explique 'mediana' e 'percentil' com uma frase curta quando forem centrais à resposta.",
   "Não transcreva vocabulário interno na resposta: nomes de parâmetros (`estatisticas`, `agruparPor`, `nivel_territorial`, `campos`), chaves de campos do resultado ou URLs de API. Traduza tudo para linguagem que um leitor sem conhecimento da API entenda.",
@@ -814,37 +814,26 @@ Behavior: read-only and idempotent — a live GET against the public IBGE APIs (
     "ibge_malhas_tema",
     {
       title: "Malhas temáticas",
-      description: `Gets thematic geographic meshes from IBGE.
+      description: `Lists what a THEMATIC territorial recorte of Brazil contains: how many features, with which codes and names, and the URL to download its geometry.
 
-Available themes:
-- biomas: Brazilian biomes (Amazon, Cerrado, Atlantic Forest, Caatinga, Pampa, Pantanal)
-- amazonia_legal: Legal Amazon area
-- semiarido: Semi-arid region
-- costeiro: Coastal zone
-- fronteira: Border strip
-- metropolitana: Metropolitan regions
+Available recortes:
+- biomas: the six continental biomes
+- amazonia_legal: Legal Amazon boundary
+- semiarido: semi-arid area
+- costeiro: coastal municipalities
+- fronteira: border-strip municipalities
+- metropolitana: metropolitan regions
 - ride: Integrated Development Regions
+- listar: the catalogue itself, without querying the source
 
-Biome codes:
-- 1: Amazon
-- 2: Cerrado
-- 3: Atlantic Forest
-- 4: Caatinga
-- 5: Pampa
-- 6: Pantanal
+Filtering with \`codigo\`: only the recortes that have a per-feature code accept it — biomas (the biome code) and the two municipality ones, costeiro and fronteira (the 7-digit IBGE municipality code). Ask without \`codigo\` to see what exists; biome codes come from the source, not from a fixed table.
 
-Examples:
-- All biomes: tema="biomas"
-- Amazon biome: tema="biomas", codigo="1"
-- Legal Amazon: tema="amazonia_legal"
-- Metropolitan regions: tema="metropolitana"
-- With municipalities: tema="biomas", resolucao="5"
-- List themes: tema="listar"
+GEOMETRY IS NOT IN THE RESPONSE, on purpose: one biome polygon alone is over 9 MB. The response carries the attributes plus a canonical WFS URL that returns the recorte with geometry in GeoJSON.
 
 Use a different tool when:
-- Administrative meshes (Brazil/region/state/municipality outlines) → ibge_malhas
+- Administrative meshes WITH geometry (country/region/state/municipality outlines) → ibge_malhas
 
-Behavior: read-only and idempotent — a live GET against the public IBGE Malhas API. Returns the mesh in the requested format (GeoJSON, TopoJSON, or SVG).`,
+Behavior: read-only and idempotent — a live GET against the public IBGE Geosserviços WFS (IBGE Geociências), which is a different service from the Malhas API and the only one that publishes these recortes. Returns Markdown plus a typed structuredContent payload.`,
       inputSchema: malhasTemaSchema,
       outputSchema: comProveniencia(malhasTemaOutputSchema),
       annotations: READ_ONLY,

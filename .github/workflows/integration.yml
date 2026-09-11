@@ -48,3 +48,11 @@ jobs:
         env:
           INTEGRATION_TESTS: '1'
         run: npx vitest run tests/malhas-contract.integration.test.ts
+
+      # Recortes temáticos: outro SERVIÇO (o WFS do Geosserviços), e o nome da
+      # camada só vale enquanto o IBGE a publicar. A ferramenta anunciava sete
+      # temas contra a API de malhas, que nunca teve nenhum.
+      - name: Malhas temáticas contract against live IBGE WFS
+        env:
+          INTEGRATION_TESTS: '1'
+        run: npx vitest run tests/malhas-tema-contract.integration.test.ts

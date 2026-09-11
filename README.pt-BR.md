@@ -128,7 +128,7 @@ calculados no servidor a partir dos valores brutos do IBGE.
 | Ferramenta | Descrição |
 |:-----------|:----------|
 | `ibge_malhas` | Malhas geográficas (GeoJSON, TopoJSON, SVG) |
-| `ibge_malhas_tema` | Malhas temáticas (biomas, Amazônia Legal, semiárido) |
+| `ibge_malhas_tema` | O que um recorte temático contém (biomas, Amazônia Legal, semiárido, zona costeira, faixa de fronteira, regiões metropolitanas, RIDEs) + a URL para baixar a geometria |
 
 ### Saúde
 | Ferramenta | Descrição |
@@ -189,7 +189,7 @@ Descobrir → inspecionar → consultar: `ibge_pesquisas` / `ibge_sidra_tabelas`
 | Você quer… | Use |
 |:-----------|:----|
 | Contornos administrativos (Brasil/região/UF/município) | `ibge_malhas` |
-| Áreas temáticas (biomas, Amazônia Legal, semiárido, regiões metropolitanas) | `ibge_malhas_tema` |
+| Áreas temáticas (biomas, Amazônia Legal, semiárido, regiões metropolitanas) | `ibge_malhas_tema` (WFS do IBGE Geosserviços — a API de Malhas não publica esses recortes) |
 
 ## Instalação
 

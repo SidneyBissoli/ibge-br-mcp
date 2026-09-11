@@ -1,207 +1,312 @@
+/**
+ * Recortes TEMÁTICOS do território brasileiro.
+ *
+ * De onde vem o dado, e por que não é a API de malhas. Até 11/09/2026 esta
+ * ferramenta pedia `/api/v3/malhas/biomas`, `/amazonia-legal`, `/semiarido`,
+ * `/regioes-metropolitanas` e afins. Nenhum desses caminhos existe: a API de
+ * malhas v3 serve SÓ os oito recortes administrativos (paises, regioes,
+ * estados, mesorregioes, microrregioes, municipios, regioes-imediatas,
+ * regioes-intermediarias) e responde 404 a todo o resto — a v2 responde 500, e
+ * a documentação oficial da v3 não menciona tema nenhum. A ferramenta anunciava
+ * sete temas e não entregava nenhum, desde o commit inicial.
+ *
+ * Os recortes existem, em OUTRO serviço do IBGE: o WFS do Geosserviços
+ * (IBGE Geociências), onde cada recorte é uma camada. As camadas usadas aqui
+ * são as da família `pbqg22_*` — o Quadro Geográfico de Referência de 2022 —,
+ * cujo nome não carrega ano e por isso não apodrece a cada safra, mais
+ * `CGEO:RegioesMetropolitanas`, que traz RMs e RIDEs na mesma camada separadas
+ * pelo campo `FIRST_TIPO`. Conferido camada por camada em 11/09/2026, com a
+ * contagem de feições batendo com o que o IBGE publica (6 biomas, 3 RIDEs,
+ * 36 RMs, 443 municípios costeiros, 590 na faixa de fronteira).
+ *
+ * POR QUE NÃO DEVOLVE GEOMETRIA. Um único polígono de bioma são 9 MB; o limite
+ * da Amazônia Legal, 5,9 MB. Baixar isso dentro do Worker para depois truncar
+ * na resposta gasta memória e tempo para jogar fora — e um agente não faz nada
+ * com 9 MB de coordenadas. O WFS aceita `propertyName`, que traz só os
+ * atributos (os mesmos 9 MB viram 1,4 KB, com `geometry: null` e o bbox de cada
+ * feição preservado). Então esta ferramenta responde O QUE O RECORTE CONTÉM —
+ * quantas feições, com que códigos e nomes, em que caixa envolvente — e entrega
+ * a URL canônica do WFS para quem quiser a geometria. Malha administrativa com
+ * geometria continua sendo `ibge_malhas`.
+ */
 import { z } from "zod";
 import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { buildQueryString } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { formatError, parseHttpError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
-// Available thematic meshes
-const TEMAS_DISPONIVEIS = {
+/**
+ * Um recorte temático = uma camada WFS, os atributos que a identificam e, onde
+ * existir, o campo pelo qual dá para pedir uma feição só.
+ *
+ * `campos` não é enfeite: é o `propertyName` da requisição, que é o que troca
+ * uma resposta de 9 MB por uma de 1,4 KB. `filtro` é CQL fixo do recorte
+ * (RM e RIDE moram na mesma camada).
+ */
+export interface Recorte {
+  nome: string;
+  descricao: string;
+  camada: string;
+  campos: readonly string[];
+  filtro?: string;
+  /** Campo aceito em `codigo`; ausente = o recorte não tem código próprio. */
+  codigo?: { campo: string; numerico: boolean; exemplo: string; oque: string };
+}
+
+/** Ordem em que os recortes aparecem no catálogo e no esquema publicado. */
+export const TEMAS = [
+  "biomas",
+  "amazonia_legal",
+  "semiarido",
+  "costeiro",
+  "fronteira",
+  "metropolitana",
+  "ride",
+] as const;
+
+export type Tema = (typeof TEMAS)[number];
+
+export const RECORTES: Record<Tema, Recorte> = {
   biomas: {
     nome: "Biomas",
-    descricao: "Amazônia, Cerrado, Mata Atlântica, Caatinga, Pampa, Pantanal",
+    descricao: "Os seis biomas continentais brasileiros",
+    camada: "CGMAT:pbqg22_62_Biomas_Biomas",
+    campos: ["cd_bioma", "nm_bioma"],
+    codigo: { campo: "cd_bioma", numerico: true, exemplo: "1", oque: "código do bioma" },
   },
   amazonia_legal: {
     nome: "Amazônia Legal",
-    descricao: "Área da Amazônia Legal brasileira",
+    descricao: "Limite da Amazônia Legal brasileira",
+    camada: "CGMAT:pbqg22_15_LimAmazoniaLegal",
+    campos: ["id", "nome", "area_km2"],
   },
   semiarido: {
     nome: "Semiárido",
-    descricao: "Região do semiárido brasileiro",
+    descricao: "Área do semiárido brasileiro",
+    camada: "CGMAT:pbqg22_17_Semiarido_AreaSemiarido2021",
+    campos: ["cd_semiarido", "nm_semiarido"],
   },
   costeiro: {
     nome: "Zona Costeira",
     descricao: "Municípios da zona costeira",
+    camada: "CGMAT:pbqg22_19_MunicipiosCosteiros_MunCosteiros2021",
+    campos: ["cd_mun", "nm_mun", "nm_muncost"],
+    codigo: {
+      campo: "cd_mun",
+      numerico: false,
+      exemplo: "3550308",
+      oque: "código IBGE de 7 dígitos do município",
+    },
   },
   fronteira: {
     nome: "Faixa de Fronteira",
     descricao: "Municípios na faixa de fronteira",
+    camada: "CGMAT:pbqg22_21_MunicipiosDaFaixaDeFronteira_MunFaixaFront21",
+    campos: ["cd_mun", "nm_mun", "nm_faixafront"],
+    codigo: {
+      campo: "cd_mun",
+      numerico: false,
+      exemplo: "4108304",
+      oque: "código IBGE de 7 dígitos do município",
+    },
   },
   metropolitana: {
     nome: "Regiões Metropolitanas",
-    descricao: "Regiões metropolitanas oficiais",
+    descricao: "Regiões metropolitanas instituídas",
+    camada: "CGEO:RegioesMetropolitanas",
+    campos: ["RM", "FIRST_TIPO"],
+    filtro: "FIRST_TIPO='RM'",
   },
   ride: {
     nome: "RIDEs",
-    descricao: "Regiões Integradas de Desenvolvimento Econômico",
+    descricao: "Regiões Integradas de Desenvolvimento",
+    camada: "CGEO:RegioesMetropolitanas",
+    campos: ["RM", "FIRST_TIPO"],
+    filtro: "FIRST_TIPO='RIDE'",
   },
-} as const;
+};
 
-type TemaDisponivel = keyof typeof TEMAS_DISPONIVEIS;
+/** Teto de feições trazidas numa chamada (a faixa de fronteira tem 590). */
+const LIMITE_PADRAO = 50;
+const LIMITE_MAXIMO = 600;
 
 // Schema for the tool input
 export const malhasTemaSchema = z.object({
-  tema: z.enum([
-    "biomas",
-    "amazonia_legal",
-    "semiarido",
-    "costeiro",
-    "fronteira",
-    "metropolitana",
-    "ride",
-    "listar",
-  ]).describe(`Tema da malha:
-- biomas: Biomas brasileiros (Amazônia, Cerrado, etc.)
-- amazonia_legal: Área da Amazônia Legal
-- semiarido: Região do semiárido
-- costeiro: Zona costeira
-- fronteira: Faixa de fronteira
-- metropolitana: Regiões metropolitanas
+  tema: z.enum([...TEMAS, "listar"]).describe(`Recorte temático do território:
+- biomas: os seis biomas continentais
+- amazonia_legal: limite da Amazônia Legal
+- semiarido: área do semiárido
+- costeiro: municípios da zona costeira
+- fronteira: municípios da faixa de fronteira
+- metropolitana: regiões metropolitanas
 - ride: Regiões Integradas de Desenvolvimento
-- listar: Lista temas disponíveis`),
+- listar: lista os recortes disponíveis, sem consultar a fonte`),
   codigo: z
     .string()
     .optional()
-    .describe("Código específico do tema (ex: código do bioma, da região metropolitana)"),
-  formato: z
-    .enum(["geojson", "topojson", "svg"])
+    .describe(
+      "Filtra uma feição do recorte. Só os recortes que têm código próprio " +
+        'aceitam: biomas (cd_bioma, ex. "1") e os dois de municípios, costeiro ' +
+        "e fronteira (código IBGE de 7 dígitos). Nos demais a chamada é recusada " +
+        "com a lista do que aceita."
+    ),
+  limite: z
+    .number()
+    .int()
+    .min(1)
+    .max(LIMITE_MAXIMO)
     .optional()
-    .default("geojson")
-    .describe("Formato de saída"),
-  resolucao: z
-    .enum(["0", "5"])
-    .optional()
-    .default("0")
-    .describe("0 = Apenas contorno, 5 = Com municípios"),
-  qualidade: z
-    .enum(["1", "2", "3", "4"])
-    .optional()
-    .default("4")
-    .describe("Qualidade do traçado: 1=mínima, 4=máxima"),
+    .default(LIMITE_PADRAO)
+    .describe(
+      `Quantas feições trazer (padrão ${LIMITE_PADRAO}, máx. ${LIMITE_MAXIMO}). ` +
+        "O total do recorte vem sempre, mesmo quando o limite corta a lista."
+    ),
 });
 
 export type MalhasTemaInput = z.infer<typeof malhasTemaSchema>;
 
 /**
  * Structured output payload (validated against this schema by the MCP SDK).
- * Lightweight metadata only — the actual geometry blob (GeoJSON/TopoJSON/SVG)
- * is never included here, only descriptive metadata about the requested mesh.
+ * Metadados e ATRIBUTOS das feições; nunca a geometria — ver o cabeçalho.
  */
 export const malhasTemaOutputSchema = z.object({
-  tema: z.string().describe("Tema da malha solicitada (ou 'listar')"),
-  codigo: z.string().optional().describe("Código específico do tema, quando informado"),
-  formato: z.string().optional().describe("Formato de saída (geojson, topojson, svg)"),
-  resolucao: z
+  tema: z.string().describe("Recorte solicitado (ou 'listar')"),
+  codigo: z.string().optional().describe("Código usado como filtro, quando informado"),
+  camada: z.string().optional().describe("Camada WFS do IBGE Geosserviços consultada"),
+  feicoes: z.number().optional().describe("Total de feições do recorte na fonte"),
+  feicoes_retornadas: z.number().optional().describe("Quantas vieram nesta resposta"),
+  registros: z
+    .array(z.record(z.string(), z.unknown()))
+    .optional()
+    .describe("Atributos de cada feição (sem geometria)"),
+  url_geometria: z
     .string()
     .optional()
-    .describe("Resolução da malha (0 = contorno, 5 = com municípios)"),
+    .describe("URL canônica do WFS que devolve a malha COM geometria, em GeoJSON"),
   temas: z
     .array(
       z.object({
-        tema: z.string().describe("Identificador do tema"),
-        nome: z.string().describe("Nome do tema"),
-        descricao: z.string().describe("Descrição do tema"),
+        tema: z.string().describe("Identificador do recorte"),
+        nome: z.string().describe("Nome do recorte"),
+        descricao: z.string().describe("Descrição do recorte"),
       })
     )
     .optional()
-    .describe("Lista de temas disponíveis (somente no modo 'listar')"),
+    .describe("Lista de recortes disponíveis (somente no modo 'listar')"),
 });
 
+/** Resposta GeoJSON do GeoServer: traz o total mesmo quando a lista é cortada. */
+interface RespostaWfs {
+  type?: string;
+  numberMatched?: number;
+  numberReturned?: number;
+  totalFeatures?: number;
+  crs?: { properties?: { name?: string } };
+  features?: Array<{
+    properties?: Record<string, unknown> | null;
+    bbox?: number[];
+  }>;
+}
+
+/** Monta a URL do WFS. `comGeometria` troca `propertyName` pelo padrão (tudo). */
+function urlWfs(r: Recorte, opts: { filtro?: string; limite?: number; comGeometria?: boolean }) {
+  const query = buildQueryString({
+    service: "WFS",
+    version: "2.0.0",
+    request: "GetFeature",
+    typeNames: r.camada,
+    outputFormat: "application/json",
+    propertyName: opts.comGeometria ? undefined : r.campos.join(","),
+    count: opts.limite,
+    CQL_FILTER: opts.filtro,
+  });
+  return `${IBGE_API.GEOSERVICOS}?${query}`;
+}
+
+/** Junta o filtro fixo do recorte com o filtro do `codigo`, quando há os dois. */
+function filtroDe(r: Recorte, codigo?: string): string | undefined {
+  const partes: string[] = [];
+  if (r.filtro) partes.push(r.filtro);
+  if (codigo && r.codigo) {
+    partes.push(
+      r.codigo.numerico
+        ? `${r.codigo.campo}=${Number(codigo)}`
+        : `${r.codigo.campo}='${codigo.replace(/'/g, "''")}'`
+    );
+  }
+  return partes.length ? partes.join(" AND ") : undefined;
+}
+
 /**
- * Fetches thematic geographic meshes from IBGE API
+ * Fetches thematic geographic recortes from the IBGE Geosserviços WFS
  */
 export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<StructuredToolResult> {
-  return withMetrics("ibge_malhas_tema", "malhas", async () => {
-    // List available themes
+  return withMetrics("ibge_malhas_tema", "geosservicos", async () => {
     if (input.tema === "listar") {
-      const temas = Object.entries(TEMAS_DISPONIVEIS).map(([key, value]) => ({
+      const temas = Object.entries(RECORTES).map(([key, r]) => ({
         tema: key,
-        nome: value.nome,
-        descricao: value.descricao,
+        nome: r.nome,
+        descricao: r.descricao,
       }));
       return {
-        markdown: listThemes(),
+        markdown: listaDeRecortes(),
         structured: { tema: "listar", temas },
         provenance: provenienciaIbge({
-          fonte: "MALHAS",
-          url: IBGE_API.MALHAS,
-          pesquisa: "catálogo de temas de malhas mantido pelo servidor",
+          fonte: "GEOSERVICOS",
+          url: IBGE_API.GEOSERVICOS,
+          pesquisa: "catálogo de recortes temáticos mantido pelo servidor",
         }),
       };
     }
 
+    const recorte = RECORTES[input.tema as Tema];
+    if (!recorte) {
+      return { markdown: recorteInvalido(input.tema), isError: true };
+    }
+    if (input.codigo && !recorte.codigo) {
+      return { markdown: semCodigo(input), isError: true };
+    }
+    if (input.codigo && recorte.codigo?.numerico && !/^\d+$/.test(input.codigo)) {
+      return { markdown: codigoNaoNumerico(input, recorte), isError: true };
+    }
+
     try {
-      // Build URL based on theme
-      const urlPath = getThemeUrl(input.tema, input.codigo);
+      const filtro = filtroDe(recorte, input.codigo);
+      const url = urlWfs(recorte, { filtro, limite: input.limite ?? LIMITE_PADRAO });
+      const key = cacheKey(url);
+      const data = await cachedFetch<RespostaWfs>(url, key, CACHE_TTL.STATIC);
 
-      if (!urlPath) {
-        return {
-          markdown: `Tema "${input.tema}" não suportado ou código inválido.`,
-          isError: true,
-        };
+      const feicoes = data.features ?? [];
+      const total = data.numberMatched ?? data.totalFeatures ?? feicoes.length;
+      if (total === 0) {
+        return { markdown: nadaEncontrado(input, recorte), isError: true };
       }
 
-      const meta = {
-        tema: input.tema,
-        ...(input.codigo ? { codigo: input.codigo } : {}),
-        formato: input.formato || "geojson",
-        resolucao: input.resolucao || "0",
-      };
-
-      // Build query parameters
-      const formatMap: Record<string, string> = {
-        geojson: "application/vnd.geo+json",
-        topojson: "application/json",
-        svg: "image/svg+xml",
-      };
-
-      const queryString = buildQueryString({
-        formato: formatMap[input.formato || "geojson"],
-        resolucao: input.resolucao && input.resolucao !== "0" ? input.resolucao : undefined,
-        qualidade: input.qualidade || "4",
-      });
-
-      const fullUrl = `${urlPath}?${queryString}`;
-
-      // For SVG, return URL only
-      if (input.formato === "svg") {
-        return {
-          markdown: formatSvgResponse(fullUrl, input),
-          structured: meta,
-          provenance: provenienciaIbge({
-            fonte: "MALHAS",
-            url: fullUrl,
-            pesquisa: `API de Malhas Geográficas (recorte temático: ${input.tema})`,
-          }),
-        };
-      }
-
-      // Use cache for geographic data (24 hours TTL - static data)
-      const key = cacheKey(fullUrl);
-      let data: GeoJSONData;
-
-      try {
-        data = await cachedFetch<GeoJSONData>(fullUrl, key, CACHE_TTL.STATIC);
-      } catch (error) {
-        if (error instanceof Error && error.message.includes("404")) {
-          return {
-            markdown: `Malha temática não encontrada para: ${input.tema}${input.codigo ? ` (código: ${input.codigo})` : ""}`,
-            isError: true,
-          };
-        }
-        throw error;
-      }
+      const urlGeometria = urlWfs(recorte, { filtro, comGeometria: true });
+      const registros = feicoes.map((f) => ({
+        ...(f.properties ?? {}),
+        ...(f.bbox ? { bbox: f.bbox } : {}),
+      }));
 
       return {
-        markdown: formatResponse(data, fullUrl, input),
-        structured: meta,
+        markdown: formataRecorte(input, recorte, data, total, registros, urlGeometria),
+        structured: {
+          tema: input.tema,
+          ...(input.codigo ? { codigo: input.codigo } : {}),
+          camada: recorte.camada,
+          feicoes: total,
+          feicoes_retornadas: registros.length,
+          registros,
+          url_geometria: urlGeometria,
+        },
         provenance: provenienciaIbge({
-          fonte: "MALHAS",
-          url: fullUrl,
+          fonte: "GEOSERVICOS",
+          url,
           chaveCache: key,
-          pesquisa: `API de Malhas Geográficas (recorte temático: ${input.tema})`,
+          pesquisa: `Geosserviços, camada ${recorte.camada} (${recorte.nome})`,
         }),
       };
     } catch (error) {
@@ -210,10 +315,7 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<Structured
           markdown: parseHttpError(
             error,
             "ibge_malhas_tema",
-            {
-              tema: input.tema,
-              codigo: input.codigo,
-            },
+            { tema: input.tema, codigo: input.codigo, camada: recorte.camada },
             ["ibge_malhas"]
           ),
           isError: true,
@@ -224,172 +326,111 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<Structured
   });
 }
 
-function getThemeUrl(tema: string, codigo?: string): string | null {
-  switch (tema) {
-    case "biomas":
-      // Biomas: 1=Amazônia, 2=Cerrado, 3=Mata Atlântica, 4=Caatinga, 5=Pampa, 6=Pantanal
-      if (codigo) {
-        return `${IBGE_API.MALHAS}/biomas/${codigo}`;
-      }
-      return `${IBGE_API.MALHAS}/biomas`;
+// ============================================================================
+// Mensagens de erro — todas nomeiam o que aceitar no lugar
+// ============================================================================
 
-    case "amazonia_legal":
-      return `${IBGE_API.MALHAS}/amazonia-legal`;
-
-    case "semiarido":
-      return `${IBGE_API.MALHAS}/semiarido`;
-
-    case "costeiro":
-      return `${IBGE_API.MALHAS}/municipios-costeiros`;
-
-    case "fronteira":
-      return `${IBGE_API.MALHAS}/faixa-de-fronteira`;
-
-    case "metropolitana":
-      if (codigo) {
-        return `${IBGE_API.MALHAS}/regioes-metropolitanas/${codigo}`;
-      }
-      return `${IBGE_API.MALHAS}/regioes-metropolitanas`;
-
-    case "ride":
-      if (codigo) {
-        return `${IBGE_API.MALHAS}/RIDEs/${codigo}`;
-      }
-      return `${IBGE_API.MALHAS}/RIDEs`;
-
-    default:
-      return null;
-  }
+function recorteInvalido(tema: string): string {
+  return formatError({
+    message: `Recorte temático desconhecido: "${tema}"`,
+    tool: "ibge_malhas_tema",
+    suggestion: `Recortes aceitos: ${TEMAS.join(", ")}. Use tema="listar" para ver a descrição de cada um.`,
+    relatedTools: ["ibge_malhas"],
+  });
 }
 
-function listThemes(): string {
-  let output = "## Temas de Malhas Geográficas Disponíveis\n\n";
-
-  output += "| Tema | Nome | Descrição |\n";
-  output += "|:-----|:-----|:----------|\n";
-
-  for (const [key, value] of Object.entries(TEMAS_DISPONIVEIS)) {
-    output += `| \`${key}\` | ${value.nome} | ${value.descricao} |\n`;
-  }
-
-  output += "\n### Códigos de Biomas\n\n";
-  output += "| Código | Bioma |\n";
-  output += "|:------:|:------|\n";
-  output += "| 1 | Amazônia |\n";
-  output += "| 2 | Cerrado |\n";
-  output += "| 3 | Mata Atlântica |\n";
-  output += "| 4 | Caatinga |\n";
-  output += "| 5 | Pampa |\n";
-  output += "| 6 | Pantanal |\n";
-
-  output += "\n### Exemplos de Uso\n\n";
-  output += "```\n";
-  output += "# Todos os biomas\n";
-  output += 'ibge_malhas_tema(tema="biomas")\n\n';
-  output += "# Apenas a Amazônia\n";
-  output += 'ibge_malhas_tema(tema="biomas", codigo="1")\n\n';
-  output += "# Amazônia Legal\n";
-  output += 'ibge_malhas_tema(tema="amazonia_legal")\n\n';
-  output += "# Regiões metropolitanas com municípios\n";
-  output += 'ibge_malhas_tema(tema="metropolitana", resolucao="5")\n\n';
-  output += "# Em formato SVG\n";
-  output += 'ibge_malhas_tema(tema="biomas", formato="svg")\n';
-  output += "```\n";
-
-  return output;
+function semCodigo(input: MalhasTemaInput): string {
+  const comCodigo = TEMAS.filter((t) => RECORTES[t].codigo);
+  return formatError({
+    message: `O recorte "${input.tema}" não tem código por feição`,
+    tool: "ibge_malhas_tema",
+    params: { tema: input.tema, codigo: input.codigo },
+    suggestion:
+      `Chame sem \`codigo\` para ver as feições deste recorte. ` +
+      `Aceitam código: ${comCodigo.join(", ")}.`,
+    relatedTools: ["ibge_malhas"],
+  });
 }
 
-function formatResponse(data: GeoJSONData, url: string, input: MalhasTemaInput): string {
-  const temaInfo = TEMAS_DISPONIVEIS[input.tema as TemaDisponivel];
-  let output = `## Malha Temática: ${temaInfo?.nome || input.tema}\n\n`;
+function codigoNaoNumerico(input: MalhasTemaInput, r: Recorte): string {
+  return formatError({
+    message: `Código inválido para "${input.tema}": "${input.codigo}"`,
+    tool: "ibge_malhas_tema",
+    params: { tema: input.tema, codigo: input.codigo },
+    suggestion: `Aqui \`codigo\` é o ${r.codigo?.oque} (ex.: "${r.codigo?.exemplo}"). Chame sem \`codigo\` para ver os disponíveis.`,
+  });
+}
 
-  output += `### Configurações\n\n`;
-  output += `| Parâmetro | Valor |\n`;
-  output += `|:----------|:------|\n`;
-  output += `| **Tema** | ${input.tema} |\n`;
-  if (input.codigo) {
-    output += `| **Código** | ${input.codigo} |\n`;
+function nadaEncontrado(input: MalhasTemaInput, r: Recorte): string {
+  return formatError({
+    message: `Nenhuma feição encontrada em "${input.tema}"${input.codigo ? ` para o código "${input.codigo}"` : ""}`,
+    tool: "ibge_malhas_tema",
+    params: { tema: input.tema, codigo: input.codigo, camada: r.camada },
+    suggestion: input.codigo
+      ? `Chame sem \`codigo\` para ver quais existem neste recorte.`
+      : `A camada respondeu vazia, o que não é esperado para este recorte — pode ser mudança na fonte.`,
+    relatedTools: ["ibge_malhas"],
+  });
+}
+
+// ============================================================================
+// Formatação
+// ============================================================================
+
+function listaDeRecortes(): string {
+  let out = "## Recortes temáticos disponíveis\n\n";
+  out += "| Tema | Nome | Descrição |\n|:-----|:-----|:----------|\n";
+  for (const [key, r] of Object.entries(RECORTES)) {
+    out += `| \`${key}\` | ${r.nome} | ${r.descricao} |\n`;
   }
-  output += `| **Formato** | ${input.formato || "geojson"} |\n`;
-  output += `| **Resolução** | ${input.resolucao === "5" ? "Com municípios" : "Apenas contorno"} |\n`;
-  output += `| **Qualidade** | ${input.qualidade || "4"} |\n`;
-  output += "\n";
+  out += "\nFonte: IBGE Geosserviços (WFS). ";
+  out += "Malha administrativa (país, região, UF, município) é `ibge_malhas`.\n";
+  return out;
+}
 
-  // GeoJSON info
-  if ("type" in data) {
-    output += `### Informações do GeoJSON\n\n`;
-    output += `| Campo | Valor |\n`;
-    output += `|:------|:------|\n`;
-    output += `| **Tipo** | ${data.type} |\n`;
+function formataRecorte(
+  input: MalhasTemaInput,
+  r: Recorte,
+  data: RespostaWfs,
+  total: number,
+  registros: Array<Record<string, unknown>>,
+  urlGeometria: string
+): string {
+  const crs = data.crs?.properties?.name?.replace(/^urn:ogc:def:crs:/, "").replace("::", ":");
 
-    if (data.type === "FeatureCollection" && "features" in data) {
-      const features = data.features;
-      output += `| **Features** | ${features.length} |\n`;
+  let out = `## ${r.nome}\n\n`;
+  out += `| Campo | Valor |\n|:------|:------|\n`;
+  out += `| **Recorte** | ${r.descricao} |\n`;
+  out += `| **Feições** | ${total}${registros.length < total ? ` (mostrando ${registros.length})` : ""} |\n`;
+  if (input.codigo) out += `| **Filtro** | ${r.codigo?.oque} = ${input.codigo} |\n`;
+  if (crs) out += `| **Sistema de coordenadas** | ${crs} |\n`;
+  out += `| **Camada** | \`${r.camada}\` |\n`;
+  out += "\n";
 
-      // Sample properties
-      if (features.length > 0 && features[0].properties) {
-        const props = Object.keys(features[0].properties);
-        output += `| **Propriedades** | ${props.join(", ")} |\n`;
-      }
-    }
+  // Uma coluna por atributo do recorte, mais a caixa envolvente quando vier.
+  const colunas = [...r.campos, ...(registros.some((x) => x.bbox) ? ["bbox"] : [])];
+  out += `### Feições\n\n`;
+  out += "| " + colunas.join(" | ") + " |\n";
+  out += "|" + colunas.map(() => ":---").join("|") + "|\n";
+  for (const reg of registros) {
+    out +=
+      "| " +
+      colunas
+        .map((c) => {
+          const v = reg[c];
+          if (Array.isArray(v)) return v.map((n) => Number(n).toFixed(2)).join(", ");
+          return v === undefined || v === null ? "-" : String(v);
+        })
+        .join(" | ") +
+      " |\n";
   }
-  output += "\n";
-
-  // Sample features
-  if ("features" in data && data.type === "FeatureCollection") {
-    const features = data.features;
-    if (features.length > 0 && features.length <= 10) {
-      output += `### Features\n\n`;
-
-      const propKeys = features[0].properties
-        ? Object.keys(features[0].properties).slice(0, 4)
-        : [];
-
-      if (propKeys.length > 0) {
-        output += "| " + propKeys.join(" | ") + " |\n";
-        output += "|" + propKeys.map(() => ":---").join("|") + "|\n";
-
-        for (const f of features) {
-          const values = propKeys.map((k) =>
-            f.properties?.[k] !== undefined ? String(f.properties[k]) : "-"
-          );
-          output += "| " + values.join(" | ") + " |\n";
-        }
-      }
-      output += "\n";
-    } else if (features.length > 10) {
-      output += `_${features.length} features no total._\n\n`;
-    }
+  if (registros.length < total) {
+    out += `\n_… e mais ${total - registros.length}. Use \`limite\` para trazer mais._\n`;
   }
 
-  // URL
-  output += `### URL para Download\n\n`;
-  output += "```\n" + url + "\n```\n";
-
-  return output;
+  out += `\n### Geometria\n\n`;
+  out += `Não vai na resposta de propósito: um polígono de bioma sozinho passa de 9 MB. `;
+  out += `A URL abaixo devolve o recorte com geometria, em GeoJSON:\n\n`;
+  out += "```\n" + urlGeometria + "\n```\n";
+  return out;
 }
-
-function formatSvgResponse(url: string, input: MalhasTemaInput): string {
-  const temaInfo = TEMAS_DISPONIVEIS[input.tema as TemaDisponivel];
-  let output = `## Malha Temática (SVG): ${temaInfo?.nome || input.tema}\n\n`;
-
-  output += `### URL para Download/Visualização\n\n`;
-  output += "```\n" + url + "\n```\n\n";
-  output += "Abra a URL no navegador para visualizar o mapa.\n";
-
-  return output;
-}
-
-// GeoJSON types
-interface GeoJSONFeature {
-  type: "Feature";
-  geometry: { type: string; coordinates: unknown } | null;
-  properties: Record<string, unknown> | null;
-}
-
-interface GeoJSONFeatureCollection {
-  type: "FeatureCollection";
-  features: GeoJSONFeature[];
-}
-
-type GeoJSONData = GeoJSONFeature | GeoJSONFeatureCollection;

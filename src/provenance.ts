@@ -92,6 +92,10 @@ export const FONTES_IBGE = {
     name: "IBGE — API de Malhas Geográficas",
     endpoint: API_ENDPOINTS.IBGE.MALHAS,
   },
+  GEOSERVICOS: {
+    name: "IBGE — Geosserviços (WFS, IBGE Geociências)",
+    endpoint: API_ENDPOINTS.IBGE.GEOSERVICOS,
+  },
   NOTICIAS: {
     name: "IBGE — API de Notícias",
     endpoint: API_ENDPOINTS.IBGE.NOTICIAS,

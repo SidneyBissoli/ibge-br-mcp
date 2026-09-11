@@ -25,7 +25,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   correspondente.
 - **`tipo="distritos"` saiu do esquema**: esse nível não existe na v3 (404).
 
+### Changed
+- **`ibge_malhas_tema` foi repontado para o WFS do IBGE Geosserviços, a única
+  fonte que publica esses recortes.** A ferramenta anunciava sete temas
+  (biomas, Amazônia Legal, semiárido, zona costeira, faixa de fronteira,
+  regiões metropolitanas, RIDEs) e **não entregava nenhum**: pedia
+  `/api/v3/malhas/biomas` e afins, caminhos que a API de malhas nunca teve —
+  404 na v3, 500 na v2, e a documentação oficial da v3 não menciona tema
+  nenhum. Os recortes existem como camadas WFS em
+  `geoservicos.ibge.gov.br/geoserver/ows`; as camadas usadas são as da família
+  `pbqg22_*` (Quadro Geográfico de Referência de 2022), cujo nome não carrega
+  ano, mais `CGEO:RegioesMetropolitanas`, que traz RMs e RIDEs separadas pelo
+  campo `FIRST_TIPO`.
+
+  **A resposta mudou de forma, e de propósito: não traz geometria.** Um único
+  polígono de bioma passa de 9 MB e o limite da Amazônia Legal, de 5,9 MB —
+  baixar isso dentro do Worker para truncar na saída gasta memória e tempo para
+  jogar fora, e um agente não faz nada com 9 MB de coordenadas. O WFS aceita
+  `propertyName`, que traz só os atributos (os mesmos 9 MB viram 1,4 KB), então
+  a ferramenta responde **o que o recorte contém** — quantas feições, com que
+  códigos e nomes, em que caixa envolvente — e entrega a URL canônica do WFS
+  para quem quiser a geometria. Malha administrativa com geometria continua em
+  `ibge_malhas`.
+
+  O esquema acompanha a fonte: saíram `formato`, `resolucao` e `qualidade`
+  (o WFS não tem nenhum dos três), entrou `limite`, e `codigo` passa a ser
+  aceito só onde existe código por feição — biomas e os dois recortes de
+  município —, com mensagem que nomeia quais aceitam. Os códigos de bioma vêm
+  da fonte: a descrição antiga afirmava `2 = Cerrado` e na camada 2 é Caatinga.
+
 ### Added
+- `tests/malhas-tema-contract.integration.test.ts` — contrato dos sete recortes
+  contra o WFS real, no mesmo cron semanal: cada camada ainda existe e responde,
+  cada campo declarado é campo de verdade (é ele que vai no `propertyName`, e um
+  nome errado ali derruba a requisição inteira), o filtro CQL ainda separa RM de
+  RIDE, e a URL de geometria que a ferramenta entrega responde 200. As
+  contagens não são pinadas — município entra e sai de faixa de fronteira.
 - `tests/malhas-contract.integration.test.ts` — contrato de malhas contra a API
   real, no mesmo portão semanal do contrato de catálogo. Confere que a URL
   montada responde 200 em cada nível e **pergunta à própria API** quais valores

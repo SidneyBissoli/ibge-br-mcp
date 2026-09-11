@@ -131,7 +131,7 @@ aggregates are computed server-side from the raw IBGE values.
 | Tool | Description |
 |:-----|:------------|
 | `ibge_malhas` | Geographic meshes (GeoJSON, TopoJSON, SVG) |
-| `ibge_malhas_tema` | Thematic meshes (biomes, Legal Amazon, semi-arid) |
+| `ibge_malhas_tema` | What a thematic recorte contains (biomes, Legal Amazon, semi-arid, coastal, border strip, metro regions, RIDEs) + the URL to download its geometry |
 
 ### Health
 | Tool | Description |
@@ -192,7 +192,7 @@ Discover → inspect → query: `ibge_pesquisas` / `ibge_sidra_tabelas` (find a 
 | You want… | Use |
 |:----------|:----|
 | Administrative outlines (Brazil/region/state/municipality) | `ibge_malhas` |
-| Thematic areas (biomes, Legal Amazon, semi-arid, metro regions) | `ibge_malhas_tema` |
+| Thematic areas (biomes, Legal Amazon, semi-arid, metro regions) | `ibge_malhas_tema` (IBGE Geosserviços WFS — the Malhas API does not publish these) |
 
 ## Installation
 

@@ -1,3 +1,14 @@
+/**
+ * `ibge_malhas_tema` sobre o WFS do IBGE Geosserviços.
+ *
+ * A versão anterior deste arquivo era verde sobre uma ferramenta MORTA: ela
+ * mockava `fetch` e conferia que a URL contém `/malhas/biomas`, caminho que a
+ * API de malhas responde com 404 desde sempre. Os casos abaixo guardam o que
+ * sustenta a versão nova — a camada certa, o `propertyName` que evita baixar
+ * 9 MB de polígono, o filtro CQL e as mensagens que ensinam. O que nenhum mock
+ * pode afirmar (que a camada existe e responde) está em
+ * tests/malhas-tema-contract.integration.test.ts, contra o serviço real.
+ */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ibgeMalhasTema } from "../src/tools/malhas-tema.js";
 import { cache } from "../src/cache.js";
@@ -6,31 +17,32 @@ import { mockResponse } from "./helpers.js";
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-function lastUrl(): string {
-  return String(mockFetch.mock.calls.at(-1)?.[0]);
+function lastUrl(): URL {
+  return new URL(String(mockFetch.mock.calls.at(-1)?.[0]));
 }
 
-const featureCollection = {
-  type: "FeatureCollection",
-  features: [
-    {
+/** Resposta do GeoServer no formato que ele devolve: total + feições. */
+function wfs(features: Array<Record<string, unknown>>, total = features.length) {
+  return {
+    type: "FeatureCollection",
+    numberMatched: total,
+    numberReturned: features.length,
+    totalFeatures: total,
+    crs: { type: "name", properties: { name: "urn:ogc:def:crs:EPSG::4674" } },
+    features: features.map((properties, i) => ({
       type: "Feature",
-      geometry: { type: "MultiPolygon", coordinates: [] },
-      properties: { codarea: "1", nome: "Amazônia" },
-    },
-    {
-      type: "Feature",
-      geometry: { type: "MultiPolygon", coordinates: [] },
-      properties: { codarea: "2", nome: "Cerrado" },
-    },
-  ],
-};
+      geometry: null,
+      properties,
+      bbox: [-50 - i, -10 - i, -40 - i, -5 - i],
+    })),
+  };
+}
 
-const singleFeature = {
-  type: "Feature",
-  geometry: { type: "MultiPolygon", coordinates: [] },
-  properties: { codarea: "1", nome: "Amazônia" },
-};
+const biomas = wfs([
+  { cd_bioma: 1, nm_bioma: "Amazônia" },
+  { cd_bioma: 2, nm_bioma: "Caatinga" },
+  { cd_bioma: 3, nm_bioma: "Cerrado" },
+]);
 
 describe("ibge_malhas_tema", () => {
   beforeEach(() => {
@@ -42,191 +54,164 @@ describe("ibge_malhas_tema", () => {
     vi.restoreAllMocks();
   });
 
-  describe("listar mode", () => {
-    it("lists available themes without calling the API", async () => {
-      const { markdown: result } = await ibgeMalhasTema({
-        tema: "listar",
-        formato: "geojson",
-        resolucao: "0",
-        qualidade: "4",
-      });
-
-      expect(result).toContain("Temas de Malhas Geográficas Disponíveis");
-      expect(result).toContain("biomas");
-      expect(result).toContain("Códigos de Biomas");
+  describe("catálogo", () => {
+    it('tema="listar" não toca na rede', async () => {
+      const { markdown, structured } = await ibgeMalhasTema({ tema: "listar", limite: 50 });
       expect(mockFetch).not.toHaveBeenCalled();
+      expect(markdown).toContain("Recortes temáticos disponíveis");
+      expect((structured as { temas: unknown[] }).temas).toHaveLength(7);
+    });
+
+    it("o catálogo lista os sete recortes que a ferramenta serve", async () => {
+      const { structured } = await ibgeMalhasTema({ tema: "listar", limite: 50 });
+      const temas = (structured as { temas: Array<{ tema: string }> }).temas.map((t) => t.tema);
+      expect(temas).toEqual([
+        "biomas",
+        "amazonia_legal",
+        "semiarido",
+        "costeiro",
+        "fronteira",
+        "metropolitana",
+        "ride",
+      ]);
     });
   });
 
-  describe("theme URL routing", () => {
-    it("routes biomas (no code) to /biomas", async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
-      await ibgeMalhasTema({
-        tema: "biomas",
-        formato: "geojson",
-        resolucao: "0",
-        qualidade: "4",
-      });
-      expect(lastUrl()).toContain("/malhas/biomas?");
-    });
-
-    it("routes biomas with a code to /biomas/{codigo}", async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(singleFeature));
-      await ibgeMalhasTema({
-        tema: "biomas",
-        codigo: "1",
-        formato: "geojson",
-        resolucao: "0",
-        qualidade: "4",
-      });
-      expect(lastUrl()).toContain("/malhas/biomas/1?");
-    });
-
-    it("routes amazonia_legal to /amazonia-legal", async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
-      await ibgeMalhasTema({
-        tema: "amazonia_legal",
-        formato: "geojson",
-        resolucao: "0",
-        qualidade: "4",
-      });
-      expect(lastUrl()).toContain("/malhas/amazonia-legal?");
-    });
-
-    it("routes metropolitana with a code to /regioes-metropolitanas/{codigo}", async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(singleFeature));
-      await ibgeMalhasTema({
-        tema: "metropolitana",
-        codigo: "3501",
-        formato: "geojson",
-        resolucao: "0",
-        qualidade: "4",
-      });
-      expect(lastUrl()).toContain("/malhas/regioes-metropolitanas/3501?");
-    });
-
-    it("routes ride to /RIDEs", async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
-      await ibgeMalhasTema({
-        tema: "ride",
-        formato: "geojson",
-        resolucao: "0",
-        qualidade: "4",
-      });
-      expect(lastUrl()).toContain("/malhas/RIDEs?");
-    });
-  });
-
-  describe("query parameters", () => {
-    it("maps geojson to its mime type and omits resolucao=0", async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
-      await ibgeMalhasTema({
-        tema: "biomas",
-        formato: "geojson",
-        resolucao: "0",
-        qualidade: "4",
-      });
+  describe("a requisição ao WFS", () => {
+    it("vai ao Geosserviços, não à API de malhas", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(biomas));
+      await ibgeMalhasTema({ tema: "biomas", limite: 50 });
       const url = lastUrl();
-      expect(url).toContain(encodeURIComponent("application/vnd.geo+json"));
-      expect(url).not.toContain("resolucao=");
-      expect(url).toContain("qualidade=4");
+      expect(url.host).toBe("geoservicos.ibge.gov.br");
+      expect(url.pathname).toBe("/geoserver/ows");
+      // O caminho antigo, que respondia 404 e passava no teste anterior.
+      expect(url.href).not.toContain("/malhas/biomas");
     });
 
-    it("includes resolucao when set to 5", async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
-      await ibgeMalhasTema({
-        tema: "biomas",
-        formato: "geojson",
-        resolucao: "5",
-        qualidade: "4",
-      });
-      expect(lastUrl()).toContain("resolucao=5");
+    it("pede a camada certa, em GeoJSON, SEM geometria", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(biomas));
+      await ibgeMalhasTema({ tema: "biomas", limite: 50 });
+      const q = lastUrl().searchParams;
+      expect(q.get("typeNames")).toBe("CGMAT:pbqg22_62_Biomas_Biomas");
+      expect(q.get("outputFormat")).toBe("application/json");
+      expect(q.get("request")).toBe("GetFeature");
+      // O propertyName é o que troca 9 MB por 1,4 KB. Sem ele, a ferramenta
+      // baixa o polígono inteiro do bioma para jogar fora.
+      expect(q.get("propertyName")).toBe("cd_bioma,nm_bioma");
+    });
+
+    it("RM e RIDE saem da MESMA camada, separadas por filtro CQL", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(wfs([{ RM: "RM de Belém", FIRST_TIPO: "RM" }])));
+      await ibgeMalhasTema({ tema: "metropolitana", limite: 50 });
+      const rm = lastUrl().searchParams;
+      expect(rm.get("typeNames")).toBe("CGEO:RegioesMetropolitanas");
+      expect(rm.get("CQL_FILTER")).toBe("FIRST_TIPO='RM'");
+
+      cache.clear();
+      mockFetch.mockResolvedValueOnce(mockResponse(wfs([{ RM: "RIDE DF", FIRST_TIPO: "RIDE" }])));
+      await ibgeMalhasTema({ tema: "ride", limite: 50 });
+      expect(lastUrl().searchParams.get("CQL_FILTER")).toBe("FIRST_TIPO='RIDE'");
+    });
+
+    it("o código vira filtro CQL, numérico ou com aspas conforme o campo", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(wfs([{ cd_bioma: 1, nm_bioma: "Amazônia" }])));
+      await ibgeMalhasTema({ tema: "biomas", codigo: "1", limite: 50 });
+      expect(lastUrl().searchParams.get("CQL_FILTER")).toBe("cd_bioma=1");
+
+      cache.clear();
+      mockFetch.mockResolvedValueOnce(
+        mockResponse(wfs([{ cd_mun: "3550308", nm_mun: "São Paulo", nm_muncost: "-" }]))
+      );
+      await ibgeMalhasTema({ tema: "costeiro", codigo: "3550308", limite: 50 });
+      expect(lastUrl().searchParams.get("CQL_FILTER")).toBe("cd_mun='3550308'");
+    });
+
+    it("o limite vai como count", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(biomas));
+      await ibgeMalhasTema({ tema: "biomas", limite: 7 });
+      expect(lastUrl().searchParams.get("count")).toBe("7");
     });
   });
 
-  describe("formatting", () => {
-    it("summarizes a FeatureCollection (features, properties, sample table)", async () => {
-      mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
+  describe("resposta", () => {
+    it("traz o total da fonte, os atributos e a URL da geometria", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(wfs(biomas.features.map((f) => f.properties), 6)));
+      const { markdown, structured } = await ibgeMalhasTema({ tema: "biomas", limite: 3 });
 
-      const { markdown: result } = await ibgeMalhasTema({
-        tema: "biomas",
-        formato: "geojson",
-        resolucao: "0",
-        qualidade: "4",
-      });
-
-      expect(result).toContain("Malha Temática: Biomas");
-      expect(result).toContain("FeatureCollection");
-      expect(result).toContain("**Features** | 2");
-      expect(result).toContain("Amazônia");
-      expect(result).toContain("Cerrado");
-      expect(result).toContain("URL para Download");
-    });
-
-    it("notes a large feature count without a sample table", async () => {
-      const many = {
-        type: "FeatureCollection",
-        features: Array.from({ length: 12 }, (_, i) => ({
-          type: "Feature",
-          geometry: { type: "MultiPolygon", coordinates: [] },
-          properties: { codarea: String(i), nome: `Item ${i}` },
-        })),
+      const s = structured as {
+        feicoes: number;
+        feicoes_retornadas: number;
+        camada: string;
+        url_geometria: string;
+        registros: Array<Record<string, unknown>>;
       };
-      mockFetch.mockResolvedValueOnce(mockResponse(many));
+      expect(s.feicoes).toBe(6);
+      expect(s.feicoes_retornadas).toBe(3);
+      expect(s.camada).toBe("CGMAT:pbqg22_62_Biomas_Biomas");
+      expect(s.registros[0].nm_bioma).toBe("Amazônia");
+      expect(markdown).toContain("Amazônia");
+      expect(markdown).toContain("EPSG:4674");
+      expect(markdown).toContain("mostrando 3");
 
-      const { markdown: result } = await ibgeMalhasTema({
-        tema: "biomas",
-        formato: "geojson",
-        resolucao: "0",
-        qualidade: "4",
-      });
+      // A URL da geometria é a MESMA camada e filtro, mas sem propertyName —
+      // é o que faz dela um download que serve para alguma coisa.
+      const geo = new URL(s.url_geometria);
+      expect(geo.searchParams.get("typeNames")).toBe("CGMAT:pbqg22_62_Biomas_Biomas");
+      expect(geo.searchParams.has("propertyName")).toBe(false);
+      expect(geo.searchParams.has("count")).toBe(false);
+    });
 
-      expect(result).toContain("12 features no total");
+    it("nunca devolve geometria na resposta", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(biomas));
+      const { markdown, structured } = await ibgeMalhasTema({ tema: "biomas", limite: 50 });
+      expect(JSON.stringify(structured)).not.toContain("coordinates");
+      expect(markdown).not.toContain("coordinates");
     });
   });
 
-  describe("svg format", () => {
-    it("returns a download URL without calling the API", async () => {
-      const { markdown: result } = await ibgeMalhasTema({
-        tema: "biomas",
-        formato: "svg",
-        resolucao: "0",
-        qualidade: "4",
+  describe("erros que ensinam", () => {
+    it("código num recorte que não tem código diz quais têm", async () => {
+      const { markdown, isError } = await ibgeMalhasTema({
+        tema: "semiarido",
+        codigo: "1",
+        limite: 50,
       });
-
-      expect(result).toContain("Malha Temática (SVG): Biomas");
-      expect(result).toContain("URL para Download/Visualização");
+      expect(isError).toBe(true);
+      expect(markdown).toContain("não tem código por feição");
+      expect(markdown).toContain("biomas");
+      expect(markdown).toContain("costeiro");
       expect(mockFetch).not.toHaveBeenCalled();
     });
-  });
 
-  describe("errors", () => {
-    it("returns a not-found message on a 404", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
+    it("código não numérico onde o campo é numérico é recusado antes da rede", async () => {
+      const { markdown, isError } = await ibgeMalhasTema({
+        tema: "biomas",
+        codigo: "amazonia",
+        limite: 50,
+      });
+      expect(isError).toBe(true);
+      expect(markdown).toContain("código do bioma");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
 
-      const { markdown: result } = await ibgeMalhasTema({
+    it("recorte vazio vira mensagem, não tabela em branco", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(wfs([], 0)));
+      const { markdown, isError } = await ibgeMalhasTema({
         tema: "biomas",
         codigo: "99",
-        formato: "geojson",
-        resolucao: "0",
-        qualidade: "4",
+        limite: 50,
       });
-
-      expect(result).toContain("Malha temática não encontrada");
-      expect(result).toContain("99");
+      expect(isError).toBe(true);
+      expect(markdown).toContain("Nenhuma feição encontrada");
+      expect(markdown).toContain("99");
     });
 
-    it("surfaces other upstream errors via parseHttpError", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("HTTP 500: Internal Server Error"));
-
-      const { markdown: result } = await ibgeMalhasTema({
-        tema: "biomas",
-        formato: "geojson",
-        resolucao: "0",
-        qualidade: "4",
-      });
-
-      expect(result).toContain("Erro");
+    it("falha da fonte vira erro formatado, com a camada nomeada", async () => {
+      mockFetch.mockRejectedValueOnce(new Error("HTTP 503: Service Unavailable"));
+      const { markdown, isError } = await ibgeMalhasTema({ tema: "biomas", limite: 50 });
+      expect(isError).toBe(true);
+      expect(markdown).toContain("ibge_malhas_tema");
+      expect(markdown).toContain("CGMAT:pbqg22_62_Biomas_Biomas");
     });
   });
 });
