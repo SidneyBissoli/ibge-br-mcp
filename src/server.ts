@@ -1011,6 +1011,10 @@ Behavior: read-only and idempotent — a live GET against the public IBGE APIs (
     limit: DEEP_RESEARCH_LIMIT,
     annotations: READ_ONLY,
     extendOutputSchema: comProveniencia,
+    // Classificador do servidor, para a classe do erro em `search`/`fetch`.
+    // Sem ele o pacote grava os nomes dos parâmetros e deixa a classe
+    // vazia, que foi o que a produção mostrou antes da 0.4.0.
+    classifyError,
     ...(record !== undefined ? { record } : {}),
   });
 
