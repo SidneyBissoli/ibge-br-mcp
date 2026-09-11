@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`ibge_malhas` falhava 100% das vezes, desde sempre.** A ferramenta falava o
+  vocabulário da API de malhas **v2** (`resolucao=0..5`, `qualidade=1..4`)
+  apontando para a **v3**, que responde `400 O parâmetro qualidade aceita
+  apenas UM dos seguintes valores: minima, intermediaria ou maxima`. Como
+  `qualidade` ia em toda chamada com o default `"4"`, nenhuma chamada de
+  GeoJSON/TopoJSON podia dar certo — e o caminho SVG, que não chama a API,
+  devolvia ao usuário uma URL que também dava 400. Agora `qualidade` aceita as
+  três palavras da v3 (padrão `maxima`) e traduz os números antigos; `resolucao`
+  é traduzido para `intrarregiao`, que é como a v3 pede divisões internas.
+  Descoberto pela telemetria de forma da chamada (7 erros em 11 chamadas em 28
+  dias, o resto sendo SVG) e reproduzido contra a API pública.
+- **`ibge_malhas` recusa, com mensagem que ensina, a divisão que o nível não
+  comporta** (ex.: município com `resolucao="2"`), em vez de repassar o 400 cru
+  da v3. A mensagem lista as divisões aceitas e o número de `resolucao`
+  correspondente.
+- **`tipo="distritos"` saiu do esquema**: esse nível não existe na v3 (404).
+
+### Added
+- `tests/malhas-contract.integration.test.ts` — contrato de malhas contra a API
+  real, no mesmo portão semanal do contrato de catálogo. Confere que a URL
+  montada responde 200 em cada nível e **pergunta à própria API** quais valores
+  de `intrarregiao` cada nível aceita, comparando com a tabela do código, para
+  ela não fossilizar. Os testes offline de malhas mockam `fetch` e afirmavam
+  `resolucao=2` na URL: passavam verdes sobre uma ferramenta que nunca
+  funcionou.
+
 ### Changed
 - **Tutorial de conexão** publicado no site, em português e inglês
   ([Consultando o SIDRA por MCP no Claude e no ChatGPT](https://sidneybissoli.com/blog/posts/sidra-via-mcp/)):

@@ -83,10 +83,70 @@ describe("ibge_malhas", () => {
       expect(url).not.toContain("resolucao=");
     });
 
-    it("includes resolucao when greater than 0", async () => {
+    // O vocabulário da v3 não é o da v2. Estes casos guardam a TRADUÇÃO:
+    // `resolucao` vira `intrarregiao` e `qualidade` vira palavra. A versão
+    // anterior deste arquivo afirmava `resolucao=2` na URL e passava — a API
+    // respondia 400 a toda chamada. Ver o cabeçalho de src/tools/malhas.ts.
+    it("translates resolucao into the v3 intrarregiao and never sends resolucao", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
       await ibgeMalhas({ localidade: "BR", resolucao: "2" });
-      expect(lastUrl()).toContain("resolucao=2");
+      const url = lastUrl();
+      expect(url).toContain("intrarregiao=UF");
+      expect(url).not.toContain("resolucao=");
+    });
+
+    it("sends qualidade as a v3 word, by default maxima", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
+      await ibgeMalhas({ localidade: "BR" });
+      expect(lastUrl()).toContain("qualidade=maxima");
+    });
+
+    it("translates the legacy numeric qualidade", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
+      await ibgeMalhas({ localidade: "BR", qualidade: "3" });
+      const url = lastUrl();
+      expect(url).toContain("qualidade=intermediaria");
+      expect(url).not.toContain("qualidade=3");
+    });
+
+    it("lets an explicit intrarregiao win over resolucao", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
+      await ibgeMalhas({ localidade: "BR", resolucao: "2", intrarregiao: "municipio" });
+      expect(lastUrl()).toContain("intrarregiao=municipio");
+    });
+
+    it("never sends a query parameter outside the v3 vocabulary", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(featureCollection));
+      await ibgeMalhas({ localidade: "33", resolucao: "5", qualidade: "1" });
+      const chaves = [...new URL(lastUrl()).searchParams.keys()];
+      expect(chaves.sort()).toEqual(["formato", "intrarregiao", "qualidade"]);
+    });
+  });
+
+  describe("divisão interna que o nível não comporta", () => {
+    it("refuses resolucao=2 on a municipality without calling the API", async () => {
+      const { markdown: result, isError } = await ibgeMalhas({
+        localidade: "3550308",
+        resolucao: "2",
+      });
+
+      expect(isError).toBe(true);
+      expect(result).toContain("não aceita divisão interna");
+      expect(result).toContain('resolucao="0"');
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("teaches which divisions a state accepts", async () => {
+      const { markdown: result, isError } = await ibgeMalhas({
+        localidade: "33",
+        intrarregiao: "regiao",
+      });
+
+      expect(isError).toBe(true);
+      expect(result).toContain("mesorregiao");
+      expect(result).toContain("microrregiao");
+      expect(result).toContain("municipio");
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 

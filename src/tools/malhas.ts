@@ -3,51 +3,122 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { buildQueryString } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { formatError, parseHttpError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
+
+/**
+ * O CONTRATO DA API DE MALHAS v3, e por que ele está escrito aqui.
+ *
+ * Esta ferramenta nasceu falando a língua da v2 (`resolucao=0..5`,
+ * `qualidade=1..4`) apontando para a v3, que não aceita nem uma coisa nem
+ * outra. Como `qualidade` ia em TODA chamada com o default "4", a v3
+ * respondia 400 "O parâmetro qualidade aceita apenas UM dos seguintes
+ * valores: minima, intermediaria ou maxima" — ou seja, a ferramenta falhava
+ * 100% das vezes, para todo mundo, menos no caminho SVG (que só devolve a
+ * URL, sem chamar a API — e a URL que ele devolvia também dava 400). Medido
+ * em 2026-09-10 pela telemetria e reproduzido contra a API pública.
+ *
+ * Nenhum teste pegava: os testes de malhas mockam `fetch` e só conferem que a
+ * URL CONTÉM o caminho esperado. URL montada é hipótese; só a API diz se ela
+ * vale. Daí a defesa nova em tests/malhas-contract.integration.test.ts.
+ *
+ * As duas tabelas abaixo são TRADUÇÃO, não invenção: os valores de
+ * `intrarregiao` aceitos por nível saíram da mensagem de erro da própria API
+ * (`?intrarregiao=zzz` faz a v3 listar o que aceita), conferidos em
+ * 2026-09-10. O teste de contrato refaz essa pergunta à API e reprova se a
+ * lista mudar, para a tabela não fossilizar o dia da varredura.
+ */
+export const QUALIDADE_V3 = ["minima", "intermediaria", "maxima"] as const;
+
+/** Os quatro níveis da v2 caem nos três da v3 (2 = "baixa" → mínima). */
+const QUALIDADE_V2_PARA_V3: Record<string, (typeof QUALIDADE_V3)[number]> = {
+  "1": "minima",
+  "2": "minima",
+  "3": "intermediaria",
+  "4": "maxima",
+};
+
+/** `resolucao` da v2 é `intrarregiao` na v3; 0 = sem divisões internas. */
+export const RESOLUCAO_PARA_INTRARREGIAO: Record<string, string | undefined> = {
+  "0": undefined,
+  "1": "regiao",
+  "2": "UF",
+  "3": "mesorregiao",
+  "4": "microrregiao",
+  "5": "municipio",
+};
+
+/** Níveis que a v3 serve. `distritos` NÃO existe na v3 (responde 404). */
+export const NIVEIS = [
+  "paises",
+  "regioes",
+  "estados",
+  "mesorregioes",
+  "microrregioes",
+  "municipios",
+  "regioes-imediatas",
+  "regioes-intermediarias",
+] as const;
+
+export type Nivel = (typeof NIVEIS)[number];
+
+/** Quais divisões internas cada nível aceita — a v3 recusa o resto com 400. */
+export const INTRARREGIAO_POR_NIVEL: Record<Nivel, readonly string[]> = {
+  paises: [
+    "regiao",
+    "UF",
+    "regiao-intermediaria",
+    "regiao-imediata",
+    "mesorregiao",
+    "microrregiao",
+    "municipio",
+  ],
+  regioes: ["UF", "mesorregiao", "microrregiao", "municipio"],
+  estados: ["mesorregiao", "microrregiao", "municipio"],
+  mesorregioes: ["microrregiao", "municipio"],
+  microrregioes: ["municipio"],
+  municipios: [],
+  "regioes-imediatas": ["municipio"],
+  "regioes-intermediarias": ["regiao-imediata", "municipio"],
+};
 
 // Schema for the tool input
 export const malhasSchema = z.object({
   localidade: z
     .string()
     .describe("Código IBGE ou sigla da localidade (ex: 'BR', 'SP', '35', '3550308')"),
-  tipo: z
-    .enum([
-      "paises",
-      "regioes",
-      "estados",
-      "mesorregioes",
-      "microrregioes",
-      "municipios",
-      "distritos",
-      "regioes-imediatas",
-      "regioes-intermediarias",
-    ])
-    .optional()
-    .describe("Tipo de divisão territorial"),
+  tipo: z.enum(NIVEIS).optional().describe("Tipo de divisão territorial"),
   formato: z
     .enum(["geojson", "topojson", "svg"])
     .optional()
     .default("geojson")
     .describe("Formato de saída (padrão: geojson)"),
   resolucao: z.enum(["0", "1", "2", "3", "4", "5"]).optional().default("0")
-    .describe(`Resolução/divisões internas:
-0 = Sem divisões internas
-1 = Macrorregiões (apenas para BR)
-2 = Unidades da Federação
+    .describe(`Divisões internas a desenhar dentro da malha pedida:
+0 = Sem divisões internas (só o contorno)
+1 = Macrorregiões (apenas quando localidade=BR)
+2 = Unidades da Federação (BR ou uma região)
 3 = Mesorregiões
 4 = Microrregiões
-5 = Municípios`),
+5 = Municípios
+Cada nível aceita só as divisões menores que ele: município aceita nenhuma, UF aceita 3, 4 e 5.`),
   qualidade: z
-    .enum(["1", "2", "3", "4"])
+    .enum(["minima", "intermediaria", "maxima", "1", "2", "3", "4"])
     .optional()
-    .default("4")
-    .describe("Qualidade do traçado: 1=mínima, 2=baixa, 3=intermediária, 4=máxima"),
+    .default("maxima")
+    .describe(
+      "Qualidade do traçado: 'minima', 'intermediaria' ou 'maxima' (padrão). " +
+        "Os números 1–4 do IBGE antigo continuam aceitos e são traduzidos."
+    ),
   intrarregiao: z
     .string()
     .optional()
-    .describe("Código de região para filtrar (apenas quando localidade=BR)"),
+    .describe(
+      "Divisão interna pelo nome, alternativa a resolucao: 'regiao', 'UF', " +
+        "'regiao-intermediaria', 'regiao-imediata', 'mesorregiao', 'microrregiao' ou " +
+        "'municipio'. Quando informado, prevalece sobre resolucao."
+    ),
 });
 
 export type MalhasInput = z.infer<typeof malhasSchema>;
@@ -68,7 +139,7 @@ export const malhasOutputSchema = z.object({
   intrarregiao: z
     .string()
     .optional()
-    .describe("Código de região usado para filtrar (apenas quando localidade=BR)"),
+    .describe("Divisão interna desenhada dentro da malha (vocabulário da API v3)"),
   url: z.string().optional().describe("URL para download da malha completa"),
 });
 
@@ -78,31 +149,37 @@ export const malhasOutputSchema = z.object({
 export async function ibgeMalhas(input: MalhasInput): Promise<StructuredToolResult> {
   return withMetrics("ibge_malhas", "malhas", async () => {
     try {
-      // Build the URL
-      let url: string;
-
       // Determine the endpoint based on tipo or localidade
+      let nivel: Nivel;
+      const loc = input.localidade.toUpperCase();
       if (input.tipo) {
-        url = `${IBGE_API.MALHAS}/${input.tipo}/${input.localidade}`;
+        nivel = input.tipo;
+      } else if (loc === "BR") {
+        nivel = "paises";
+      } else if (input.localidade.length === 7) {
+        // Municipality code
+        nivel = "municipios";
       } else {
-        // Auto-detect based on localidade
-        const loc = input.localidade.toUpperCase();
-        if (loc === "BR") {
-          url = `${IBGE_API.MALHAS}/paises/BR`;
-        } else if (loc.length === 2 && isNaN(Number(loc))) {
-          // State abbreviation
-          url = `${IBGE_API.MALHAS}/estados/${loc}`;
-        } else if (input.localidade.length === 2) {
-          // State code
-          url = `${IBGE_API.MALHAS}/estados/${input.localidade}`;
-        } else if (input.localidade.length === 7) {
-          // Municipality code
-          url = `${IBGE_API.MALHAS}/municipios/${input.localidade}`;
-        } else {
-          // Default to estados
-          url = `${IBGE_API.MALHAS}/estados/${input.localidade}`;
-        }
+        // State abbreviation, state code, or anything else: estados
+        nivel = "estados";
       }
+      const id =
+        nivel === "paises" ? "BR" : loc.length === 2 && isNaN(Number(loc)) ? loc : input.localidade;
+      const url = `${IBGE_API.MALHAS}/${nivel}/${id}`;
+
+      // Traduz resolucao/qualidade da v2 para o vocabulário da v3 e recusa,
+      // com mensagem que ensina, a combinação que a v3 responderia com 400.
+      const intrarregiao =
+        input.intrarregiao ?? RESOLUCAO_PARA_INTRARREGIAO[input.resolucao || "0"];
+      const aceitos = INTRARREGIAO_POR_NIVEL[nivel];
+      if (intrarregiao && !aceitos.includes(intrarregiao)) {
+        return {
+          markdown: malhasDivisaoInvalida(input, nivel, intrarregiao, aceitos),
+          isError: true,
+        };
+      }
+      const qualidade =
+        QUALIDADE_V2_PARA_V3[input.qualidade || "maxima"] ?? (input.qualidade || "maxima");
 
       // Add query parameters
       const formatMap: Record<string, string> = {
@@ -113,9 +190,8 @@ export async function ibgeMalhas(input: MalhasInput): Promise<StructuredToolResu
 
       const queryString = buildQueryString({
         formato: formatMap[input.formato || "geojson"],
-        resolucao: input.resolucao && input.resolucao !== "0" ? input.resolucao : undefined,
-        qualidade: input.qualidade || "4",
-        intrarregiao: input.intrarregiao,
+        qualidade,
+        intrarregiao,
       });
 
       const fullUrl = `${url}?${queryString}`;
@@ -187,13 +263,48 @@ export async function ibgeMalhas(input: MalhasInput): Promise<StructuredToolResu
   });
 }
 
+/**
+ * A malha pedida não comporta a divisão interna pedida.
+ *
+ * Erro de CONTRATO, não de dado: em vez de repassar o 400 cru da v3, diz qual
+ * divisão o nível aceita e com que número de `resolucao` ela se pede.
+ */
+function malhasDivisaoInvalida(
+  input: MalhasInput,
+  nivel: Nivel,
+  intrarregiao: string,
+  aceitos: readonly string[]
+): string {
+  const porNome = Object.entries(RESOLUCAO_PARA_INTRARREGIAO);
+  const comoPedir = aceitos
+    .map((nome) => {
+      const numero = porNome.find(([, valor]) => valor === nome)?.[0];
+      return numero ? `${nome} (resolucao="${numero}")` : nome;
+    })
+    .join(", ");
+  return formatError({
+    message: `A malha de ${nivel} não aceita divisão interna "${intrarregiao}"`,
+    tool: "ibge_malhas",
+    params: {
+      localidade: input.localidade,
+      tipo: nivel,
+      resolucao: input.resolucao,
+      intrarregiao: input.intrarregiao,
+    },
+    suggestion: aceitos.length
+      ? `Divisões aceitas neste nível: ${comoPedir}.\nUse resolucao="0" para só o contorno.`
+      : `Este nível não tem divisões internas. Use resolucao="0".`,
+    relatedTools: ["ibge_municipios", "ibge_estados"],
+  });
+}
+
 /** Builds the lightweight structured metadata payload (never the geometry). */
 function buildMalhasMetadata(input: MalhasInput, url: string): Record<string, unknown> {
   return {
     localidade: input.localidade,
     formato: input.formato || "geojson",
     resolucao: input.resolucao || "0",
-    qualidade: input.qualidade || "4",
+    qualidade: input.qualidade || "maxima",
     tipo: input.tipo,
     intrarregiao: input.intrarregiao,
     url,
@@ -213,7 +324,7 @@ function formatMalhasResponse(
   output += `| **Localidade** | ${input.localidade} |\n`;
   output += `| **Formato** | ${input.formato || "geojson"} |\n`;
   output += `| **Resolução** | ${getResolucaoDescricao(input.resolucao || "0")} |\n`;
-  output += `| **Qualidade** | ${input.qualidade || "4"} |\n`;
+  output += `| **Qualidade** | ${input.qualidade || "maxima"} |\n`;
   output += "\n";
 
   // GeoJSON info
@@ -318,7 +429,7 @@ function formatSvgResponse(url: string, input: MalhasInput): string {
   output += `| **Localidade** | ${input.localidade} |\n`;
   output += `| **Formato** | SVG |\n`;
   output += `| **Resolução** | ${getResolucaoDescricao(input.resolucao || "0")} |\n`;
-  output += `| **Qualidade** | ${input.qualidade || "4"} |\n`;
+  output += `| **Qualidade** | ${input.qualidade || "maxima"} |\n`;
   output += "\n";
 
   output += `### URL para Download/Visualização\n\n`;

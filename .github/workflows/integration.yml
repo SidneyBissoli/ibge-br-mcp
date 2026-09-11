@@ -39,3 +39,12 @@ jobs:
         env:
           INTEGRATION_TESTS: '1'
         run: npx vitest run tests/catalog-contract.integration.test.ts
+
+      # Mesma classe de defeito, outra API: a URL que a ferramenta MONTA só é
+      # validada por quem a recebe. O ibge_malhas mandava o vocabulário da v2
+      # (`qualidade=1..4`) para a v3 e falhava 100% das vezes desde sempre, com
+      # os testes offline verdes — eles mockam o fetch e conferem o caminho.
+      - name: Malhas contract against live IBGE API
+        env:
+          INTEGRATION_TESTS: '1'
+        run: npx vitest run tests/malhas-contract.integration.test.ts
