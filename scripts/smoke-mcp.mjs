@@ -17,6 +17,29 @@ import { readdirSync, readFileSync } from "node:fs";
 
 const STDIO = process.argv[2] === "--stdio";
 const BASE = STDIO ? null : (process.argv[2] ?? "https://ibge.sidneybissoli.com");
+
+/**
+ * O smoke fala pela ROTA DE USO PRÓPRIO, e isso não é detalhe de estilo.
+ *
+ * Ele chama `ibge_sidra` com um `agruparPor` inválido DE PROPÓSITO, para
+ * afirmar que a ferramenta recusa. Pela rota pública essa recusa entra na
+ * telemetria indistinguível de gente batendo numa porta emperrada — e entrava:
+ * medido em 11/09/2026, a `ibge_sidra` liderava a fila de urgências do painel
+ * com 42% de erro, e as redes da Azure (os runners do GitHub Actions) traziam
+ * 24 dos 43 erros da janela, numa proporção de um acerto para um erro que é a
+ * assinatura exata deste arquivo. O painel acusava o nosso próprio CI.
+ *
+ * O desconto de varredura do monitor não pega isto: ele procura rajada de
+ * catálogo e assinatura repetida de sessão GRANDE, e um smoke é uma sessão
+ * pequena e arrumada, igualzinha à de uma pessoa explorando. Quem sabe que
+ * este tráfego é nosso é este arquivo, então é ele que se identifica — a rota
+ * `/mcp/uso-proprio` existe desde 11/09/2026 para isso (worker/src/analytics.ts).
+ *
+ * A cobertura da rota pública não se perde: `confereRotaPublica()` abaixo abre
+ * um handshake contra `/mcp` antes de tudo. `initialize` é método de protocolo
+ * e não conta como chamada de ferramenta no painel.
+ */
+const ROTA_MCP = STDIO ? null : (process.env.SMOKE_MCP_ROUTE ?? "/mcp/uso-proprio");
 let nextId = 1;
 
 // --- Transporte HTTP (Streamable HTTP, com sessão) -------------------------
@@ -24,7 +47,7 @@ let sessionId = null;
 async function rpcHttp(method, params, isNotification = false) {
   const body = { jsonrpc: "2.0", method, params };
   if (!isNotification) body.id = nextId++;
-  const res = await fetch(`${BASE}/mcp`, {
+  const res = await fetch(`${BASE}${ROTA_MCP}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -99,6 +122,43 @@ function fail(msg) {
 }
 
 // --- Roteiro ----------------------------------------------------------------
+
+/**
+ * A rota PÚBLICA continua provada, mesmo com o roteiro correndo pela privada.
+ *
+ * Um handshake só, contra `/mcp`, conferindo que o servidor se apresenta com o
+ * mesmo nome. É o que fecha o buraco que trocar de rota abriria: uma quebra que
+ * atingisse `/mcp` e não a rota de uso próprio passaria despercebida. Sai de
+ * graça na telemetria de ferramenta — `initialize` é método de protocolo, e o
+ * painel os exclui por construção.
+ */
+async function confereRotaPublica() {
+  if (STDIO || ROTA_MCP === "/mcp") return;
+  const res = await fetch(`${BASE}/mcp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 0,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "smoke-rota-publica", version: "0.0.0" },
+      },
+    }),
+  });
+  const texto = await res.text();
+  if (!res.ok) fail(`rota pública /mcp: HTTP ${res.status} ${texto.slice(0, 200)}`);
+  const linha = texto.includes("data:")
+    ? texto.split("\n").find((l) => l.startsWith("data:"))?.slice(5).trim()
+    : texto;
+  const nome = JSON.parse(linha)?.result?.serverInfo?.name;
+  if (!nome) fail(`rota pública /mcp: handshake sem serverInfo (${texto.slice(0, 200)})`);
+  console.log(`rota pública /mcp: ok (${nome})`);
+}
+await confereRotaPublica();
+
 const init = await rpc("initialize", {
   protocolVersion: "2025-06-18",
   capabilities: {},
