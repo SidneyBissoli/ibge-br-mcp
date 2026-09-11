@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-09-11
+
 ### Fixed
 - **`agruparPor` exigia adivinhar o rótulo exato da coluna, e recusava quem
   errasse o nome.** Medido em 11/09/2026: `ibge_sidra` era a ferramenta com
