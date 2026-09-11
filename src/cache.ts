@@ -178,11 +178,7 @@ export async function cachedFetch<T>(
   if (!response.ok) {
     // O corpo vai junto: é nele que a fonte diz QUAL parâmetro recusou e por
     // quê, e sem ele o chamador só pode tentar outra combinação às cegas.
-    throw new UpstreamError(
-      response.status,
-      response.statusText,
-      await motivoUpstream(response)
-    );
+    throw new UpstreamError(response.status, response.statusText, await motivoUpstream(response));
   }
 
   const data = (await response.json()) as T;

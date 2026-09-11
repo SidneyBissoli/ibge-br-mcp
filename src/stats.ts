@@ -256,7 +256,9 @@ function resolverColunaGrupo(colunas: string[], pedido: string): ResolucaoDeGrup
   const entrada = APELIDOS_DE_COLUNA.find((e) => e.apelidos.includes(alvo));
   if (entrada) {
     const porApelido = preferirRotulo(
-      colunas.filter((c) => normalizeText(c).replace(/\s*\(\s*codigo\s*\)$/, "") === entrada.canonico)
+      colunas.filter(
+        (c) => normalizeText(c).replace(/\s*\(\s*codigo\s*\)$/, "") === entrada.canonico
+      )
     );
     if (porApelido.length === 1) return { tipo: "traduzida", coluna: porApelido[0] };
     if (porApelido.length > 1) return { tipo: "ambigua", candidatas: porApelido };
