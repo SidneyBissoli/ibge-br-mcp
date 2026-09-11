@@ -133,6 +133,30 @@ const READ_ONLY: ToolAnnotations = {
 };
 
 /**
+ * POLÍTICA: todo esquema de entrada registrado aqui leva `.strict()`, e por
+ * isso RECUSA parâmetro que não existe.
+ *
+ * Sem isso o zod descarta a chave desconhecida em silêncio, aplica o default do
+ * parâmetro que faltou e a ferramenta responde OUTRA pergunta com cara de
+ * resposta. Medido em 11/09/2026: `ibge_indicadores(indicador="populacao",
+ * periodo="2023")` — `periodo` no singular, que o esquema não tem — devolveu a
+ * população de 2026, com `p/last` na URL de procedência e nenhum aviso. Um
+ * agente reporta isso como o número de 2023. Errar alto é melhor que acertar a
+ * pergunta errada, e singular/plural é o engano mais comum que existe.
+ *
+ * `.strict()` publica `additionalProperties: false` e faz o SDK responder
+ * `Unrecognized key: "periodo"` — que NOMEIA a chave, então o modelo se
+ * corrige sozinho. O preço, consciente: erro de validação de esquema é
+ * respondido pelo SDK ANTES do callback, então não passa pela instrumentação e
+ * não aparece na telemetria. Troca-se visibilidade por prevenção, como em
+ * `ilo_get_data`.
+ *
+ * `search`/`fetch` ficam de fora: o contrato deles é da OpenAI e quem os
+ * registra é `@sbissoli/mcp-search`. `tests/server.test.ts` é a guarda — ele
+ * varre as tools anunciadas e reprova a que aceitar parâmetro desconhecido.
+ */
+
+/**
  * Builds and configures the IBGE MCP Server with all tools, resources, and
  * prompts registered. Side-effect-free: it does NOT connect a transport, so it
  * is safe to import and call from tests. `index.ts` wraps it with STDIO.
@@ -239,7 +263,7 @@ Use a different tool when:
 - Details/hierarchy of one locality by code → ibge_localidade
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown table.`,
-      inputSchema: estadosSchema,
+      inputSchema: estadosSchema.strict(),
       outputSchema: comProveniencia(estadosOutputSchema),
       annotations: READ_ONLY,
     },
@@ -270,7 +294,7 @@ Use a different tool when:
 - Neighboring municipalities → ibge_vizinhos
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown table.`,
-      inputSchema: municipiosSchema,
+      inputSchema: municipiosSchema.strict(),
       outputSchema: comProveniencia(municipiosOutputSchema),
       annotations: READ_ONLY,
     },
@@ -301,7 +325,7 @@ Use a different tool when:
 - You want to decompose/understand a code's structure → ibge_geocodigo
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown record.`,
-      inputSchema: localidadeSchema,
+      inputSchema: localidadeSchema.strict(),
       outputSchema: comProveniencia(localidadeOutputSchema),
       annotations: READ_ONLY,
     },
@@ -349,7 +373,7 @@ ibge_sidra is the low-level engine. Prefer a friendlier wrapper when it fits:
 Use ibge_sidra_tabelas and ibge_sidra_metadados to find a table code and its structure before querying.
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
-      inputSchema: sidraSchema,
+      inputSchema: sidraSchema.strict(),
       outputSchema: comProveniencia(sidraOutputSchema),
       annotations: READ_ONLY,
     },
@@ -382,7 +406,7 @@ Examples:
 - Female names: tipo="ranking", sexo="F"
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Nomes (Censo) API. Returns a Markdown table.`,
-      inputSchema: nomesSchema,
+      inputSchema: nomesSchema.strict(),
       outputSchema: comProveniencia(nomesOutputSchema),
       annotations: READ_ONLY,
     },
@@ -417,7 +441,7 @@ Use a different tool when:
 - Scheduled/upcoming release dates (not yet published) → ibge_calendario
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Notícias API. Returns a Markdown list.`,
-      inputSchema: noticiasSchema,
+      inputSchema: noticiasSchema.strict(),
       outputSchema: comProveniencia(noticiasOutputSchema),
       annotations: READ_ONLY,
     },
@@ -453,7 +477,7 @@ This is step 1 of the SIDRA workflow: find a table code → ibge_sidra_metadados
 For common data, a wrapper is usually easier: ibge_censo, ibge_indicadores, ibge_comparar, ibge_cidades.
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns a Markdown table.`,
-      inputSchema: sidraTabelasSchema,
+      inputSchema: sidraTabelasSchema.strict(),
       outputSchema: comProveniencia(sidraTabelasOutputSchema),
       annotations: READ_ONLY,
     },
@@ -484,7 +508,7 @@ Examples:
 Use this after finding a table code (ibge_sidra_tabelas) and before querying with ibge_sidra.
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown.`,
-      inputSchema: sidraMetadadosSchema,
+      inputSchema: sidraMetadadosSchema.strict(),
       outputSchema: comProveniencia(sidraMetadadosOutputSchema),
       annotations: READ_ONLY,
     },
@@ -524,7 +548,7 @@ Use a different tool when:
 - Thematic meshes (biomes, Legal Amazon, semi-arid, metropolitan regions) → ibge_malhas_tema
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Malhas API. Returns the mesh in the requested format (GeoJSON, TopoJSON, or SVG).`,
-      inputSchema: malhasSchema,
+      inputSchema: malhasSchema.strict(),
       outputSchema: comProveniencia(malhasOutputSchema),
       annotations: READ_ONLY,
     },
@@ -559,7 +583,7 @@ Examples:
 This lists surveys, not data. To find table codes use ibge_sidra_tabelas; to query data use ibge_sidra (or a wrapper: ibge_censo, ibge_indicadores, ibge_comparar, ibge_cidades).
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA/Pesquisas API. Returns a Markdown list.`,
-      inputSchema: pesquisasSchema,
+      inputSchema: pesquisasSchema.strict(),
       outputSchema: comProveniencia(pesquisasOutputSchema),
       annotations: READ_ONLY,
     },
@@ -602,7 +626,7 @@ Use a different tool when:
 - An arbitrary SIDRA table → ibge_sidra
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
-      inputSchema: censoSchema,
+      inputSchema: censoSchema.strict(),
       outputSchema: comProveniencia(censoOutputSchema),
       annotations: READ_ONLY,
     },
@@ -655,7 +679,7 @@ Use a different tool when:
 - One municipality's panel → ibge_cidades
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
-      inputSchema: indicadoresSchema,
+      inputSchema: indicadoresSchema.strict(),
       outputSchema: comProveniencia(indicadoresOutputSchema),
       annotations: READ_ONLY,
     },
@@ -691,7 +715,7 @@ Examples:
 - List divisions: nivel="divisoes"
 
 Behavior: read-only and idempotent — a live GET against the public IBGE CNAE API. Returns Markdown.`,
-      inputSchema: cnaeSchema,
+      inputSchema: cnaeSchema.strict(),
       outputSchema: comProveniencia(cnaeOutputSchema),
       annotations: READ_ONLY,
     },
@@ -729,7 +753,7 @@ Use a different tool when:
 - You want the full detailed record of one locality → ibge_localidade
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns Markdown.`,
-      inputSchema: geocodigoSchema,
+      inputSchema: geocodigoSchema.strict(),
       outputSchema: comProveniencia(geocodigoOutputSchema),
       annotations: READ_ONLY,
     },
@@ -763,7 +787,7 @@ Use a different tool when:
 - Already-published news and releases → ibge_noticias
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Calendário API. Returns a Markdown list.`,
-      inputSchema: calendarioSchema,
+      inputSchema: calendarioSchema.strict(),
       outputSchema: comProveniencia(calendarioOutputSchema),
       annotations: READ_ONLY,
     },
@@ -802,7 +826,7 @@ Use this tool ONLY to rank/compare 2–10 localities on one indicator.
 For a single locality, use ibge_cidades (municipal panel), ibge_censo, or ibge_sidra.
 
 Behavior: read-only and idempotent — a live GET against the public IBGE APIs (SIDRA and Localidades). Returns Markdown plus a typed structuredContent payload.`,
-      inputSchema: compararSchema,
+      inputSchema: compararSchema.strict(),
       outputSchema: comProveniencia(compararOutputSchema),
       annotations: READ_ONLY,
     },
@@ -834,7 +858,7 @@ Use a different tool when:
 - Administrative meshes WITH geometry (country/region/state/municipality outlines) → ibge_malhas
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Geosserviços WFS (IBGE Geociências), which is a different service from the Malhas API and the only one that publishes these recortes. Returns Markdown plus a typed structuredContent payload.`,
-      inputSchema: malhasTemaSchema,
+      inputSchema: malhasTemaSchema.strict(),
       outputSchema: comProveniencia(malhasTemaOutputSchema),
       annotations: READ_ONLY,
     },
@@ -865,7 +889,7 @@ Note: proximity is approximated by shared mesoregion (not exact spatial adjacenc
 For listing/searching municipalities, use ibge_municipios.
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Localidades API. Returns a Markdown list.`,
-      inputSchema: vizinhosSchema,
+      inputSchema: vizinhosSchema.strict(),
       outputSchema: comProveniencia(vizinhosOutputSchema),
       annotations: READ_ONLY,
     },
@@ -911,7 +935,7 @@ Use a different tool when:
 - Population/demographic counts (not health-specific) → ibge_censo or ibge_sidra
 
 Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA API. Returns Markdown plus a typed structuredContent payload.`,
-      inputSchema: datasaudeSchema,
+      inputSchema: datasaudeSchema.strict(),
       outputSchema: comProveniencia(datasaudeOutputSchema),
       annotations: READ_ONLY,
     },
@@ -943,7 +967,7 @@ Examples:
 - Available indicators: tipo="indicadores"
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Países API. Returns Markdown.`,
-      inputSchema: paisesSchema,
+      inputSchema: paisesSchema.strict(),
       outputSchema: comProveniencia(paisesOutputSchema),
       annotations: READ_ONLY,
     },
@@ -979,7 +1003,7 @@ Use a different tool when:
 - A macro indicator time series → ibge_indicadores
 
 Behavior: read-only and idempotent — a live GET against the public IBGE APIs (Cidades@/agregados). Returns Markdown plus a typed structuredContent payload.`,
-      inputSchema: cidadesSchema,
+      inputSchema: cidadesSchema.strict(),
       outputSchema: comProveniencia(cidadesOutputSchema),
       annotations: READ_ONLY,
     },

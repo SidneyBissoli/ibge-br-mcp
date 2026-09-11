@@ -236,11 +236,19 @@ export function estatisticasSidra(
   const registrosSemValor = registros.length - numericos.length;
 
   if (numericos.length === 0) {
+    // Duas causas diferentes, e a mensagem antiga dizia SEMPRE a segunda: a
+    // consulta não trouxe registro nenhum, ou trouxe registros cujos valores
+    // são todos marcador de ausência. Acusar marcador onde não havia registro
+    // manda quem lê procurar o problema no lugar errado — foi o que aconteceu
+    // com `tabela=6579, periodos=2023`, que a tabela não publica.
     return {
       ok: false,
       erro:
-        `Nenhum registro da consulta tem valor numérico na coluna "${colunaValor}" ` +
-        `(${registros.length} registros, todos com marcador de ausência do SIDRA ou vazios).`,
+        registros.length === 0
+          ? `A consulta não retornou nenhum registro, então não há o que resumir. ` +
+            `Confira tabela, período e nível territorial em ibge_sidra_metadados.`
+          : `Nenhum registro da consulta tem valor numérico na coluna "${colunaValor}" ` +
+            `(${registros.length} registros, todos com marcador de ausência do SIDRA ou vazios).`,
     };
   }
 

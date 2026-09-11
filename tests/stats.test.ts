@@ -103,6 +103,19 @@ describe("estatisticasSidra — distribution mode", () => {
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.erro).toContain("marcador de ausência");
+    expect(r.erro).toContain("1 registros");
+  });
+
+  // Duas causas diferentes, e até 11/09/2026 a mensagem dizia SEMPRE a segunda.
+  // Acusar marcador de ausência onde não houve registro NENHUM manda quem lê
+  // procurar o defeito no lugar errado — foi o que aconteceu com a tabela 6579
+  // no período 2023, que ela não publica.
+  it("sem NENHUM registro, não acusa marcador de ausência que não existiu", () => {
+    const r = estatisticasSidra(registros(["UF", "Valor"]), { topN: TOP_N_DEFAULT });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.erro).toContain("não retornou nenhum registro");
+    expect(r.erro).not.toContain("marcador de ausência");
   });
 
   it("fails pedagogically when there is no 'Valor' column, listing the available ones", () => {

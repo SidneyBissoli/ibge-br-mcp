@@ -48,6 +48,50 @@ describe("MCP server protocol surface", () => {
     });
   });
 
+  /**
+   * Parâmetro que não existe tem de ser RECUSADO, nunca descartado em silêncio.
+   *
+   * Sem `.strict()`, o zod tira a chave desconhecida, aplica o default do
+   * parâmetro que faltou e a ferramenta responde OUTRA pergunta com cara de
+   * resposta. Medido em 11/09/2026:
+   * `ibge_indicadores(indicador="populacao", periodo="2023")` — singular, que o
+   * esquema não tem — devolveu a população de **2026**, com `p/last` na URL de
+   * procedência e nenhum aviso. Um agente reporta isso como o número de 2023.
+   * Singular/plural é o engano mais comum que existe, e esta é a guarda.
+   *
+   * `search`/`fetch` ficam de fora: o contrato é da OpenAI e quem os registra é
+   * `@sbissoli/mcp-search`.
+   */
+  describe("esquema de entrada recusa parâmetro que não existe", () => {
+    const DEEP_RESEARCH = ["search", "fetch"];
+
+    it("toda tool publica additionalProperties: false", async () => {
+      const { tools } = await client.listTools();
+      const proprias = tools.filter((t) => !DEEP_RESEARCH.includes(t.name));
+
+      expect(proprias.length).toBeGreaterThanOrEqual(21);
+      for (const tool of proprias) {
+        const schema = tool.inputSchema as { additionalProperties?: unknown };
+        expect(schema.additionalProperties, `tool ${tool.name} aceita chave desconhecida`).toBe(
+          false
+        );
+      }
+    });
+
+    it("a recusa NOMEIA a chave, para o modelo se corrigir sozinho", async () => {
+      const result = await client.callTool({
+        name: "ibge_indicadores",
+        arguments: { indicador: "populacao", periodo: "2023" },
+      });
+
+      expect(result.isError).toBe(true);
+      const texto = Array.isArray(result.content)
+        ? result.content.map((c) => ("text" in c ? c.text : "")).join(" ")
+        : "";
+      expect(texto).toContain("periodo");
+    });
+  });
+
   describe("server instructions", () => {
     it("sends the disambiguation map + D2 guidance on the handshake", () => {
       expect(instructions).toBeTruthy();

@@ -56,3 +56,10 @@ jobs:
         env:
           INTEGRATION_TESTS: '1'
         run: npx vitest run tests/malhas-tema-contract.integration.test.ts
+
+      # Resultado VAZIO do SIDRA: a lacuna de período é da fonte, e o teste
+      # pergunta a ela qual é em vez de pinar um ano — 2023 pode ser preenchido.
+      - name: SIDRA empty-result diagnosis against live IBGE API
+        env:
+          INTEGRATION_TESTS: '1'
+        run: npx vitest run tests/sidra-vazio.integration.test.ts

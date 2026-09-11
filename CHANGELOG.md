@@ -8,6 +8,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Parâmetro que não existe era descartado em silêncio, e a ferramenta
+  respondia OUTRA pergunta com cara de resposta.** Medido em 11/09/2026:
+  `ibge_indicadores(indicador="populacao", periodo="2023")` — `periodo` no
+  singular, que o esquema não tem — devolveu a população de **2026**, com
+  `p/last` na URL de procedência e nenhum aviso. Um agente reporta isso como o
+  número de 2023. Todo esquema de entrada passa a levar `.strict()`, então a
+  chamada é recusada com `Unrecognized key: "periodo"`, que NOMEIA a chave.
+  Vale para as 21 ferramentas `ibge_*`; `search`/`fetch` ficam de fora porque o
+  contrato é da OpenAI. **Mudança de superfície:** todas publicam agora
+  `additionalProperties: false`. O preço, consciente: erro de validação de
+  esquema é respondido pelo SDK antes do callback e não aparece na telemetria —
+  troca-se visibilidade por prevenção.
+- **`ibge_sidra` voltava vazio sem dizer por quê.** `tabela=6579,
+  nivel_territorial=3, periodos=2023` — população por UF em 2023, a pergunta
+  mais natural que existe — respondia `totalRegistros: 0` e nada mais, e no
+  modo estatísticas morria acusando *marcador de ausência do SIDRA* que não
+  existia. A causa estava a uma chamada de distância: a tabela 6579 não publica
+  2023, porque a série de estimativas pula os anos de Censo e de Contagem
+  (2007, 2010, 2022, 2023). Agora a resposta nomeia o período ausente e lista,
+  em faixas, os que a tabela tem. O diagnóstico é cortesia — se a fonte de
+  metadados não responder, a resposta sai sem ele — e só fala quando tem
+  certeza: se ALGUM dos períodos pedidos existe, a causa é outra e ele se cala.
+- **A guarda de resposta vazia não pegava o caso real.** O SIDRA responde a
+  consulta sem dados com o cabeçalho e mais nada, ou seja, um elemento e não
+  zero — e a guarda era `data.length === 0`. O payload vazio também passa a
+  preservar os **rótulos das colunas** quando o cabeçalho veio: resposta sem
+  linha ainda diz o que a tabela tem.
+- `estatisticasSidra` separa as duas causas que tratava como uma: "a consulta
+  não retornou nenhum registro" e "os registros vieram todos com marcador de
+  ausência". Acusar marcador onde não houve registro manda quem lê procurar o
+  defeito no lugar errado.
 - **`ibge_malhas` falhava 100% das vezes, desde sempre.** A ferramenta falava o
   vocabulário da API de malhas **v2** (`resolucao=0..5`, `qualidade=1..4`)
   apontando para a **v3**, que responde `400 O parâmetro qualidade aceita
@@ -68,8 +99,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ela não fossilizar. Os testes offline de malhas mockam `fetch` e afirmavam
   `resolucao=2` na URL: passavam verdes sobre uma ferramenta que nunca
   funcionou.
+- `tests/sidra-vazio.integration.test.ts` — contrato do resultado VAZIO contra
+  a API real, também no cron semanal. O ano da lacuna não é pinado: o teste
+  pergunta à fonte quais períodos a tabela tem, acha uma lacuna real e usa
+  essa — se o IBGE preencher a série, ele passa dizendo isso em vez de reprovar
+  por uma boa notícia.
 
-### Changed
 - **Tutorial de conexão** publicado no site, em português e inglês
   ([Consultando o SIDRA por MCP no Claude e no ChatGPT](https://sidneybissoli.com/blog/posts/sidra-via-mcp/)):
   cliente por cliente (claude.ai, Claude Desktop, Claude Code, ChatGPT em

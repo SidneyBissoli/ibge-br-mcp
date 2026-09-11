@@ -171,8 +171,101 @@ describe("ibge_sidra", () => {
 
     const result = await ibgeSidra({ tabela: "6579" });
 
-    expect(result.markdown).toContain("Nenhum dado encontrado para os filtros aplicados");
-    expect((result.structured as Record<string, unknown>).totalRegistros).toBe(0);
+    expect(result.isError).toBeFalsy();
+    expect(result.markdown).toContain("Nenhum dado encontrado");
+    const s = result.structured as Record<string, unknown>;
+    expect(s.totalRegistros).toBe(0);
+    // O cabeçalho veio: os RÓTULOS das colunas continuam na resposta, mesmo sem
+    // uma linha de dado. É o que diz ao chamador o que a tabela tem.
+    expect(s.colunas).toEqual(["UF", "Valor"]);
+  });
+
+  /**
+   * Por que a consulta veio vazia — perguntado à fonte.
+   *
+   * `tabela=6579, nivel_territorial=3, periodos=2023` (população por UF em
+   * 2023, a pergunta mais natural que existe) voltava vazia e calada: a série
+   * de estimativas do IBGE pula 2007, 2010, 2022 e 2023, anos de Censo ou
+   * Contagem. Sem dizer isso, "nenhum registro" vira fato do mundo dentro de um
+   * relatório. Medido e reproduzido em 11/09/2026.
+   */
+  describe("diagnóstico do resultado vazio", () => {
+    const periodosDaTabela = [
+      { id: "2021" },
+      { id: "2024" },
+      { id: "2025" },
+      { id: "2026" },
+      { id: "2001" },
+      { id: "2002" },
+      { id: "2003" },
+    ];
+
+    function vazioMais(periodos: Array<{ id: string }>) {
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(sidraResponse({ D1N: "UF", V: "Valor" })))
+        .mockResolvedValueOnce(mockResponse(periodos));
+    }
+
+    it("nomeia o período que a tabela não publica e lista o que ela tem", async () => {
+      vazioMais(periodosDaTabela);
+
+      const { markdown, isError } = await ibgeSidra({ tabela: "6579", periodos: "2023" });
+
+      expect(isError).toBeFalsy();
+      expect(markdown).toContain("não publica o período 2023");
+      // Em faixas, senão uma série longa vira um parágrafo de números.
+      expect(markdown).toContain("2001-2003, 2021, 2024-2026");
+    });
+
+    it("no plural quando NENHUM dos períodos pedidos existe", async () => {
+      vazioMais(periodosDaTabela);
+
+      const { markdown } = await ibgeSidra({ tabela: "6579", periodos: "2022,2023" });
+
+      expect(markdown).toContain("não publica os períodos 2022, 2023");
+    });
+
+    it("cala quando ALGUM dos períodos pedidos existe — a causa é outra", async () => {
+      vazioMais(periodosDaTabela);
+
+      const { markdown } = await ibgeSidra({ tabela: "6579", periodos: "2021,2023" });
+
+      expect(markdown).not.toContain("não publica");
+      expect(markdown).toContain("Nenhum dado encontrado");
+    });
+
+    it("não julga as palavras do SIDRA, e nem pergunta à fonte por causa delas", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(sidraResponse({ D1N: "UF", V: "Valor" })));
+
+      const { markdown } = await ibgeSidra({ tabela: "6579", periodos: "last" });
+
+      expect(markdown).toContain("Nenhum dado encontrado");
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("diagnóstico é cortesia: fonte fora do ar não derruba a resposta", async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(sidraResponse({ D1N: "UF", V: "Valor" })))
+        .mockRejectedValueOnce(new Error("HTTP 503"));
+
+      const { markdown, isError } = await ibgeSidra({ tabela: "6579", periodos: "2023" });
+
+      expect(isError).toBeFalsy();
+      expect(markdown).toContain("Nenhum dado encontrado");
+    });
+
+    it("no modo estatísticas a causa é a MESMA, e não marcador de ausência", async () => {
+      vazioMais(periodosDaTabela);
+
+      const { markdown } = await ibgeSidra({
+        tabela: "6579",
+        periodos: "2023",
+        estatisticas: true,
+      });
+
+      expect(markdown).toContain("não publica o período 2023");
+      expect(markdown).not.toContain("marcador de ausência");
+    });
   });
 
   it("surfaces an upstream HTTP error with isError and related tools", async () => {
