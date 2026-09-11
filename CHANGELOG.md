@@ -8,6 +8,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **`agruparPor` exigia adivinhar o rótulo exato da coluna, e recusava quem
+  errasse o nome.** Medido em 11/09/2026: `ibge_sidra` era a ferramenta com
+  mais erro do servidor (42% em 60 chamadas na janela de quatro semanas do
+  painel) e, desde que a telemetria de forma ligou em 10/09, **todo** erro dela
+  veio classificado `nao_encontrado`, com `agruparPor` presente em 11 dos 12.
+  Reproduz em uma linha: `agruparPor: "UF"` numa consulta cuja coluna se chama
+  "Unidade da Federação". O chamador não tem como saber o rótulo antes de
+  consultar — é a consulta que o revela —, então o erro era de vocabulário e
+  não de pedido. Agora o rótulo é resolvido por apelido curto (`UF`, `estado`,
+  `cidade`, `região`, `gênero`, `indicador`) e por casamento parcial nas duas
+  direções (`Federação` acha `Unidade da Federação`), e a resposta DIZ por qual
+  coluna agrupou, em `aviso` e no Markdown — resolver calado seria o errar
+  plausível que o projeto proíbe. "período" ficou de fora de propósito: tabela
+  trimestral tem `Trimestre` e anual tem `Ano`, e escolher o eixo por conta
+  própria é responder outra pergunta. Vale para as quatro ferramentas que
+  compartilham `stats.ts` (`ibge_sidra`, `ibge_censo`, `ibge_indicadores`,
+  `ibge_datasaude`). **Mudança de superfície:** a descrição de `agruparPor`.
+- **Rótulo ambíguo escolhia a primeira coluna casada e respondia com cara de
+  certo.** Achado ao consertar o item acima, e é a direção perigosa dele:
+  `agruparPor: "Unidade"` agrupava por "Unidade de Medida" quando o pedido era
+  "Unidade da Federação", sem aviso nenhum. Ambiguidade agora RECUSA e lista
+  entre quais colunas ficou em dúvida. O par `X` / `X (Código)` do SIDRA não
+  conta como ambiguidade: os dois produzem os mesmos grupos e o rótulo legível
+  vence.
+- **O servidor jogava fora a explicação da fonte em todo erro HTTP.**
+  `cachedFetch` lançava `HTTP 400: Bad Request` e descartava o corpo da
+  resposta. O SIDRA responde 400 a toda chamada malformada e o corpo é uma
+  frase que resolve o caso sozinha — "Parâmetro N3 (Nível territorial)
+  incompatível com a tabela", "Parâmetro V (Variável) com código 9999
+  inexistente na tabela", "Tabela 99999: Tabela inválida" —, e quem chamava
+  recebia "Parâmetros inválidos. Verifique se os parâmetros estão no formato
+  correto", que não diz QUAL parâmetro nem por quê. Nasceu `UpstreamError`
+  (`retry.ts`), que carrega status e detalhe, e o erro renderizado ganhou a
+  linha **Resposta da fonte**. O corpo é limpo antes de viajar: HTML de página
+  de erro é descartado, JSON tem a frase extraída da chave, quebras de linha
+  viram espaço e o texto é cortado em 300 caracteres. Vale para as ~21
+  ferramentas, porque o conserto é na camada de fetch, não na `ibge_sidra`.
 - **Parâmetro que não existe era descartado em silêncio, e a ferramenta
   respondia OUTRA pergunta com cara de resposta.** Medido em 11/09/2026:
   `ibge_indicadores(indicador="populacao", periodo="2023")` — `periodo` no

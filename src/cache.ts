@@ -2,7 +2,7 @@
  * Simple in-memory cache with TTL support for IBGE API requests
  */
 
-import { fetchWithRetry, type RetryOptions } from "./retry.js";
+import { fetchWithRetry, motivoUpstream, UpstreamError, type RetryOptions } from "./retry.js";
 
 interface CacheEntry<T> {
   data: T;
@@ -176,7 +176,13 @@ export async function cachedFetch<T>(
   const response = await fetchWithRetry(url, undefined, retryOptions);
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    // O corpo vai junto: é nele que a fonte diz QUAL parâmetro recusou e por
+    // quê, e sem ele o chamador só pode tentar outra combinação às cegas.
+    throw new UpstreamError(
+      response.status,
+      response.statusText,
+      await motivoUpstream(response)
+    );
   }
 
   const data = (await response.json()) as T;

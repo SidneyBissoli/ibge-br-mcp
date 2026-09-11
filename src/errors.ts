@@ -2,7 +2,7 @@
  * Standardized error handling for IBGE MCP Server
  */
 
-import { TimeoutError } from "./retry.js";
+import { TimeoutError, UpstreamError } from "./retry.js";
 
 // Common IBGE API error codes and their meanings
 export const IBGE_ERROR_CODES: Record<number, { message: string; suggestion: string }> = {
@@ -33,6 +33,8 @@ export interface IbgeError {
   message: string;
   tool: string;
   params?: Record<string, unknown>;
+  /** O que a FONTE respondeu, quando respondeu algo (ver `UpstreamError`). */
+  motivo?: string;
   suggestion?: string;
   relatedTools?: string[];
 }
@@ -50,6 +52,16 @@ export function formatError(error: IbgeError): string {
   }
 
   output += `**Mensagem:** ${errorInfo?.message || error.message}\n\n`;
+
+  // A frase da FONTE, quando existe, vem antes dos parâmetros e da sugestão
+  // genérica — é a única linha que diz QUAL parâmetro foi recusado e por quê.
+  // O texto do código HTTP ("Parâmetros inválidos") continua como manchete
+  // porque ele é o que se pode afirmar sem ler a fonte; o motivo é o que
+  // resolve. Antes de 11/09/2026 esta linha não existia e o corpo da resposta
+  // era descartado no `cachedFetch`.
+  if (error.motivo) {
+    output += `**Resposta da fonte:** ${error.motivo}\n\n`;
+  }
 
   if (error.params && Object.keys(error.params).length > 0) {
     output += `### Parâmetros utilizados\n\n`;
@@ -99,6 +111,9 @@ export function parseHttpError(
     message: error.message,
     tool,
     params,
+    // Campo tipado e não recorte da `message`: o detalhe chega inteiro de quem
+    // o leu da resposta, sem depender de separador dentro de uma string.
+    motivo: error instanceof UpstreamError ? error.detalhe : undefined,
     relatedTools,
   });
 }

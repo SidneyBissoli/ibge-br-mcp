@@ -157,6 +157,78 @@ describe("estatisticasSidra — grouped mode", () => {
     expect(r.erro).toContain('"Municipio"');
     expect(r.erro).toContain("Unidade da Federação");
   });
+
+  // Regressão de 11/09/2026. `ibge_sidra` era a ferramenta com mais erro do
+  // servidor (42% em 60 chamadas na janela do painel) e, desde que a telemetria
+  // de forma ligou, TODO erro dela veio classificado `nao_encontrado`, com
+  // `agruparPor` presente em 11 dos 12. Reproduzido em uma linha: a coluna se
+  // chama "Unidade da Federação" e o chamador escreve "UF", que é o nome que
+  // ele tem. Ele não pode saber o rótulo antes de consultar — é a consulta que
+  // o revela —, então o erro era de vocabulário, não de pedido.
+  it("resolves a short alias to the real SIDRA column label", () => {
+    const r = estatisticasSidra(dados, { agruparPor: "UF", topN: 5 });
+    if (!r.ok) throw new Error(r.erro);
+
+    expect(r.bloco.agrupadoPor).toBe("Unidade da Federação");
+    expect(r.bloco.aviso).toContain('"UF"');
+    expect(r.bloco.aviso).toContain('"Unidade da Federação"');
+  });
+
+  it("resolves by partial match in either direction", () => {
+    const r = estatisticasSidra(dados, { agruparPor: "Federação", topN: 5 });
+    if (!r.ok) throw new Error(r.erro);
+    expect(r.bloco.agrupadoPor).toBe("Unidade da Federação");
+  });
+
+  // O aviso é o que separa resolver de adivinhar. Acertar o rótulo inteiro não
+  // pode produzir a mesma resposta de quem errou e foi corrigido em silêncio.
+  it("says nothing when the caller already used the exact label", () => {
+    const r = estatisticasSidra(dados, { agruparPor: "Unidade da Federação", topN: 5 });
+    if (!r.ok) throw new Error(r.erro);
+    expect(r.bloco.agrupadoPor).toBe("Unidade da Federação");
+    expect(r.bloco.aviso).toBeUndefined();
+  });
+
+  // A direção perigosa, e é defeito que existia ANTES desta mudança: o `find`
+  // pegava a primeira casada e seguia. Com "Unidade" ele agrupava por unidade
+  // de MEDIDA quando o pedido era unidade da FEDERAÇÃO, e a resposta saía com
+  // cara de certa. Ambiguidade agora recusa e diz entre o que ficou em dúvida.
+  it("refuses an ambiguous label instead of picking the first match", () => {
+    const ambiguo = registros(
+      ["Unidade de Medida", "Unidade da Federação", "Valor"],
+      { "Unidade de Medida": "Pessoas", "Unidade da Federação": "SP", Valor: "10" },
+      { "Unidade de Medida": "Pessoas", "Unidade da Federação": "RJ", Valor: "4" }
+    );
+    const r = estatisticasSidra(ambiguo, { agruparPor: "Unidade", topN: 5 });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.erro).toContain("ambígua");
+    expect(r.erro).toContain("Unidade de Medida");
+    expect(r.erro).toContain("Unidade da Federação");
+  });
+
+  // O par rótulo/código do SIDRA NÃO é ambiguidade: os dois produzem os mesmos
+  // grupos e só um deles é legível. Sem o desempate, todo eixo cairia em recusa.
+  it("prefers the label over its (Código) twin, which is not ambiguity", () => {
+    const comCodigo = registros(
+      ["Unidade da Federação (Código)", "Unidade da Federação", "Valor"],
+      { "Unidade da Federação (Código)": "35", "Unidade da Federação": "SP", Valor: "10" },
+      { "Unidade da Federação (Código)": "33", "Unidade da Federação": "RJ", Valor: "4" }
+    );
+    const r = estatisticasSidra(comCodigo, { agruparPor: "uf", topN: 5 });
+    if (!r.ok) throw new Error(r.erro);
+    expect(r.bloco.agrupadoPor).toBe("Unidade da Federação");
+  });
+
+  // Deixado de fora de propósito: tabela trimestral tem "Trimestre" e anual tem
+  // "Ano". Traduzir "período" escolheria por conta própria em qual eixo agrupar,
+  // que é responder outra pergunta em vez de recusar.
+  it("does NOT guess a time axis from a vague label", () => {
+    const r = estatisticasSidra(dados, { agruparPor: "período", topN: 5 });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.erro).toContain("não encontrada");
+  });
 });
 
 describe("estatisticasSidra — multi-variable queries", () => {

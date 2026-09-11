@@ -15,6 +15,70 @@ export class TimeoutError extends Error {
   }
 }
 
+/**
+ * Uma resposta HTTP de erro da fonte, COM o que a fonte disse.
+ *
+ * Por que existe. Até 11/09/2026 o erro era `new Error("HTTP 400: Bad Request")`
+ * e o corpo da resposta ia para o lixo. O SIDRA responde 400 a toda chamada
+ * malformada e o corpo é uma frase que resolve o problema sozinha — "Parâmetro
+ * N3 (Nível territorial) incompatível com a tabela", "Parâmetro V (Variável)
+ * com código 9999 inexistente na tabela", "Tabela 99999: Tabela inválida".
+ * Quem chamava recebia "Parâmetros inválidos. Verifique se os parâmetros estão
+ * no formato correto", que não diz QUAL parâmetro nem POR QUÊ, e a única saída
+ * era tentar outra combinação.
+ *
+ * A `message` continua começando por `HTTP <código>: <texto>` de propósito: é
+ * o que `parseHttpError` usa para achar o código, e mudar a forma quebraria a
+ * leitura em silêncio.
+ */
+export class UpstreamError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly statusText: string,
+    /** O que a fonte respondeu no corpo, já limpo e cortado. Vazio quando não há. */
+    public readonly detalhe?: string,
+    sufixo = ""
+  ) {
+    super(`HTTP ${status}: ${statusText}${sufixo}${detalhe ? ` — ${detalhe}` : ""}`);
+    this.name = "UpstreamError";
+  }
+}
+
+/**
+ * O corpo de uma resposta de erro, pronto para ir ao chamador — ou `undefined`.
+ *
+ * Três guardas, cada uma por um motivo: HTML é página de erro de borda e não
+ * ensina nada (e vem em quilobytes); o corte em 300 caracteres existe porque
+ * este texto entra numa mensagem que o modelo lê inteira; e o `catch` cobre
+ * corpo já consumido ou conexão cortada, onde não ter detalhe é melhor que
+ * derrubar o tratamento do erro.
+ */
+export async function motivoUpstream(response: Response): Promise<string | undefined> {
+  try {
+    const cru = (await response.text()).trim();
+    if (!cru || cru.startsWith("<")) return undefined;
+    // JSON de erro das APIs do IBGE em v1/v3 traz a frase numa chave; texto
+    // cru é o caso do SIDRA. Tentar a chave antes de despejar o JSON inteiro.
+    let texto = cru;
+    try {
+      const j = JSON.parse(cru) as Record<string, unknown>;
+      for (const chave of ["message", "mensagem", "erro", "error", "detail"]) {
+        if (typeof j[chave] === "string" && j[chave]) {
+          texto = j[chave] as string;
+          break;
+        }
+      }
+    } catch {
+      // Não era JSON — o texto cru é a mensagem, que é o caso do SIDRA.
+    }
+    const limpo = texto.replace(/\s+/g, " ").trim();
+    if (!limpo) return undefined;
+    return limpo.length > 300 ? `${limpo.slice(0, 297)}...` : limpo;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface RetryOptions {
   /** Maximum number of retry attempts (default: 4) */
   maxRetries?: number;
@@ -171,8 +235,11 @@ export async function fetchWithRetry(
 
   // If we exhausted retries with a response, throw an error with the status
   if (lastResponse) {
-    throw new Error(
-      `HTTP ${lastResponse.status}: ${lastResponse.statusText} (after ${opts.maxRetries} retries)`
+    throw new UpstreamError(
+      lastResponse.status,
+      lastResponse.statusText,
+      await motivoUpstream(lastResponse),
+      ` (after ${opts.maxRetries} retries)`
     );
   }
 

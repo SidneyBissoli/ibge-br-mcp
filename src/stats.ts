@@ -53,7 +53,7 @@ export const agruparPorParam = z
   .string()
   .optional()
   .describe(
-    "Com estatisticas=true, agrupa pela coluna informada (rótulo, ex: 'Unidade da Federação', 'Ano') e ranqueia os grupos por soma decrescente (grupos[0] = maior total), cada grupo com sua mini-distribuição"
+    "Com estatisticas=true, agrupa pela coluna informada (rótulo, ex: 'Unidade da Federação', 'Ano') e ranqueia os grupos por soma decrescente (grupos[0] = maior total), cada grupo com sua mini-distribuição. Nome curto ('UF', 'estado', 'cidade', 'região') e rótulo parcial ('Federação') são resolvidos, e a resposta diz em `aviso` por qual coluna agrupou; rótulo que casa com duas colunas é recusado em vez de escolhido"
   );
 
 export const topNParam = z
@@ -174,6 +174,109 @@ function acharColuna(colunas: string[], rotulo: string): string | undefined {
 }
 
 /**
+ * Rótulo que o chamador costuma inventar → o rótulo que o SIDRA de fato usa.
+ *
+ * Por que existe. Medido em 11/09/2026: `ibge_sidra` era a ferramenta com mais
+ * erro do servidor (42% em 60 chamadas na janela do painel) e, desde que a
+ * telemetria de forma ligou, TODO erro dela é `nao_encontrado` — e 11 dos 12
+ * traziam `agruparPor`. A falha reproduz em uma linha: `agruparPor: "UF"` numa
+ * consulta cuja coluna se chama "Unidade da Federação". O chamador não tem como
+ * saber o rótulo antes de consultar, porque é a consulta que o revela, então
+ * ele chuta o nome curto e leva um erro que só existe por vocabulário.
+ *
+ * O apelido só vale se o rótulo canônico ESTIVER nas colunas daquela consulta —
+ * a tabela não inventa coluna, ela traduz um sinônimo para o que já veio. E a
+ * resolução vai num aviso visível, nunca calada: resolver em silêncio seria o
+ * errar plausível que este projeto proíbe.
+ *
+ * Deliberadamente fora: "período" e "data". Tabela trimestral tem "Trimestre" e
+ * anual tem "Ano"; mapear "período" para "Ano" escolheria por conta própria em
+ * qual eixo agrupar, que é responder outra pergunta.
+ */
+const APELIDOS_DE_COLUNA: Array<{ canonico: string; apelidos: string[] }> = [
+  {
+    canonico: "unidade da federacao",
+    apelidos: ["uf", "ufs", "estado", "estados", "unidade federativa", "sigla da uf"],
+  },
+  { canonico: "municipio", apelidos: ["cidade", "cidades", "municipios"] },
+  { canonico: "grande regiao", apelidos: ["regiao", "regioes", "macrorregiao"] },
+  { canonico: "variavel", apelidos: ["variaveis", "indicador", "indicadores"] },
+  { canonico: "sexo", apelidos: ["genero"] },
+  { canonico: "ano", apelidos: ["anos"] },
+  { canonico: "trimestre", apelidos: ["trimestres"] },
+];
+
+/**
+ * Entre candidatas que só diferem pelo sufixo `(Código)`, o rótulo vence.
+ *
+ * Não é desempate arbitrário: o SIDRA publica todo eixo em par (`Unidade da
+ * Federação` e `Unidade da Federação (Código)`), e quem pede para agrupar por
+ * um eixo quer o nome legível — o código produz os MESMOS grupos com rótulo
+ * pior. Sem isto, qualquer casamento parcial num eixo cairia em ambiguidade e
+ * o chamador levaria uma recusa onde não há dúvida nenhuma.
+ */
+function preferirRotulo(candidatas: string[]): string[] {
+  const semSufixo = new Set(
+    candidatas.map((c) => normalizeText(c).replace(/\s*\(\s*codigo\s*\)$/, ""))
+  );
+  if (semSufixo.size !== 1) return candidatas;
+  const rotulos = candidatas.filter((c) => !/\(\s*c[oó]digo\s*\)\s*$/i.test(c));
+  return rotulos.length > 0 ? rotulos : candidatas;
+}
+
+/** "a, b e c" — quatro candidatas ligadas por " e " viram uma frase ilegível. */
+function listarEmPortugues(itens: string[]): string {
+  if (itens.length <= 1) return itens.join("");
+  return `${itens.slice(0, -1).join(", ")} e ${itens[itens.length - 1]}`;
+}
+
+type ResolucaoDeGrupo =
+  | { tipo: "exata"; coluna: string }
+  | { tipo: "traduzida"; coluna: string }
+  | { tipo: "ambigua"; candidatas: string[] }
+  | { tipo: "nenhuma" };
+
+/**
+ * Resolve o `agruparPor` pedido contra as colunas que a consulta trouxe.
+ *
+ * A ordem é do sinal mais forte para o mais fraco, e a AMBIGUIDADE recusa em
+ * vez de escolher. O `find` que havia aqui antes pegava a primeira casada e
+ * seguia: com `agruparPor: "Unidade"` ele agrupava por "Unidade de Medida"
+ * quando o pedido era "Unidade da Federação", e devolvia um resultado com cara
+ * de certo — defeito da mesma família do que esta função conserta, achado ao
+ * consertá-la.
+ */
+function resolverColunaGrupo(colunas: string[], pedido: string): ResolucaoDeGrupo {
+  const alvo = normalizeText(pedido);
+  if (!alvo) return { tipo: "nenhuma" };
+
+  const exata = colunas.find((c) => normalizeText(c) === alvo);
+  if (exata) return { tipo: "exata", coluna: exata };
+
+  const entrada = APELIDOS_DE_COLUNA.find((e) => e.apelidos.includes(alvo));
+  if (entrada) {
+    const porApelido = preferirRotulo(
+      colunas.filter((c) => normalizeText(c).replace(/\s*\(\s*codigo\s*\)$/, "") === entrada.canonico)
+    );
+    if (porApelido.length === 1) return { tipo: "traduzida", coluna: porApelido[0] };
+    if (porApelido.length > 1) return { tipo: "ambigua", candidatas: porApelido };
+  }
+
+  // Contenção nas DUAS direções: "Federação" acha "Unidade da Federação", e
+  // "Unidade da Federação do domicílio" acha "Unidade da Federação".
+  const parciais = preferirRotulo(
+    colunas.filter((c) => {
+      const n = normalizeText(c);
+      return n.includes(alvo) || alvo.includes(n);
+    })
+  );
+  if (parciais.length === 1) return { tipo: "traduzida", coluna: parciais[0] };
+  if (parciais.length > 1) return { tipo: "ambigua", candidatas: parciais };
+
+  return { tipo: "nenhuma" };
+}
+
+/**
  * Computes the `estatisticas` block + its pt-BR Markdown for a labeled SIDRA
  * result (all data rows — callers must pass the full set, never a page).
  */
@@ -216,14 +319,32 @@ export function estatisticasSidra(
 
   let colunaGrupo: string | undefined;
   if (agruparPor) {
-    colunaGrupo = acharColuna(colunas, agruparPor);
-    if (!colunaGrupo) {
+    const resolucao = resolverColunaGrupo(colunas, agruparPor);
+    if (resolucao.tipo === "ambigua") {
+      return {
+        ok: false,
+        erro:
+          `Coluna de agrupamento "${agruparPor}" é ambígua: casa com ` +
+          `${listarEmPortugues(resolucao.candidatas.map((c) => `"${c}"`))}.\n\n` +
+          `Repita com o rótulo inteiro da coluna desejada.`,
+      };
+    }
+    if (resolucao.tipo === "nenhuma") {
       return {
         ok: false,
         erro:
           `Coluna de agrupamento "${agruparPor}" não encontrada no resultado.\n\n` +
           `Colunas disponíveis: ${colunas.join(", ")}.`,
       };
+    }
+    colunaGrupo = resolucao.coluna;
+    // O chamador pediu um rótulo e recebeu outro: dizer qual, sempre. Sem este
+    // aviso a resposta sai igualzinha à de quem acertou o nome, e ninguém tem
+    // como conferir por qual eixo a estatística foi de fato agrupada.
+    if (resolucao.tipo === "traduzida") {
+      avisos.push(
+        `A coluna de agrupamento "${agruparPor}" foi resolvida como "${resolucao.coluna}".`
+      );
     }
   }
 
