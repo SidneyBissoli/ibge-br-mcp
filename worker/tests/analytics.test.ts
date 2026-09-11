@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { SELF_HEADER, tagRequest, withAnalytics, type RequestTag } from "../src/analytics.js";
+import { SELF_HEADER, SELF_ROUTE, tagRequest, withAnalytics, type RequestTag } from "../src/analytics.js";
 import type { RecordUsage, UsageKind } from "../src/usage-core.js";
 
 interface DataPoint {
@@ -26,8 +26,9 @@ function fakeDataset(): { points: DataPoint[]; dataset: AnalyticsEngineDataset }
   };
 }
 
-function makeRequest(headers: Record<string, string> = {}, cf?: Record<string, unknown>): Request {
-  const req = new Request("https://example.com/mcp", { headers });
+function makeRequest(headers: Record<string, string> = {}, cf?: Record<string, unknown>,
+                     rota = "/mcp"): Request {
+  const req = new Request("https://example.com" + rota, { headers });
   if (cf) Object.defineProperty(req, "cf", { value: cf });
   return req;
 }
@@ -55,6 +56,18 @@ describe("tagRequest", () => {
 
   it("sem secret configurado, nunca marca self", () => {
     expect(tagRequest(makeRequest({ [SELF_HEADER]: "qualquer" })).self).toBe(false);
+  });
+
+  // A rota privada existe porque o conector do claude.ai NAO manda header
+  // custom, e e por ele que o dono mais usa os proprios servidores: sem ela,
+  // o uso proprio some no meio do tráfego da Anthropic e infla a adocao.
+  it("marca self pela ROTA privada, sem header e sem secret", () => {
+    expect(tagRequest(makeRequest({}, undefined, SELF_ROUTE)).self).toBe(true);
+  });
+
+  it("a rota publica continua nao sendo self", () => {
+    expect(tagRequest(makeRequest({}, undefined, "/mcp")).self).toBe(false);
+    expect(tagRequest(makeRequest({}, undefined, "/mcp/outra-coisa")).self).toBe(false);
   });
 });
 
