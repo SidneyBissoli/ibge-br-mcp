@@ -20,6 +20,7 @@
 import { describe, expect, it } from "vitest";
 import { ibgeSidra, sidraSchema } from "../src/tools/sidra.js";
 import { IBGE_API } from "../src/types.js";
+import { fetchIntegracao } from "./integration-fetch.js";
 
 const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TESTS === "true";
 
@@ -27,7 +28,7 @@ const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TE
 const TABELA = "6579";
 
 async function periodosDaFonte(tabela: string): Promise<number[]> {
-  const resposta = await fetch(`${IBGE_API.AGREGADOS}/${tabela}/periodos`);
+  const resposta = await fetchIntegracao(`${IBGE_API.AGREGADOS}/${tabela}/periodos`);
   expect(resposta.status).toBe(200);
   const periodos = (await resposta.json()) as Array<{ id?: string }>;
   return periodos.map((p) => Number(p?.id)).filter((n) => Number.isFinite(n));
