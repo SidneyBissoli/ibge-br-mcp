@@ -27,6 +27,7 @@
 import { describe, expect, it } from "vitest";
 import { ibgeMalhasTema, RECORTES, TEMAS } from "../src/tools/malhas-tema.js";
 import { IBGE_API } from "../src/types.js";
+import { fetchIntegracao } from "./integration-fetch.js";
 
 const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TESTS === "true";
 
@@ -46,7 +47,7 @@ async function consulta(camada: string, campos: readonly string[], filtro?: stri
   url.searchParams.set("count", String(count));
   if (filtro) url.searchParams.set("CQL_FILTER", filtro);
 
-  const resposta = await fetch(url);
+  const resposta = await fetchIntegracao(url);
   expect(resposta.status, `${camada} em ${url}`).toBe(200);
   const corpo = (await resposta.json()) as Resposta;
   return corpo;
@@ -113,7 +114,7 @@ describe.skipIf(!LIVE)("contrato dos recortes temáticos no WFS do IBGE", () => 
     // E a URL que a ferramenta entrega para baixar a geometria precisa VALER —
     // é a única coisa que ela promete e não verifica sozinha. HEAD basta: o
     // corpo passa de 9 MB.
-    const resposta = await fetch(s.url_geometria, { method: "HEAD" });
+    const resposta = await fetchIntegracao(s.url_geometria, { method: "HEAD" });
     expect(resposta.status, s.url_geometria).toBe(200);
   }, 120000);
 });

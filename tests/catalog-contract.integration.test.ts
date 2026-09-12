@@ -28,6 +28,7 @@ import { INDICADORES_SAUDE } from "../src/tools/datasaude.js";
 import { INDICADORES_CONHECIDOS } from "../src/tools/indicadores.js";
 import { TEMPLATES_COMPARACAO } from "../src/tools/comparar.js";
 import { TABELAS_COMUNS } from "../src/tools/sidra.js";
+import { fetchIntegracao, FalhaDeTransporte } from "./integration-fetch.js";
 
 const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TESTS === "true";
 
@@ -108,24 +109,6 @@ function normalize(s: string): string {
 }
 
 /**
- * Orçamento por requisição. Era 45 s, dentro de um prazo de teste de 180 s —
- * três tentativas somavam 147 s por código, e com 33 códigos um runner que
- * não alcança o IBGE levava ~81 min para dizer isso. A API responde em ~250 ms
- * quando responde; 20 s é oitenta vezes isso, folga de sobra para lentidão
- * real sem transformar silêncio em hora de runner.
- */
-const ORCAMENTO_REQUISICAO_MS = 20_000;
-const ESPERA_BASE_MS = 1000;
-
-/** O IBGE nunca respondeu: DNS, TCP, TLS, abort. Diferente de um status HTTP. */
-class FalhaDeTransporte extends Error {
-  constructor(causa: unknown) {
-    super(String(causa));
-    this.name = "FalhaDeTransporte";
-  }
-}
-
-/**
  * Disjuntor. Medido em 12/09/2026: a fonte descarta pacotes de alguns
  * endereços de origem, e o runner que cai num deles não fala com ela o job
  * inteiro. Aconteceu aqui: a rodada das 09:52 UTC travou e foi cortada pelo
@@ -146,33 +129,25 @@ function disjuntorAberto(): boolean {
 
 async function tableName(code: string): Promise<string> {
   const url = `https://servicodados.ibge.gov.br/api/v3/agregados/${code}/metadados`;
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      let res: Response;
-      try {
-        res = await fetch(url, { signal: AbortSignal.timeout(ORCAMENTO_REQUISICAO_MS) });
-      } catch (err) {
-        throw new FalhaDeTransporte(err);
-      }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const meta = (await res.json()) as { nome?: string };
-      if (!meta.nome) throw new Error("metadados sem campo nome");
-      leiturasOk++;
-      sequenciaTransporte = 0;
-      return meta.nome;
-    } catch (err) {
-      lastErr = err;
-      await new Promise((r) => setTimeout(r, ESPERA_BASE_MS * (attempt + 1)));
-    }
-  }
-  if (lastErr instanceof FalhaDeTransporte) {
-    sequenciaTransporte++;
-  } else {
-    // Uma resposta CHEGOU e foi recusada: a conexão está de pé.
+  try {
+    // `fetchIntegracao` já repete falha de transporte; o que sobra aqui é
+    // decidir o que a resposta significa e alimentar o disjuntor.
+    const res = await fetchIntegracao(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const meta = (await res.json()) as { nome?: string };
+    if (!meta.nome) throw new Error("metadados sem campo nome");
+    leiturasOk++;
     sequenciaTransporte = 0;
+    return meta.nome;
+  } catch (err) {
+    if (err instanceof FalhaDeTransporte) {
+      sequenciaTransporte++;
+    } else {
+      // Uma resposta CHEGOU e foi recusada: a conexão está de pé.
+      sequenciaTransporte = 0;
+    }
+    throw new Error(`tabela ${code}: falha ao consultar metadados — ${String(err)}`);
   }
-  throw new Error(`tabela ${code}: falha ao consultar metadados — ${String(lastErr)}`);
 }
 
 describe.runIf(LIVE)("contrato do catálogo SIDRA (API real)", () => {

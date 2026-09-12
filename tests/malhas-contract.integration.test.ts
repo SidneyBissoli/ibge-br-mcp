@@ -32,6 +32,7 @@ import {
   type Nivel,
 } from "../src/tools/malhas.js";
 import { IBGE_API } from "../src/types.js";
+import { fetchIntegracao } from "./integration-fetch.js";
 
 const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TESTS === "true";
 
@@ -59,7 +60,7 @@ const GEOJSON = encodeURIComponent("application/vnd.geo+json");
  */
 async function aceitosSegundoApi(nivel: Nivel): Promise<string[]> {
   const url = `${IBGE_API.MALHAS}/${nivel}/${EXEMPLO[nivel]}?formato=${GEOJSON}&intrarregiao=__invalido__`;
-  const resposta = await fetch(url);
+  const resposta = await fetchIntegracao(url);
   expect(resposta.status, `${nivel}: esperava 400 para intrarregiao inválida`).toBe(400);
   const { message } = (await resposta.json()) as { message?: string };
   expect(message, `${nivel}: a API não explicou o que aceita`).toBeTruthy();
@@ -87,7 +88,7 @@ describe.skipIf(!LIVE)("contrato de malhas contra a API v3 real", () => {
   for (const nivel of NIVEIS) {
     it(`${nivel}: o endpoint da ferramenta responde 200`, async () => {
       const url = `${IBGE_API.MALHAS}/${nivel}/${EXEMPLO[nivel]}?formato=${GEOJSON}&qualidade=minima`;
-      const resposta = await fetch(url);
+      const resposta = await fetchIntegracao(url);
       expect(resposta.status, `${nivel} em ${url}`).toBe(200);
     }, 30000);
   }
@@ -95,7 +96,7 @@ describe.skipIf(!LIVE)("contrato de malhas contra a API v3 real", () => {
   for (const qualidade of QUALIDADE_V3) {
     it(`a API aceita qualidade="${qualidade}"`, async () => {
       const url = `${IBGE_API.MALHAS}/paises/BR?formato=${GEOJSON}&qualidade=${qualidade}`;
-      expect((await fetch(url)).status).toBe(200);
+      expect((await fetchIntegracao(url)).status).toBe(200);
     }, 30000);
   }
 
