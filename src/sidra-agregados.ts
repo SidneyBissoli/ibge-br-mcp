@@ -242,6 +242,8 @@ async function explicarFalha(
     `A fonte recusou a consulta sem dizer por quê. Tabela ${consulta.tabela}, ` +
       `variável ${consulta.variaveis} e nível N${consulta.nivel} existem; ` +
       `o que resta conferir é a localidade (${consulta.localidades}) — existe nesse nível? — ` +
-      `e o período (${consulta.periodos}).`
+      `e o período (${consulta.periodos}). A fonte também recusa assim consulta GRANDE demais ` +
+      `(medido em 16/09/2026: todos os municípios × 12 períodos anuais falha, × 8 passa); ` +
+      `se pediu muitas localidades e períodos, reduza o período (ex.: last 4) ou suba o nível territorial.`
   );
 }

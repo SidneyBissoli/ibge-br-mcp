@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **A recusa por tamanho ganhou explicação.** Medido em 16/09/2026: a API de
+  Agregados v3, que passou a servir o SIDRA na 5.0.1, tem teto abaixo dos
+  100 mil valores do apisidra — todos os municípios × 12 períodos anuais
+  responde 500 sem frase, × 8 passa (8 MB em 22 s). A mensagem de erro do
+  caso residual (parâmetros conferidos nos metadados) passa a dizer isso e a
+  apontar a saída (reduzir `periodos` ou subir o nível). **Mudança de
+  superfície:** a descrição de `ibge_sidra` deixa de citar o teto antigo de
+  100 mil valores e passa a citar o novo comportamento.
+
 ## [5.0.1] - 2026-09-16
 
 ### Fixed

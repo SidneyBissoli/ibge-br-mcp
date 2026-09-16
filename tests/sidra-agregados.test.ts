@@ -197,6 +197,9 @@ describe("fetchSidra", () => {
       expect(e.status).toBe(500);
       expect(e.detalhe).toContain("localidade (9999999)");
       expect(e.detalhe).toContain("período (last)");
+      // O 500 da v3 também é a resposta a consulta grande demais (teto abaixo
+      // dos 100 mil valores do apisidra): a frase tem de oferecer a saída.
+      expect(e.detalhe).toContain("reduza o período");
     });
 
     it("'allxp' não é conferido contra a lista de variáveis", async () => {
