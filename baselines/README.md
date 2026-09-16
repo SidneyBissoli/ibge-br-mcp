@@ -11,6 +11,7 @@ descrições 12× menores em produção). Nenhum teste unitário pega essa class
 | Arquivo | Como foi capturado | O que representa |
 |:--|:--|:--|
 | `surface-stdio-5.1.0.json` | `--stdio` sobre `dist/index.js` do fonte atual | o que o canal npm publica desde a 5.1.0 |
+| `surface-http-prod-5.1.0.json` | `--url https://ibge.sidneybissoli.com/mcp` | o que o endpoint hospedado serve desde 16/09/2026 (5.1.0) — byte-idêntico ao stdio 5.1.0 |
 | `surface-stdio-4.3.0.json` | `--stdio` sobre `dist/index.js` do fonte atual | o que o canal npm publica |
 | `surface-http-prod-4.3.0.json` | `--url https://ibge.sidneybissoli.com/mcp` | o que o endpoint hospedado serve DE FATO |
 | `surface-*-4.2.0.json` | idem, na 4.2.0 | histórico: a superfície antes de `search`/`fetch` |
