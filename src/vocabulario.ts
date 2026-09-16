@@ -64,16 +64,14 @@
  * carro/frota (0 — frota é do Denatran), imc (0), matrícula como cadastro
  * (0 — o IBGE mede "frequenta escola", não matrícula, que é do Inep).
  *
- * Vale para os dois caminhos de busca, pelas duas pontas da mesma tabela:
- * `ibge_sidra_tabelas` expande o TERMO da busca (OR dentro do termo, AND entre
- * termos — expandir só aumenta o recall, nunca perde casamento que já havia) e
- * o índice de `search` (Deep Research) recebe a palavra perguntada como KEYWORD
- * do agregado cujo nome traz a palavra da fonte.
- *
- * Mesma receita de `src/ilostat/vocabulary.ts` (ilo-mcp-server 0.6.0) e
- * `src/uis/vocabulary.ts` (uis-mcp-server 0.3.0); terceiro servidor com ela —
- * candidata a subir para `@sbissoli/mcp-search`.
+ * A MECÂNICA (normalização dos dois lados, AND por palavra com stopwords do
+ * pt-BR fora, singular sem caco, OR das grafias do IBGE, a nota dita e a ponta
+ * inversa para o índice de `search`) mora em `@sbissoli/mcp-search` desde a
+ * 0.5.0 — cinco servidores a carregavam em cópia; aqui fica só a tabela. Os
+ * nomes exportados são os de sempre (em português), para quem chama não mudar.
  */
+
+import { createVocabulary, type ExpandedTerm } from "@sbissoli/mcp-search";
 
 export interface EntradaVocabulario {
   /** Como o usuário escreve (um token, normalizado: minúsculo, sem acento). */
@@ -116,81 +114,11 @@ export const VOCABULARIO: readonly EntradaVocabulario[] = [
   { perguntado: "quarto", fonte: ["quarto", "dormitorio"] },
 ];
 
-const POR_PERGUNTADO: ReadonlyMap<string, readonly string[]> = new Map(
-  VOCABULARIO.map((e) => [e.perguntado, e.fonte])
-);
-
-/**
- * Palavras que não carregam significado no nome de um agregado e, em AND,
- * excluem resultado certo ("grupo de idade" não pode morrer no "de"). Só saem
- * quando sobra algum termo — busca feita só de stopword continua valendo.
- */
-const STOPWORDS: ReadonlySet<string> = new Set([
-  "a",
-  "o",
-  "as",
-  "os",
-  "um",
-  "uma",
-  "de",
-  "da",
-  "do",
-  "das",
-  "dos",
-  "e",
-  "em",
-  "no",
-  "na",
-  "nos",
-  "nas",
-  "ao",
-  "aos",
-  "por",
-  "para",
-  "com",
-  "sem",
-  "que",
-  "ou",
-]);
-
-/** Sem acento, caixa baixa, espaços colapsados — os dois lados da busca passam por aqui. */
-export function normalizar(texto: string): string {
-  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-/**
- * Forma singular de um termo já normalizado — a substring mais curta casa o
- * plural também. Só as regras do português que não fabricam caco: "ões/ães"
- * → "ão" (já sem acento: "oes"→"ao"), "ais/eis/ois" → "al/el/ol" e o "s" final.
- */
-function singulares(termo: string): string[] {
-  if (termo.length > 4 && (termo.endsWith("oes") || termo.endsWith("aes")))
-    return [`${termo.slice(0, -3)}ao`];
-  if (termo.length > 4 && /(ais|eis|ois)$/.test(termo)) return [`${termo.slice(0, -2)}l`];
-  if (termo.length > 3 && termo.endsWith("s") && !termo.endsWith("ss")) return [termo.slice(0, -1)];
-  return [];
-}
-
-/** Os termos efetivos da busca: normalizados, sem stopword, sem vazio. */
-export function termosDaBusca(busca: string): string[] {
-  const todos = normalizar(busca).split(" ").filter(Boolean);
-  const ficam = todos.filter((t) => !STOPWORDS.has(t));
-  return ficam.length ? ficam : todos;
-}
-
-/**
- * Um termo e as substrings que o representam na busca (o próprio termo primeiro).
- * A expansão só acrescenta alternativas em OR: o que casava antes segue casando.
- */
-export function expandirTermo(termo: string): string[] {
-  const t = normalizar(termo);
-  const saida = [
-    t,
-    ...(POR_PERGUNTADO.get(t) ?? []),
-    ...singulares(t).flatMap((s) => [s, ...(POR_PERGUNTADO.get(s) ?? [])]),
-  ];
-  return [...new Set(saida)];
-}
+const vocabulario = createVocabulary({
+  entries: VOCABULARIO.map((e) => ({ asked: e.perguntado, source: e.fonte })),
+  locale: "pt-BR",
+  sourceName: "o IBGE",
+});
 
 export interface TermoExpandido {
   readonly termo: string;
@@ -199,48 +127,38 @@ export interface TermoExpandido {
   readonly traduzido: boolean;
 }
 
+const emPortugues = (e: ExpandedTerm): TermoExpandido => ({
+  termo: e.term,
+  padroes: e.patterns,
+  traduzido: e.translated,
+});
+const emIngles = (e: TermoExpandido): ExpandedTerm => ({
+  term: e.termo,
+  patterns: e.padroes,
+  translated: e.traduzido,
+});
+
+/** Sem acento, caixa baixa, espaços colapsados — os dois lados da busca passam por aqui. */
+export const normalizar = vocabulario.normalize;
+/** Os termos efetivos da busca: normalizados, sem stopword, sem vazio. */
+export const termosDaBusca = vocabulario.queryTerms;
+/** Um termo e as substrings que o representam na busca (o próprio termo primeiro). */
+export const expandirTermo = vocabulario.expandTerm;
 /** A busca inteira, termo a termo, pronta para virar filtro. */
 export function expandirBusca(busca: string): TermoExpandido[] {
-  return termosDaBusca(busca).map((termo) => {
-    const padroes = expandirTermo(termo);
-    const traduzido =
-      POR_PERGUNTADO.has(termo) || singulares(termo).some((s) => POR_PERGUNTADO.has(s));
-    return { termo, padroes, traduzido };
-  });
+  return vocabulario.expandQuery(busca).map(emPortugues);
 }
-
-/**
- * A frase que conta ao chamador que a palavra dele não é a do IBGE — sem isto
- * a tradução é invisível e o resultado parece vir do que ele escreveu.
- */
+/** A frase que conta ao chamador que a palavra dele não é a do IBGE. */
 export function notasDeVocabulario(expandidos: readonly TermoExpandido[]): string[] {
-  return expandidos
-    .filter((e) => e.traduzido)
-    .map((e) => {
-      const outros = e.padroes.filter((p) => p !== e.termo);
-      return `"${e.termo}" também foi buscado como ${outros.join(", ")} — a palavra que o IBGE usa.`;
-    });
+  return vocabulario.vocabularyNotes(expandidos.map(emIngles));
 }
-
 /** Um nome (já normalizado) casa o termo expandido? */
 export function casaTermo(nomeNormalizado: string, expandido: TermoExpandido): boolean {
-  return expandido.padroes.some((p) => nomeNormalizado.includes(p));
+  return vocabulario.matchesTerm(nomeNormalizado, emIngles(expandido));
 }
-
 /** Um nome (já normalizado) casa TODOS os termos da busca expandida? */
 export function casaBusca(nomeNormalizado: string, expandidos: readonly TermoExpandido[]): boolean {
-  return expandidos.every((e) => casaTermo(nomeNormalizado, e));
+  return vocabulario.matchesQuery(nomeNormalizado, expandidos.map(emIngles));
 }
-
-/**
- * A ponta inversa da tabela: as palavras com que se PERGUNTA por este nome de
- * agregado — keywords do índice de `search`, que ranqueia por relevância em
- * vez de casar substring.
- */
-export function palavrasPerguntadas(nome: string): string[] {
-  const n = normalizar(nome);
-  const saida = VOCABULARIO.filter((e) => e.fonte.some((f) => n.includes(f))).map(
-    (e) => e.perguntado
-  );
-  return [...new Set(saida)];
-}
+/** A ponta inversa: as palavras com que se PERGUNTA por este nome — keywords do índice de `search`. */
+export const palavrasPerguntadas = vocabulario.askedWordsFor;
