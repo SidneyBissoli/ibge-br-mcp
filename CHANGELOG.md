@@ -5,6 +5,17 @@ All notable changes to the IBGE MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.1] - 2026-09-16
+
+### Changed
+- **A mecânica do vocabulário da pergunta sobe para `@sbissoli/mcp-search` 0.5.0.**
+  `src/vocabulario.ts` fica só com a tabela medida e os nomes de sempre (em
+  português); normalização, AND por palavra, stopwords, singular, nota e ponta
+  inversa vêm de `createVocabulary` (locale `pt-BR`, fonte "o IBGE"). Cinco
+  servidores carregavam a mesma receita em cópia — regra da Fase 0. Sem mudança
+  de comportamento nem de superfície: os 39 testes de `tests/vocabulario.test.ts`
+  e o contrato de saída passam iguais.
+
 ## [5.1.0] - 2026-09-16
 
 ### Fixed
