@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { IBGE_API } from "../types.js";
-import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { CACHE_TTL } from "../cache.js";
+import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
-import { fetchWithRetry } from "../retry.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import {
   type StructuredToolResult,
@@ -166,7 +166,7 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
         // Static catalog maintained in code — no upstream fetch (no cache key/dataset).
         provenance: provenienciaIbge({
           fonte: "SIDRA",
-          url: IBGE_API.SIDRA,
+          url: IBGE_API.AGREGADOS,
           pesquisa: "catálogo de indicadores de saúde mantido pelo servidor",
         }),
       };
@@ -203,27 +203,18 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
 
     try {
       // Build SIDRA query
-      const url = buildSidraUrl(
+      const caminho = buildSidraPath(
         indicadorInfo.tabela,
         nivel,
         input.localidade ?? "all",
         input.periodo ?? "last"
       );
 
-      const key = cacheKey(url);
-
-      // Try to fetch with cache (shorter TTL for health data)
-      let data: SidraData[];
-      try {
-        data = await cachedFetch<SidraData[]>(url, key, CACHE_TTL.SHORT);
-      } catch {
-        // Fallback without cache (with retry)
-        const response = await fetchWithRetry(url);
-        if (!response.ok) {
-          throw new Error(`Erro na API SIDRA: ${response.status}`);
-        }
-        data = await response.json();
-      }
+      // Pela API de Agregados v3 (ver src/sidra-agregados.ts), cache curto.
+      // Até 5.0.0 a falha era refeita sem cache, na mesma URL: repetia o mesmo
+      // erro e jogava fora a frase da fonte. Agora o erro sobe inteiro para
+      // parseHttpError, que é quem sabe dizer qual parâmetro ela recusou.
+      const { url, chaveCache: key, data } = await fetchSidra<SidraData[]>(caminho, CACHE_TTL.SHORT);
 
       const pesquisa = `SIDRA, Tabela ${indicadorInfo.tabela} (${indicadorInfo.nome})`;
       const proveniencia = (opts?: {
@@ -308,13 +299,13 @@ interface SidraData {
   [key: string]: string;
 }
 
-function buildSidraUrl(tabela: string, nivel: string, localidade: string, periodo: string): string {
+function buildSidraPath(tabela: string, nivel: string, localidade: string, periodo: string): string {
   let path = `/t/${tabela}`;
   path += `/n${nivel}/${localidade}`;
   path += `/v/allxp`;
   path += `/p/${periodo}`;
 
-  return `${IBGE_API.SIDRA}${path}`;
+  return path;
 }
 
 function listHealthIndicators(): string {

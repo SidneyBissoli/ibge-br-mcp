@@ -26,7 +26,7 @@ process connection metadata (including IP addresses) per its own
 ## Upstream requests
 
 Your queries are translated into requests to the public IBGE APIs
-(`servicodados.ibge.gov.br` and `apisidra.ibge.gov.br`). No user-identifying
+(`servicodados.ibge.gov.br` and `geoservicos.ibge.gov.br`). No user-identifying
 information is forwarded upstream.
 
 ## Data license

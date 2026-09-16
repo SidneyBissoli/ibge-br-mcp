@@ -439,19 +439,19 @@ const CASOS: Caso[] = [
   {
     nome: "fetch",
     cobre: "município (hierarquia + população estimada)",
-    mock: porUrl({ ...mocksIndice, "/municipios/3550308$": municipioSP, apisidra: sidraPop }),
+    mock: porUrl({ ...mocksIndice, "/municipios/3550308$": municipioSP, "view=flat": sidraPop }),
     args: { id: "mun:3550308" },
   },
   {
     nome: "fetch",
     cobre: "município magro (sem hierarquias opcionais, SIDRA sem linha de dado)",
-    mock: porUrl({ ...mocksIndice, "/municipios/3550308$": municipioMagro, apisidra: sidraVazio }),
+    mock: porUrl({ ...mocksIndice, "/municipios/3550308$": municipioMagro, "view=flat": sidraVazio }),
     args: { id: "mun:3550308" },
   },
   {
     nome: "fetch",
     cobre: "indicador conhecido (série do SIDRA)",
-    mock: porUrl({ ...mocksIndice, "apisidra": sidraPop }),
+    mock: porUrl({ ...mocksIndice, "view=flat": sidraPop }),
     args: { id: "ind:populacao" },
   },
 ];

@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.1] - 2026-09-16
+
+### Fixed
+- **O SIDRA emudeceu: `apisidra.ibge.gov.br` passou a responder 403 a todo
+  cliente que não é navegador.** Medido em 16/09/2026: entre o último smoke
+  verde (14/09, 22:11 UTC) e o primeiro vermelho (16/09, 01:12 UTC) o IBGE pôs
+  o host atrás de um desafio gerenciado do Cloudflare (`cf-mitigated:
+  challenge`, a página "Just a moment..."); 60 de 60 requisições feitas com o
+  `fetch` do Node voltaram 403, com qualquer User-Agent, da produção, do CI e
+  do laptop. Seis ferramentas liam o SIDRA por lá (`ibge_sidra`, `ibge_censo`,
+  `ibge_comparar`, `ibge_datasaude`, `ibge_indicadores` e a população de
+  `ibge_vizinhos`), e todas falhavam com "HTTP 403: Forbidden". A causa é do
+  lado do IBGE e não se contorna — o desafio exige JavaScript de navegador. O
+  que se resolve é o acoplamento ao host: a API de Agregados v3
+  (`servicodados.ibge.gov.br/api/v3/agregados`), que já servia metadados e
+  catálogo, serve as mesmas tabelas e, com `view=flat`, no formato idêntico ao
+  do apisidra (cabeçalho NC/NN/MC/MN/V/D1C…, código de unidade inclusive). As
+  ferramentas continuam montando o caminho do SIDRA que a documentação
+  publica; `src/sidra-agregados.ts` o traduz para a URL da v3, e é essa URL
+  que vai para a proveniência. O que a v3 não dá de graça é a frase do erro
+  (responde 500 sem dizer qual parâmetro recusou): ela é recomposta a partir
+  dos metadados da tabela — tabela inválida, variável ou classificação fora da
+  tabela, nível territorial que ela não publica —, preservando o que a 5.0.0
+  tinha aprendido sobre o 400 do apisidra. `ibge_datasaude` deixou de refazer
+  a chamada sem cache ao falhar (repetia o mesmo erro e descartava o motivo da
+  fonte). **Mudança visível:** `source_url` e a citação das seis ferramentas
+  apontam para `servicodados.ibge.gov.br/api/v3/agregados/...` em vez de
+  `apisidra.ibge.gov.br/values/...`.
+
 ## [5.0.0] - 2026-09-11
 
 ### Fixed

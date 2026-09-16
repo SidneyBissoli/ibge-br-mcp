@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IBGE_API } from "../types.js";
-import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { CACHE_TTL } from "../cache.js";
+import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
@@ -351,7 +352,7 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
         // Static catalog maintained in code — no upstream fetch (no cache key/dataset).
         provenance: provenienciaIbge({
           fonte: "SIDRA",
-          url: IBGE_API.SIDRA,
+          url: IBGE_API.AGREGADOS,
           pesquisa: "catálogo de temas do Censo mantido pelo servidor",
         }),
       };
@@ -427,14 +428,16 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
 
     // Build SIDRA query
     try {
-      const url = buildSidraUrl(tabelaInfo.tabela, nivel, input.localidades ?? "all", periodos);
+      const caminho = buildSidraPath(tabelaInfo.tabela, nivel, input.localidades ?? "all", periodos);
 
-      // Use cache for census data (1 hour TTL - data doesn't change often but queries vary)
-      const key = cacheKey(url);
+      // Pela API de Agregados v3 (ver src/sidra-agregados.ts). Cache de 1 hora:
+      // o dado muda pouco, as consultas variam. `url` é a consultada de fato.
+      let url = "";
+      let key = "";
       let data: Record<string, string>[];
 
       try {
-        data = await cachedFetch<Record<string, string>[]>(url, key, CACHE_TTL.MEDIUM);
+        ({ url, chaveCache: key, data } = await fetchSidra(caminho, CACHE_TTL.MEDIUM));
       } catch (error) {
         if (error instanceof Error && error.message.includes("400")) {
           return {
@@ -533,7 +536,7 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
   });
 }
 
-function buildSidraUrl(
+function buildSidraPath(
   tabela: string,
   nivel: string,
   localidades: string,
@@ -544,7 +547,7 @@ function buildSidraUrl(
   path += `/v/allxp`;
   path += `/p/${periodos}`;
 
-  return `${IBGE_API.SIDRA}${path}`;
+  return path;
 }
 
 function formatCensoTable(data: Record<string, string>[]): string {

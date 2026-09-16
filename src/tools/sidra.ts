@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
@@ -155,10 +156,13 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
 
       // Build the SIDRA API URL
       // Format: /t/{tabela}/n{nivel}/{localidade}/v/{variaveis}/p/{periodos}/c{classificacao}/{categorias}
+      // Os mesmos padrões do esquema (sidraInputSchema): quem chama a função
+      // direto, sem passar pelo parse do SDK, não pode mandar "nundefined"
+      // para a rede — e a tradução para a v3 recusa caminho incompleto.
       let path = `/t/${input.tabela}`;
-      path += `/n${input.nivel_territorial}/${input.localidades}`;
-      path += `/v/${input.variaveis}`;
-      path += `/p/${input.periodos}`;
+      path += `/n${input.nivel_territorial ?? "1"}/${input.localidades ?? "all"}`;
+      path += `/v/${input.variaveis ?? "allxp"}`;
+      path += `/p/${input.periodos ?? "last"}`;
 
       if (input.classificacoes) {
         // Parse classifications like "2[6794]" or "2[6794,6795]"
@@ -168,14 +172,17 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
         }
       }
 
-      const url = `${IBGE_API.SIDRA}${path}`;
-
-      // Use cache for SIDRA data (5 minutes TTL - data updates frequently)
-      const key = cacheKey(url);
+      // Pela API de Agregados v3, que serve o SIDRA no mesmo formato — o
+      // apisidra ficou atrás de desafio do Cloudflare em 15/09/2026 (ver
+      // src/sidra-agregados.ts). `url` é a que foi consultada de fato: é ela
+      // que vai para a proveniência. Cache de 5 minutos: o dado muda com
+      // frequência.
+      let url = "";
+      let key = "";
       let data: SidraRecord[];
 
       try {
-        data = await cachedFetch<SidraRecord[]>(url, key, CACHE_TTL.SHORT);
+        ({ url, chaveCache: key, data } = await fetchSidra<SidraRecord[]>(path, CACHE_TTL.SHORT));
       } catch (error) {
         if (error instanceof Error) {
           return {

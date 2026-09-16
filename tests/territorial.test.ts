@@ -59,7 +59,7 @@ describe("Territorial level validation", () => {
 
       await ibgeIndicadores({ indicador: "desemprego", nivel_territorial: "3" });
 
-      expect(String(mockFetch.mock.calls.at(-1)?.[0])).toContain("/n3/");
+      expect(String(mockFetch.mock.calls.at(-1)?.[0])).toContain("localidades=N3[");
     });
   });
 
@@ -77,7 +77,7 @@ describe("Territorial level validation", () => {
 
       await ibgeCenso({ tema: "populacao", nivel_territorial: "6", localidades: "3550308" });
 
-      expect(String(mockFetch.mock.calls.at(-1)?.[0])).toContain("/n6/");
+      expect(String(mockFetch.mock.calls.at(-1)?.[0])).toContain("localidades=N6[");
     });
   });
 

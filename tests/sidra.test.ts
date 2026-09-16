@@ -44,11 +44,14 @@ describe("ibge_sidra", () => {
       periodos: "2022",
     });
 
+    // Desde 16/09/2026 o caminho do SIDRA vai para a rede como URL da API de
+    // Agregados v3 (ver src/sidra-agregados.ts).
     const url = lastUrl();
-    expect(url).toContain("/t/6579");
-    expect(url).toContain("/n3/35,33");
-    expect(url).toContain("/v/9324");
-    expect(url).toContain("/p/2022");
+    expect(url).toContain("/api/v3/agregados/6579/");
+    expect(url).toContain("localidades=N3[35,33]");
+    expect(url).toContain("/variaveis/9324");
+    expect(url).toContain("/periodos/2022/");
+    expect(url).toContain("view=flat");
   });
 
   it("renders a Markdown table using the header row labels and known table name", async () => {
@@ -133,7 +136,7 @@ describe("ibge_sidra", () => {
 
     await ibgeSidra({ tabela: "6579", classificacoes: "2[6794]" });
 
-    expect(lastUrl()).toContain("/c2/6794");
+    expect(lastUrl()).toContain("classificacao=2[6794]");
   });
 
   it("rejects an invalid territorial level without calling the API", async () => {

@@ -511,8 +511,7 @@ ibge_datasaude(indicador="listar")
 
 - **Localidades**: `servicodados.ibge.gov.br/api/v1/localidades`
 - **Nomes**: `servicodados.ibge.gov.br/api/v2/censos/nomes`
-- **Agregados/SIDRA**: `servicodados.ibge.gov.br/api/v3/agregados`
-- **API SIDRA**: `apisidra.ibge.gov.br/values`
+- **Agregados/SIDRA**: `servicodados.ibge.gov.br/api/v3/agregados` (as tabelas do SIDRA são lidas aqui com `view=flat`; o `apisidra.ibge.gov.br` está atrás de um desafio do Cloudflare só para navegador desde 15/09/2026)
 - **Malhas**: `servicodados.ibge.gov.br/api/v3/malhas`
 - **Notícias**: `servicodados.ibge.gov.br/api/v3/noticias`
 - **População**: `servicodados.ibge.gov.br/api/v1/projecoes/populacao`

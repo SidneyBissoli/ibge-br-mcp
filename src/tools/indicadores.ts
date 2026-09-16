@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IBGE_API } from "../types.js";
-import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { CACHE_TTL } from "../cache.js";
+import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
 import { ValidationErrors } from "../errors.js";
@@ -235,7 +236,7 @@ function emptyMeta(): Record<string, unknown> {
 function provenienciaCatalogo(): Provenance {
   return provenienciaIbge({
     fonte: "SIDRA",
-    url: IBGE_API.SIDRA,
+    url: IBGE_API.AGREGADOS,
     pesquisa: "catálogo de indicadores mantido pelo servidor",
   });
 }
@@ -298,7 +299,7 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
 
     try {
       // Build SIDRA URL
-      const url = buildSidraUrl(
+      const caminho = buildSidraPath(
         indicador.tabela,
         nivel,
         input.localidades ?? "all",
@@ -306,16 +307,13 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
         indicador.variavel
       );
 
-      const key = cacheKey("indicadores", {
-        indicador: indicadorKey,
-        nivel: input.nivel_territorial,
-        localidades: input.localidades,
-        periodos: input.periodos,
-      });
-
+      // Pela API de Agregados v3 (ver src/sidra-agregados.ts); a chave de
+      // cache passa a ser a URL consultada, como nas outras ferramentas.
+      let url = "";
+      let key = "";
       let data: Record<string, string>[];
       try {
-        data = await cachedFetch<Record<string, string>[]>(url, key, CACHE_TTL.SHORT);
+        ({ url, chaveCache: key, data } = await fetchSidra(caminho, CACHE_TTL.SHORT));
       } catch (fetchError) {
         // Provide helpful error message
         if (fetchError instanceof Error && fetchError.message.includes("400")) {
@@ -430,7 +428,7 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
   });
 }
 
-function buildSidraUrl(
+function buildSidraPath(
   tabela: string,
   nivel: string,
   localidades: string,
@@ -442,7 +440,7 @@ function buildSidraUrl(
   path += `/v/${variavel || "allxp"}`;
   path += `/p/${periodos}`;
 
-  return `${IBGE_API.SIDRA}${path}`;
+  return path;
 }
 
 function listIndicadores(categoria?: string): string {

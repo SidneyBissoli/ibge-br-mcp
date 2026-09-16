@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { type StructuredToolResult, sidraRecords } from "../structured.js";
@@ -158,7 +159,7 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
         structured: { localidades: [] },
         provenance: provenienciaIbge({
           fonte: "SIDRA",
-          url: IBGE_API.SIDRA,
+          url: IBGE_API.AGREGADOS,
           pesquisa: "catálogo de indicadores de comparação mantido pelo servidor",
         }),
       };
@@ -199,7 +200,7 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
 
     try {
       // Build SIDRA URL
-      const url = buildSidraUrl(
+      const caminho = buildSidraPath(
         template.tabela,
         nivel,
         localidadesList.join(","),
@@ -207,12 +208,9 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
         template.variaveis
       );
 
-      const key = cacheKey("comparar", {
-        indicador: input.indicador,
-        localidades: input.localidades,
-      });
-
-      const data = await cachedFetch<Record<string, string>[]>(url, key, CACHE_TTL.SHORT);
+      // Pela API de Agregados v3 (ver src/sidra-agregados.ts); a chave de
+      // cache passa a ser a URL consultada, como nas outras ferramentas.
+      const { url, chaveCache: key, data } = await fetchSidra(caminho, CACHE_TTL.SHORT);
 
       const pesquisa = `SIDRA — comparação de localidades (Tabela ${template.tabela})`;
 
@@ -267,7 +265,7 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
   });
 }
 
-function buildSidraUrl(
+function buildSidraPath(
   tabela: string,
   nivel: string,
   localidades: string,
@@ -279,7 +277,7 @@ function buildSidraUrl(
   path += `/v/${variaveis}`;
   path += `/p/${periodos}`;
 
-  return `${IBGE_API.SIDRA}${path}`;
+  return path;
 }
 
 async function getLocalidadeNames(

@@ -87,8 +87,8 @@ describe("ibge_comparar", () => {
 
       // First call is the SIDRA url
       const sidraUrl = String(mockFetch.mock.calls[0][0]);
-      expect(sidraUrl).toContain("/t/6579");
-      expect(sidraUrl).toContain("/n6/3550308,3304557");
+      expect(sidraUrl).toContain("/api/v3/agregados/6579/");
+      expect(sidraUrl).toContain("localidades=N6[3550308,3304557]");
 
       expect(result.markdown).toContain("Comparação: População");
       expect(result.markdown).toContain("São Paulo");
@@ -126,7 +126,7 @@ describe("ibge_comparar", () => {
       });
 
       const sidraUrl = String(mockFetch.mock.calls[0][0]);
-      expect(sidraUrl).toContain("/n3/35,33");
+      expect(sidraUrl).toContain("localidades=N3[35,33]");
       // name lookup hits /estados/
       const nameUrl = String(mockFetch.mock.calls[1][0]);
       expect(nameUrl).toContain("/estados/");

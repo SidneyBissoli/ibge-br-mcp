@@ -7,6 +7,7 @@ import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidIbgeCode, formatValidationError } from "../validation.js";
 import { resolveUf } from "../config.js";
 import { fetchWithRetry, RETRY_PRESETS } from "../retry.js";
+import { fetchSidra } from "../sidra-agregados.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -325,14 +326,15 @@ async function enrichVizinhosData(vizinhos: VizinhoInfo[]): Promise<VizinhoInfo[
   for (const v of vizinhos) {
     try {
       // Try to get population from SIDRA
-      const popUrl = `${IBGE_API.SIDRA}/t/4709/n6/${v.codigo}/v/93/p/last/f/n`;
-
-      const response = await fetchWithRetry(popUrl, undefined, RETRY_PRESETS.QUICK);
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.length > 1 && data[1].V) {
-          v.populacao = parseInt(data[1].V);
-        }
+      // Pela API de Agregados v3 (ver src/sidra-agregados.ts); o `/f/n` do
+      // apisidra é ignorado na tradução — a v3 já devolve o valor em `V`.
+      const { data } = await fetchSidra(
+        `/t/4709/n6/${v.codigo}/v/93/p/last/f/n`,
+        CACHE_TTL.SHORT,
+        RETRY_PRESETS.QUICK
+      );
+      if (data && data.length > 1 && data[1].V) {
+        v.populacao = parseInt(data[1].V);
       }
     } catch {
       // Ignore errors, just don't add population

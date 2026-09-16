@@ -26,7 +26,8 @@ export function mockResponse<T>(data: T, status = 200): Response {
 
 /**
  * A SIDRA-shaped response: the first element is the header/label row, the rest
- * are data rows. Mirrors what apisidra.ibge.gov.br/values returns.
+ * are data rows. Mirrors what the Aggregates API v3 returns with `view=flat`
+ * (the same layout apisidra.ibge.gov.br/values had).
  */
 export function sidraResponse(
   header: Record<string, string>,

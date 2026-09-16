@@ -47,7 +47,12 @@ export const API_ENDPOINTS = {
     PAISES: "https://servicodados.ibge.gov.br/api/v1/paises",
     PESQUISAS: "https://servicodados.ibge.gov.br/api/v1/pesquisas",
   },
-  SIDRA: "https://apisidra.ibge.gov.br/values",
+  // O SIDRA é lido pela API de Agregados v3 (o mesmo host de AGREGADOS)
+  // desde 16/09/2026: o `apisidra.ibge.gov.br` ficou atrás de um desafio do
+  // Cloudflare que nenhum cliente programático passa. Os caminhos na
+  // gramática do apisidra são traduzidos em src/sidra-agregados.ts; esta
+  // constante é o endpoint de proveniência da fonte "SIDRA".
+  SIDRA: "https://servicodados.ibge.gov.br/api/v3/agregados",
 } as const;
 
 // ============================================================================

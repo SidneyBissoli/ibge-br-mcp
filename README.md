@@ -513,8 +513,7 @@ ibge_datasaude(indicador="listar")
 
 - **Localities**: `servicodados.ibge.gov.br/api/v1/localidades`
 - **Names**: `servicodados.ibge.gov.br/api/v2/censos/nomes`
-- **Aggregates/SIDRA**: `servicodados.ibge.gov.br/api/v3/agregados`
-- **SIDRA API**: `apisidra.ibge.gov.br/values`
+- **Aggregates/SIDRA**: `servicodados.ibge.gov.br/api/v3/agregados` (SIDRA tables are read here with `view=flat`; `apisidra.ibge.gov.br` has been behind a browser-only Cloudflare challenge since 2026-09-15)
 - **Meshes**: `servicodados.ibge.gov.br/api/v3/malhas`
 - **News**: `servicodados.ibge.gov.br/api/v3/noticias`
 - **Population**: `servicodados.ibge.gov.br/api/v1/projecoes/populacao`
