@@ -46,7 +46,12 @@ describe("lerCaminhoSidra", () => {
 
   it("ignora as opções de formatação do apisidra (f, h, d)", () => {
     const c = lerCaminhoSidra("/t/4709/n6/3550308/v/93/p/last/f/n/h/n/d/2");
-    expect(c).toMatchObject({ tabela: "4709", nivel: "6", localidades: "3550308", variaveis: "93" });
+    expect(c).toMatchObject({
+      tabela: "4709",
+      nivel: "6",
+      localidades: "3550308",
+      variaveis: "93",
+    });
   });
 
   it("decodifica 'last%204' como 'last 4'", () => {
@@ -99,13 +104,23 @@ describe("traduzirCaminhoSidra", () => {
   });
 
   it("intervalo e lista de períodos passam intactos", () => {
-    expect(traduzirCaminhoSidra("/t/6579/n1/all/v/9324/p/2010-2012")).toContain("/periodos/2010-2012/");
-    expect(traduzirCaminhoSidra("/t/6579/n1/all/v/9324/p/2010,2020")).toContain("/periodos/2010,2020/");
+    expect(traduzirCaminhoSidra("/t/6579/n1/all/v/9324/p/2010-2012")).toContain(
+      "/periodos/2010-2012/"
+    );
+    expect(traduzirCaminhoSidra("/t/6579/n1/all/v/9324/p/2010,2020")).toContain(
+      "/periodos/2010,2020/"
+    );
   });
 });
 
 describe("fetchSidra", () => {
-  const cabecalho = { NC: "Nível Territorial (Código)", NN: "Nível Territorial", V: "Valor", D1C: "Unidade da Federação (Código)", D1N: "Unidade da Federação" };
+  const cabecalho = {
+    NC: "Nível Territorial (Código)",
+    NN: "Nível Territorial",
+    V: "Valor",
+    D1C: "Unidade da Federação (Código)",
+    D1N: "Unidade da Federação",
+  };
   const linha = { NC: "3", NN: "Unidade da Federação", V: "1757338", D1C: "11", D1N: "Rondônia" };
   const metadados6579 = {
     id: 6579,
@@ -154,14 +169,18 @@ describe("fetchSidra", () => {
       mockFetch.mockResolvedValueOnce(erro500()).mockResolvedValueOnce(mockResponse(metadados6579));
       const e = await fetchSidra("/t/6579/n7/all/v/9324/p/last").catch((x) => x);
       expect(e.status).toBe(400);
-      expect(e.detalhe).toContain("Parâmetro N7 (Nível territorial) incompatível com a tabela 6579");
+      expect(e.detalhe).toContain(
+        "Parâmetro N7 (Nível territorial) incompatível com a tabela 6579"
+      );
       expect(e.detalhe).toContain("N1, N2, N6, N3");
     });
 
     it("variável fora da tabela", async () => {
       mockFetch.mockResolvedValueOnce(erro500()).mockResolvedValueOnce(mockResponse(metadados6579));
       const e = await fetchSidra("/t/6579/n3/all/v/9999/p/last").catch((x) => x);
-      expect(e.detalhe).toContain("Parâmetro V (Variável) com código 9999 inexistente na tabela 6579");
+      expect(e.detalhe).toContain(
+        "Parâmetro V (Variável) com código 9999 inexistente na tabela 6579"
+      );
       expect(e.detalhe).toContain("9324");
     });
 

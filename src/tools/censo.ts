@@ -428,7 +428,12 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
 
     // Build SIDRA query
     try {
-      const caminho = buildSidraPath(tabelaInfo.tabela, nivel, input.localidades ?? "all", periodos);
+      const caminho = buildSidraPath(
+        tabelaInfo.tabela,
+        nivel,
+        input.localidades ?? "all",
+        periodos
+      );
 
       // Pela API de Agregados v3 (ver src/sidra-agregados.ts). Cache de 1 hora:
       // o dado muda pouco, as consultas variam. `url` é a consultada de fato.

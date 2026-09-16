@@ -214,7 +214,11 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
       // Até 5.0.0 a falha era refeita sem cache, na mesma URL: repetia o mesmo
       // erro e jogava fora a frase da fonte. Agora o erro sobe inteiro para
       // parseHttpError, que é quem sabe dizer qual parâmetro ela recusou.
-      const { url, chaveCache: key, data } = await fetchSidra<SidraData[]>(caminho, CACHE_TTL.SHORT);
+      const {
+        url,
+        chaveCache: key,
+        data,
+      } = await fetchSidra<SidraData[]>(caminho, CACHE_TTL.SHORT);
 
       const pesquisa = `SIDRA, Tabela ${indicadorInfo.tabela} (${indicadorInfo.nome})`;
       const proveniencia = (opts?: {
@@ -299,7 +303,12 @@ interface SidraData {
   [key: string]: string;
 }
 
-function buildSidraPath(tabela: string, nivel: string, localidade: string, periodo: string): string {
+function buildSidraPath(
+  tabela: string,
+  nivel: string,
+  localidade: string,
+  periodo: string
+): string {
   let path = `/t/${tabela}`;
   path += `/n${nivel}/${localidade}`;
   path += `/v/allxp`;

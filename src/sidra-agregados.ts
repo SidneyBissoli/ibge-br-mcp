@@ -153,7 +153,10 @@ export async function fetchSidra<T = Record<string, string>[]>(
   const url = urlAgregados(consulta);
   const chaveCache = cacheKey(url);
   try {
-    const data = await cachedFetch<T>(url, chaveCache, ttlMinutes, { ...RETRY_SIDRA, ...retryOptions });
+    const data = await cachedFetch<T>(url, chaveCache, ttlMinutes, {
+      ...RETRY_SIDRA,
+      ...retryOptions,
+    });
     return { url, chaveCache, data };
   } catch (erro) {
     if (erro instanceof UpstreamError && erro.status >= 500) {
@@ -186,7 +189,12 @@ async function explicarFalha(
   const urlMeta = `${IBGE_API.AGREGADOS}/${consulta.tabela}/metadados`;
   let meta: MetadadosAgregado;
   try {
-    meta = await cachedFetch<MetadadosAgregado>(urlMeta, cacheKey(urlMeta), CACHE_TTL.STATIC, RETRY_SIDRA);
+    meta = await cachedFetch<MetadadosAgregado>(
+      urlMeta,
+      cacheKey(urlMeta),
+      CACHE_TTL.STATIC,
+      RETRY_SIDRA
+    );
   } catch (erro) {
     if (erro instanceof UpstreamError) {
       return new UpstreamError(400, "Bad Request", `Tabela ${consulta.tabela}: tabela inválida`);
