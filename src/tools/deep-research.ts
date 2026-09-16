@@ -44,6 +44,7 @@ import {
 import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { normalizeText } from "../config.js";
+import { palavrasPerguntadas } from "../vocabulario.js";
 import { withMetrics } from "../metrics.js";
 import type { StructuredToolResult } from "../structured.js";
 import {
@@ -130,7 +131,15 @@ export function entradasSidra(pesquisas: PesquisaComAgregados[]): IndexEntry[] {
         id: `${DEEP_RESEARCH_ID_PREFIXES.sidra}${agregado.id}`,
         title: `Tabela ${agregado.id} — ${agregado.nome}`,
         url: `${SIDRA_TABELA_URL}${agregado.id}`,
-        keywords: [agregado.id, pesquisa.id, pesquisa.nome],
+        keywords: [
+          agregado.id,
+          pesquisa.id,
+          pesquisa.nome,
+          // A palavra com que se PERGUNTA, quando difere da que o IBGE escreve
+          // ("renda" para um agregado de rendimento) — sem isto o ranqueador
+          // não encontra a tabela certa pela palavra do usuário (src/vocabulario.ts).
+          ...palavrasPerguntadas(agregado.nome),
+        ],
       });
     }
   }

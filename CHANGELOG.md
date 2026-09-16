@@ -5,7 +5,46 @@ All notable changes to the IBGE MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [5.1.0] - 2026-09-16
+
+### Fixed
+- **`ibge_sidra_tabelas` devolvia ZERO quando a palavra do usuário não era a
+  do IBGE — e também quando era, sem acento.** A busca casava o que o usuário
+  escreveu contra o nome do agregado por substring contígua, sem normalizar:
+  `populacao` (sem til) achava **0** contra 520 nomes com "população";
+  `ocupacao` 0 × 364, `instrucao` 0 × 698, `saude` 1 × 518, `area` 0 × 956,
+  `agua` 0 × 256, `servicos` 0 × 474, `forca de trabalho` 0 × 332. E a palavra
+  de todo dia contra a palavra do IBGE: `desemprego` 4 × desocupação 33;
+  `renda` 72 × rendimento 1.126; `inflação` 0 × IPCA 37; `moradia` 14 ×
+  domicílio 3.606; `cidade` 110 × município 455; `natalidade` 0 × nascidos
+  vivos 84; `mortes` 1 × óbitos 33; `gênero` 40 × sexo 2.020; `negros` 0 ×
+  cor ou raça 1.134; `universidade`/`faculdade` 0 × ensino superior 12;
+  `luz`, `fábrica`, `tabagismo`, `convênio`, `idosos` 0. Medido nos 9.336
+  agregados da API v3 em 16/09/2026 — a mesma classe medida e consertada no
+  ilo (0.6.0) e no uis (0.3.0): zero calado é beco sem saída.
+
+  Conserto em `src/vocabulario.ts`: os dois lados da busca são normalizados
+  (NFD sem diacríticos, caixa baixa), as palavras casam em AND (não mais
+  frase contígua: "idade sexo" acha "por sexo e grupo de idade") e cada
+  palavra vira um OR das grafias que o IBGE usa para ela, a partir de uma
+  tabela só de par **medido** (palavra perguntada ausente do catálogo,
+  palavra da fonte presente). A tradução é **dita** na resposta
+  (`notas_vocabulario` no estruturado, linha **Vocabulário** no Markdown) e
+  zero resultado passa a dizer o que fazer (menos palavras; o vocabulário do
+  IBGE; `ibge_pesquisas` + `pesquisa`). O filtro `pesquisa` também ignora
+  acento. O índice de `search` (Deep Research) recebe a palavra perguntada
+  como keyword do agregado cujo nome traz a palavra do IBGE. Termo que o IBGE
+  não publica em agregado fica de fora (turismo, aposentadoria, frota):
+  apelido para dado inexistente promete o que a fonte não tem. Rodado sobre o
+  catálogo inteiro pelo código construído: populacao 0 → 520, desemprego
+  4 → 53, renda 72 → 1.198, inflação 0 → 127, moradia 14 → 3.607, cidade
+  110 → 563, natalidade 0 → 84, gênero 40 → 2.060, "idade sexo" 0 → 1.608;
+  turismo e aposentadoria seguem em 0.
+  39 testes novos em `tests/vocabulario.test.ts`, com pares código/nome reais
+  conferidos contra `tests/fixtures/agregados-ids.txt` (gerado por
+  `scripts/gen-agregados-fixture.mjs`). **Mudança de superfície:** a
+  descrição de `busca` e da tool dizem a regra nova; o `outputSchema` ganha
+  `notas_vocabulario` (opcional).
 
 ### Changed
 - **Telemetria: sessão e cliente (blobs 9 e 10).** O servidor passa a emitir
