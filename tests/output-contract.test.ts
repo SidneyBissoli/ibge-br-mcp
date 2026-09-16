@@ -148,6 +148,11 @@ const noticiasMagro = {
 const agregadosPesquisas = [
   { id: "33", nome: "Estimativas de população", agregados: [{ id: "6579", nome: "População residente estimada" }] },
   { id: "10", nome: "PIB dos Municípios", agregados: [{ id: "5938", nome: "Produto Interno Bruto a preços correntes" }] },
+  {
+    id: "IU",
+    nome: "Indicadores de Desenvolvimento Sustentável",
+    agregados: [{ id: "1172", nome: "Rendimento médio mensal real das pessoas de 10 anos ou mais de idade, com rendimento, por sexo" }],
+  },
 ];
 
 const metadadosSidra = {
@@ -329,6 +334,12 @@ const CASOS: Caso[] = [
   { nome: "ibge_noticias", cobre: "item com produtos/editorias vazios (forma real magra)", mock: um(noticiasMagro), args: {} },
 
   { nome: "ibge_sidra_tabelas", cobre: "catálogo", mock: um(agregadosPesquisas), args: {} },
+  {
+    nome: "ibge_sidra_tabelas",
+    cobre: "busca traduzida pelo vocabulário (notas_vocabulario presente)",
+    mock: um(agregadosPesquisas),
+    args: { busca: "renda" },
+  },
 
   {
     nome: "ibge_sidra_metadados",

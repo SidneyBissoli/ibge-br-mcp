@@ -93,7 +93,7 @@ calculados no servidor a partir dos valores brutos do IBGE.
 | Ferramenta | Descrição |
 |:-----------|:----------|
 | `ibge_sidra` | Consulta tabelas SIDRA (Censo, PNAD, PIB, etc.) |
-| `ibge_sidra_tabelas` | Lista e busca tabelas SIDRA disponíveis |
+| `ibge_sidra_tabelas` | Lista e busca tabelas SIDRA disponíveis (sem distinção de acento; a palavra de todo dia é traduzida para a do IBGE, e a resposta diz que traduziu) |
 | `ibge_sidra_metadados` | Obtém metadados de tabelas (variáveis, períodos, níveis) |
 | `ibge_pesquisas` | Lista pesquisas do IBGE e suas tabelas |
 
@@ -183,6 +183,37 @@ Com 23 ferramentas, várias podem tocar no mesmo assunto. Guia rápido para as s
 ### Fluxo SIDRA
 
 Descobrir → inspecionar → consultar: `ibge_pesquisas` / `ibge_sidra_tabelas` (achar a tabela) → `ibge_sidra_metadados` (sua estrutura) → `ibge_sidra` (consultar). Para dados comuns, os atalhos acima (`ibge_censo`, `ibge_indicadores`, `ibge_comparar`, `ibge_cidades`) costumam ser mais fáceis.
+
+### Pergunte com as suas palavras, não com as do IBGE
+
+O IBGE nomeia as tabelas no português estatístico oficial, e `ibge_sidra_tabelas` casava o que
+você escreveu contra o nome da tabela por substring pura, acento incluído — então `populacao`
+(sem til, como todo mundo digita) devolvia **zero**, e a palavra de todo dia para um conceito que
+o IBGE chama de outro nome também. Medido nos 9.336 agregados da API de Agregados (16/09/2026)
+e consertado na 5.1.0: os dois lados são normalizados, toda palavra precisa casar (AND) e a
+palavra de todo dia é expandida para a do IBGE — a resposta diz isso em `notas_vocabulario`, e
+zero resultado vem com a saída.
+
+| você pergunta | achava | o IBGE escreve | acha |
+| --- | ---: | --- | ---: |
+| `populacao`, `ocupacao`, `instrucao`, `saude`, `area`, `agua` | 0 | população, ocupação, instrução, saúde, área, água | 520, 364, 698, 518, 956, 256 |
+| `desemprego` | 4 | desocupação | 33 |
+| `renda` | 72 | rendimento | 1.126 |
+| `inflação` | 0 | IPCA, INPC, preços | 37, 15, 75 |
+| `moradia`, `casa` | 14, 101 | domicílio | 3.606 |
+| `cidade` | 110 | município | 455 |
+| `natalidade`, `mortes` | 0, 1 | nascidos vivos, óbitos | 84, 33 |
+| `gênero` | 40 | sexo | 2.020 |
+| `negros` | 0 | cor ou raça | 1.134 |
+| `universidade`, `faculdade` | 0 | ensino superior | 12 |
+| `luz`, `fábrica`, `tabagismo`, `convênio`, `idosos` | 0 | energia elétrica, indústria, fumante, plano de saúde, 60 anos | 43, 248, 94, 101, 89 |
+
+Só entra par **medido** (`src/vocabulario.ts`, com as contagens no cabeçalho): a palavra
+perguntada ausente do catálogo, a palavra do IBGE presente. O que o IBGE não publica como
+agregado fica de fora e segue devolvendo zero — `turismo`, `aposentadoria`, `frota` — porque
+apelido para dado inexistente promete o que a fonte não tem. A mesma tabela alimenta o índice de
+`search` (Deep Research), que recebe a palavra de todo dia como keyword da tabela cujo nome traz
+a palavra do IBGE.
 
 ### Mapas (malhas)
 

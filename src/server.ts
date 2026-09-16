@@ -457,7 +457,7 @@ Behavior: read-only and idempotent — a live GET against the public IBGE Notíc
 
 Features:
 - List all SIDRA tables (aggregates)
-- Search by table name
+- Search by table name: every word must match (AND), accents and case ignored, and everyday Portuguese is resolved to the IBGE's own wording (renda→rendimento, desemprego→desocupação, cidade→município, gênero→sexo); when that happens the response says so in notas_vocabulario
 - Filter by survey (Census, PNAD, GDP, etc.)
 - Shows code and name of each table
 

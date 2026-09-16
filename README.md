@@ -96,7 +96,7 @@ aggregates are computed server-side from the raw IBGE values.
 | Tool | Description |
 |:-----|:------------|
 | `ibge_sidra` | Query SIDRA tables (Census, PNAD, GDP, etc.) |
-| `ibge_sidra_tabelas` | List and search available SIDRA tables |
+| `ibge_sidra_tabelas` | List and search available SIDRA tables (accent-insensitive; everyday Portuguese resolved to the IBGE's wording, and the response says so) |
 | `ibge_sidra_metadados` | Get table metadata (variables, periods, levels) |
 | `ibge_pesquisas` | List IBGE research surveys and their tables |
 
@@ -186,6 +186,37 @@ With 23 tools, several can touch the same topic. Quick guide for the common over
 ### SIDRA workflow
 
 Discover → inspect → query: `ibge_pesquisas` / `ibge_sidra_tabelas` (find a table) → `ibge_sidra_metadados` (its structure) → `ibge_sidra` (query). For common data, the wrappers above (`ibge_censo`, `ibge_indicadores`, `ibge_comparar`, `ibge_cidades`) are usually easier.
+
+### Ask in your words, not the IBGE's
+
+The IBGE names its tables in official statistical Portuguese, and `ibge_sidra_tabelas` matched
+your words against the table name as a plain substring, accents included — so `populacao`
+(no tilde, as anyone types it) returned *nothing at all*, and so did the everyday word for a
+concept the IBGE names differently. Measured over the 9,336 tables of the Aggregates API
+(2026-09-16), fixed since 5.1.0: both sides are normalised, every word must match (AND), and
+the everyday word is expanded to the IBGE's own — the response says so in `notas_vocabulario`,
+and zero results come with a way out.
+
+| you ask | hits before | the IBGE writes | hits |
+| --- | ---: | --- | ---: |
+| `populacao`, `ocupacao`, `instrucao`, `saude`, `area`, `agua` | 0 | população, ocupação, instrução, saúde, área, água | 520, 364, 698, 518, 956, 256 |
+| `desemprego` | 4 | desocupação | 33 |
+| `renda` | 72 | rendimento | 1,126 |
+| `inflação` | 0 | IPCA, INPC, preços | 37, 15, 75 |
+| `moradia`, `casa` | 14, 101 | domicílio | 3,606 |
+| `cidade` | 110 | município | 455 |
+| `natalidade`, `mortes` | 0, 1 | nascidos vivos, óbitos | 84, 33 |
+| `gênero` | 40 | sexo | 2,020 |
+| `negros` | 0 | cor ou raça | 1,134 |
+| `universidade`, `faculdade` | 0 | ensino superior | 12 |
+| `luz`, `fábrica`, `tabagismo`, `convênio`, `idosos` | 0 | energia elétrica, indústria, fumante, plano de saúde, 60 anos | 43, 248, 94, 101, 89 |
+
+Only measured pairs enter the table (`src/vocabulario.ts`, counts in the header): the word you ask
+with absent from the catalogue, the IBGE's word present. What the IBGE does not publish as an
+aggregate stays out and still returns zero — `turismo`, `aposentadoria`, `frota` — because an alias
+for data that does not exist promises what the source does not have. The same table feeds the
+Deep Research `search` index, which gets the everyday word as a keyword of the table whose name
+carries the IBGE's word.
 
 ### Maps (meshes)
 
