@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   subclasses de desenvolvimento existem, e a CNAE as escreve "PROGRAMAS DE
   COMPUTADOR". Não dava erro; devolvia resposta plausível, e quem perguntou ia
   embora com ela. São duas causas, medidas em 22/09/2026 contra os cinco níveis
-  da API v2 (`scripts/medicoes/`, versionados desde a 5.1.2):
+  da API v2 (`scripts/medicoes/`):
   - **ACENTO.** O filtro fazia `descricao.toLowerCase().includes(termo)`, que
     resolve caixa e não resolve acento — e as descrições da CNAE são em CAIXA
     ALTA COM acento. Nas 1.332 subclasses: `comercio` achava **2 de 211**,
@@ -48,6 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tests/fixtures/cnae-catalogo.json` — cópia versionada dos cinco níveis da
   CNAE (2.398 registros), para a guarda afirmar contagens medidas contra o
   catálogo real sem ficar refém do portal externo.
+- `scripts/medicoes/` — os três scripts que produziram as contagens acima
+  (baixar o catálogo, contar atual vs normalizado, imprimir as descrições que
+  casam um padrão). Entraram no repositório depois da tag `v5.1.2`, então saem
+  no canal nesta versão. Sem eles a tabela de vocabulário vira opinião na
+  próxima vez que alguém a ampliar.
 
 ### Changed
 - **Superfície** (diff contra `baselines/surface-stdio-5.1.0.json`): três
