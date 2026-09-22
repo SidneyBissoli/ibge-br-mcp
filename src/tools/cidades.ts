@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IBGE_API, PesquisaResultado, PesquisaIndicador, PesquisaDetalhe } from "../types.js";
-import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { cacheKey, CACHE_TTL, cachedFetch, cachedFetchOne } from "../cache.js";
 import { RETRY_PRESETS } from "../retry.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
@@ -156,10 +156,10 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
   try {
     const localidadeUrl = `${IBGE_API.LOCALIDADES}/municipios/${codigoMunicipio}`;
     const localidadeKey = cacheKey(localidadeUrl);
-    const localidade = await cachedFetch<{
+    const localidade = await cachedFetchOne<{
       nome: string;
       microrregiao?: { mesorregiao?: { UF?: { nome: string; sigla: string } } };
-    }>(localidadeUrl, localidadeKey, CACHE_TTL.STATIC);
+    }>(localidadeUrl, localidadeKey, "Município", codigoMunicipio, CACHE_TTL.STATIC);
     if (localidade?.nome) {
       const uf = localidade.microrregiao?.mesorregiao?.UF?.sigla || "";
       nomeMunicipio = `${localidade.nome}${uf ? ` (${uf})` : ""}`;

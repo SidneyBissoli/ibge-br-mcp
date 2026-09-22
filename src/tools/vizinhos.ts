@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IBGE_API, Municipio } from "../types.js";
-import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { cacheKey, CACHE_TTL, cachedFetch, cachedFetchOne } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { formatNumber } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
@@ -236,7 +236,7 @@ async function getMunicipioInfo(codigo: string): Promise<Municipio | null> {
     const url = `${IBGE_API.LOCALIDADES}/municipios/${codigo}`;
     const key = cacheKey(url);
 
-    const data = await cachedFetch<Municipio>(url, key, CACHE_TTL.STATIC);
+    const data = await cachedFetchOne<Municipio>(url, key, "Município", codigo, CACHE_TTL.STATIC);
     return data;
   } catch {
     return null;

@@ -45,6 +45,51 @@ export class UpstreamError extends Error {
 }
 
 /**
+ * A fonte respondeu 200 e respondeu que o recurso NÃO EXISTE.
+ *
+ * Por que existe. As APIs do IBGE não usam 404 para identificador inexistente:
+ * respondem `[]` com HTTP 200. Medido em 22/09/2026, nas duas famílias:
+ *
+ *   GET /api/v2/cnae/classes/4721            -> 200 []
+ *   GET /api/v2/cnae/subclasses/4721101      -> 200 []
+ *   GET /api/v1/localidades/municipios/9999999 -> 200 []
+ *   GET /api/v1/localidades/estados/99       -> 200 []
+ *
+ * Como `cachedFetch` só olha `response.ok`, esse array atravessava a camada de
+ * rede com o tipo do chamador (`CnaeClasse`, `Municipio`) e estourava no
+ * formatador — `Cannot read properties of undefined (reading 'divisao')`, que
+ * não tem classe em `call-shape.ts` e caía em `outro`. Era o defeito por trás
+ * dos 13 erros `outro` do `ibge_cnae` na semana de 13/09/2026.
+ *
+ * Consertar só o endpoint que estourou deixaria a classe aberta: QUALQUER
+ * endpoint de identificador único destas duas famílias pode devolver `[]`. Por
+ * isso a ausência vira um erro tipado na borda da rede (`cachedFetchOne`), e
+ * não uma checagem repetida em cada formatador.
+ *
+ * O limite da classe também foi medido, para não se varrer de novo: as outras
+ * duas APIs que este servidor consulta por identificador respondem ausência com
+ * HTTP 500, não com `[]`, e já caem no tratamento de `UpstreamError` —
+ * `/api/v3/agregados/99999/metadados` e `/api/v1/pesquisas/ZZ`. Elas seguem em
+ * `cachedFetch`.
+ *
+ * A `message` diz "nenhum registro encontrado" de propósito: é o que
+ * `classifyError` lê para gravar a classe `nao_encontrado` na telemetria, no
+ * lugar do `outro` anônimo em que o `TypeError` caía. A forma também evita
+ * concordância com o gênero de `recurso` ("a Classe", "o Grupo").
+ */
+export class RecursoAusenteError extends Error {
+  constructor(
+    /** O que se procurava, em português, para a mensagem ao chamador. Ex.: "Classe CNAE". */
+    public readonly recurso: string,
+    /** O identificador pedido, como foi montado na URL. */
+    public readonly id: string
+  ) {
+    super(`${recurso} "${id}": nenhum registro encontrado na fonte`);
+    this.name = "RecursoAusenteError";
+  }
+}
+
+/**
  * O corpo de uma resposta de erro, pronto para ir ao chamador — ou `undefined`.
  *
  * Três guardas, cada uma por um motivo: HTML é página de erro de borda e não

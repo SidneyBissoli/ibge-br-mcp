@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IBGE_API, type Municipio, type UF, type Distrito } from "../types.js";
-import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { cacheKey, CACHE_TTL, cachedFetchOne } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createKeyValueTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
@@ -135,7 +135,13 @@ export async function ibgeLocalidade(input: LocalidadeInput): Promise<Structured
       let data: unknown;
 
       try {
-        data = await cachedFetch<unknown>(url, key, CACHE_TTL.STATIC);
+        data = await cachedFetchOne<unknown>(
+          url,
+          key,
+          "Localidade",
+          String(input.codigo),
+          CACHE_TTL.STATIC
+        );
       } catch (error) {
         if (error instanceof Error && error.message.includes("404")) {
           return {
