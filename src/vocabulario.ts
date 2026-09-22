@@ -80,6 +80,11 @@ export interface EntradaVocabulario {
   readonly fonte: readonly string[];
 }
 
+/**
+ * A tabela do catálogo de AGREGADOS (`ibge_sidra_tabelas`), medida contra os
+ * 9.336 agregados da API v3. Não serve à CNAE: ver `VOCABULARIO_CNAE` e a
+ * medição que separou as duas.
+ */
 export const VOCABULARIO: readonly EntradaVocabulario[] = [
   { perguntado: "desemprego", fonte: ["desocupa"] },
   { perguntado: "desempregado", fonte: ["desocupa"] },
@@ -114,10 +119,127 @@ export const VOCABULARIO: readonly EntradaVocabulario[] = [
   { perguntado: "quarto", fonte: ["quarto", "dormitorio"] },
 ];
 
+/**
+ * A tabela do catálogo da CNAE (`ibge_cnae`), medida contra as 1.332
+ * subclasses da API v2 em 2026-09-22.
+ *
+ * É uma SEGUNDA tabela, e não entradas novas na de cima, porque a regra "só
+ * entra par medido" é medida CONTRA UM CATÁLOGO: são 1.332 subclasses de
+ * atividade econômica contra 9.336 agregados estatísticos, e o par bom num é
+ * falso positivo no outro. Medido nas subclasses, com os pares do SIDRA:
+ *
+ *   etaria → idade      126 subclasses, e são "ATIVIDADE..." (ativIDADEs de apoio)
+ *   negro  → preta        1, "SERVIÇOS DE TRADUÇÃO, INTERPRETAÇÃO" (interPRETAção)
+ *   emprego → ocupa       1, "ATIVIDADES DE TERAPIA OCUPACIONAL"
+ *
+ * Misturar as duas apagaria a medição de origem e entregaria esses falsos
+ * positivos como resposta plausível — o mesmo defeito que a tabela conserta.
+ *
+ * Medido nas 1.332 subclasses em 2026-09-22 (`scripts/medicoes/tabela-pares.mjs`):
+ *
+ *   perguntado     n     o IBGE escreve                        n
+ *   software       1*    programas de computador               3   * "REPRODUÇÃO DE SOFTWARE"
+ *   app            0     programas de computador               3
+ *   aplicativo     0     programas de computador               3
+ *   site           0     programas de computador / portais   3 / 1
+ *   farmacia       0     produtos farmacêuticos                3
+ *   drogaria       0     produtos farmacêuticos                3
+ *   dentista       0     odontolog                             5
+ *   consultorio    0     ambulatorial                          4
+ *   advogado       0     advocatícios                          1
+ *   advocacia      0     advocatícios                          1
+ *   contador       0     contabilidade / contábil            1 / 2
+ *   hotel          0     hotéis                                2   só o PLURAL existe
+ *   motel          0     motéis                                1
+ *   pousada        0     pensões / alojamento                1 / 4
+ *   academia       0     condicionamento físico                1
+ *   salao          0     cabeleireiro                          1
+ *   barbearia      0     cabeleireiro                          1
+ *   caminhao       0     transporte rodoviário de carga        2
+ *   frete          0     transporte rodoviário de carga        2
+ *   delivery       0     consumo domiciliar                    1
+ *   pizzaria       0     restaurantes / lanchonetes          1 / 1
+ *   petshop        0     animais domésticos                    2
+ *   teatro         0     artes cênicas                         3
+ *   jardinagem     0     paisagísticas                         1
+ *   reciclagem     0     resíduos / sucatas                  8 / 3
+ *   lixo           0     resíduos                              8
+ *   faculdade      0     educação superior                     3
+ *   universidade   0     educação superior                     3
+ *   propaganda     0     publicidade                           5
+ *
+ * `software` é o único com lado perguntado diferente de zero nos cinco níveis,
+ * e o 1 é a resposta ERRADA (`1830003 REPRODUÇÃO DE SOFTWARE EM QUALQUER
+ * SUPORTE` — prensar mídia); o par acrescenta as três de desenvolvimento sem
+ * tirá-la. Nos outros 28 o lado perguntado é 0 em seções, divisões, grupos,
+ * classes e subclasses, então o par nunca REMOVE resultado em nível nenhum —
+ * só acrescenta. Por isso a tabela vale para os cinco níveis.
+ *
+ * Medidos e deixados de FORA em 2026-09-22 (registrado para ninguém refazer):
+ *
+ *  - `oficina`. As duas grafias plausíveis dão par largo demais: OR de
+ *    "manutenção e reparação" com "veículos automotores" casa 63 subclasses,
+ *    entre elas 12 de FABRICAÇÃO de peças e o comércio varejista de
+ *    combustíveis; "veículos automotores" sozinho casa 26, metade fabricação e
+ *    comércio. O AND das duas casaria 3, e perderia 5 das 8 do grupo 4520
+ *    (borracharia, lanternagem, alinhamento, lavagem, capotaria) — além de a
+ *    mecânica fazer OR, e não AND, das grafias de um par. Resultado plausível e
+ *    errado é o defeito que se está consertando, então `oficina` vai para a
+ *    dica do zero, não para a tabela.
+ *  - `startup`, `coworking`, `influencer`, `ecommerce`, `comercio eletronico`,
+ *    `streaming` — 0 dos DOIS lados. A CNAE 2.0 não publica esses rótulos, e
+ *    inventar apelido para dado inexistente é prometer o que a fonte não tem.
+ *  - `marketing` (1), `loja` (8), `mercado` (14), `bar` (12), `banco` (12) — a
+ *    palavra de todo dia JÁ casa; par nenhum a melhora.
+ *
+ * Armadilha medida e NÃO consertada aqui: `uber` casa 1 subclasse por estar
+ * dentro de `TUBÉRCULOS`. A mecânica casa substring sem fronteira de palavra;
+ * isso é de `@sbissoli/mcp-search` e vale para os cinco servidores que a usam,
+ * não de uma tabela. Fica como caso de teste que documenta o comportamento de
+ * hoje.
+ */
+export const VOCABULARIO_CNAE: readonly EntradaVocabulario[] = [
+  { perguntado: "software", fonte: ["software", "programas de computador"] },
+  { perguntado: "app", fonte: ["programas de computador"] },
+  { perguntado: "aplicativo", fonte: ["programas de computador"] },
+  { perguntado: "site", fonte: ["programas de computador", "portais"] },
+  { perguntado: "farmacia", fonte: ["produtos farmaceuticos"] },
+  { perguntado: "drogaria", fonte: ["produtos farmaceuticos"] },
+  { perguntado: "dentista", fonte: ["odontolog"] },
+  { perguntado: "consultorio", fonte: ["ambulatorial"] },
+  { perguntado: "advogado", fonte: ["advocaticios"] },
+  { perguntado: "advocacia", fonte: ["advocaticios"] },
+  { perguntado: "contador", fonte: ["contabilidade", "contabil"] },
+  { perguntado: "hotel", fonte: ["hoteis"] },
+  { perguntado: "motel", fonte: ["moteis"] },
+  { perguntado: "pousada", fonte: ["pensoes", "alojamento"] },
+  { perguntado: "academia", fonte: ["condicionamento fisico"] },
+  { perguntado: "salao", fonte: ["cabeleireiro"] },
+  { perguntado: "barbearia", fonte: ["cabeleireiro"] },
+  { perguntado: "caminhao", fonte: ["transporte rodoviario de carga"] },
+  { perguntado: "frete", fonte: ["transporte rodoviario de carga"] },
+  { perguntado: "delivery", fonte: ["consumo domiciliar"] },
+  { perguntado: "pizzaria", fonte: ["restaurantes", "lanchonetes"] },
+  { perguntado: "petshop", fonte: ["animais domesticos"] },
+  { perguntado: "teatro", fonte: ["artes cenicas"] },
+  { perguntado: "jardinagem", fonte: ["paisagisticas"] },
+  { perguntado: "reciclagem", fonte: ["residuos", "sucatas"] },
+  { perguntado: "lixo", fonte: ["residuos"] },
+  { perguntado: "faculdade", fonte: ["educacao superior"] },
+  { perguntado: "universidade", fonte: ["educacao superior"] },
+  { perguntado: "propaganda", fonte: ["publicidade"] },
+];
+
 const vocabulario = createVocabulary({
   entries: VOCABULARIO.map((e) => ({ asked: e.perguntado, source: e.fonte })),
   locale: "pt-BR",
   sourceName: "o IBGE",
+});
+
+const vocabularioCnae = createVocabulary({
+  entries: VOCABULARIO_CNAE.map((e) => ({ asked: e.perguntado, source: e.fonte })),
+  locale: "pt-BR",
+  sourceName: "a CNAE",
 });
 
 export interface TermoExpandido {
@@ -162,3 +284,21 @@ export function casaBusca(nomeNormalizado: string, expandidos: readonly TermoExp
 }
 /** A ponta inversa: as palavras com que se PERGUNTA por este nome — keywords do índice de `search`. */
 export const palavrasPerguntadas = vocabulario.askedWordsFor;
+
+/* ── A mesma ponta, para o catálogo da CNAE (`VOCABULARIO_CNAE`) ───────────── */
+
+/** A busca inteira contra o vocabulário da CNAE, pronta para virar filtro. */
+export function expandirBuscaCnae(busca: string): TermoExpandido[] {
+  return vocabularioCnae.expandQuery(busca).map(emPortugues);
+}
+/** A frase que conta ao chamador que a palavra dele não é a da CNAE. */
+export function notasDeVocabularioCnae(expandidos: readonly TermoExpandido[]): string[] {
+  return vocabularioCnae.vocabularyNotes(expandidos.map(emIngles));
+}
+/** Uma descrição (já normalizada) casa TODOS os termos da busca expandida? */
+export function casaBuscaCnae(
+  descricaoNormalizada: string,
+  expandidos: readonly TermoExpandido[]
+): boolean {
+  return vocabularioCnae.matchesQuery(descricaoNormalizada, expandidos.map(emIngles));
+}

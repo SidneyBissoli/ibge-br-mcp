@@ -8,6 +8,12 @@ import { parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidCnaeCode, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
+import {
+  casaBuscaCnae,
+  expandirBuscaCnae,
+  normalizar,
+  notasDeVocabularioCnae,
+} from "../vocabulario.js";
 
 // Types for CNAE data
 interface CnaeSecao {
@@ -57,7 +63,11 @@ Exemplos:
     .string()
     .optional()
     .describe(
-      "Termo para buscar na descrição das atividades (ex: 'software', 'restaurante', 'comércio')"
+      `Termo para buscar na descrição das atividades (ex: 'software', 'restaurante', 'comércio').
+Acento e caixa não importam, e várias palavras casam em E ('comercio varejista').
+A palavra de todo dia é traduzida para a da CNAE quando preciso — farmácia →
+produtos farmacêuticos, academia → condicionamento físico, lixo → resíduos — e a
+resposta diz quando traduziu.`
     ),
   nivel: z
     .enum(["secoes", "divisoes", "grupos", "classes", "subclasses"])
@@ -78,6 +88,11 @@ export const cnaeOutputSchema = z.object({
       termo: z.string().describe("Termo pesquisado"),
       nivel: z.string().describe("Nível hierárquico pesquisado (ex: subclasses, classes)"),
       total: z.number().describe("Quantidade de resultados retornados"),
+      encontrados: z
+        .number()
+        .describe(
+          "Quantidade de atividades que casam o termo no catálogo inteiro (pode ser maior que 'total', que é limitado por 'limite')"
+        ),
       resultados: z
         .array(
           z.object({
@@ -86,6 +101,12 @@ export const cnaeOutputSchema = z.object({
           })
         )
         .describe("Atividades encontradas para o termo"),
+      notas_vocabulario: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Presente quando o termo foi traduzido para a palavra que a CNAE usa (ex: farmácia → produtos farmacêuticos)"
+        ),
     })
     .optional()
     .describe("Presente no modo de busca por termo"),
@@ -350,33 +371,58 @@ async function searchCnae(
     CnaeSubclasse[] | CnaeClasse[] | CnaeGrupo[] | CnaeDivisao[] | CnaeSecao[]
   >(endpoint, key, CACHE_TTL.STATIC);
 
-  // Filter by search term
-  const termoLower = termo.toLowerCase();
-  const filtered = allData
-    .filter((item: { descricao: string }) => item.descricao.toLowerCase().includes(termoLower))
-    .slice(0, limite);
+  // Filter by search term. Até a 5.1.2 era `descricao.toLowerCase().includes(termo)`:
+  // caixa resolvida, ACENTO não — e as descrições da CNAE são em CAIXA ALTA COM
+  // acento. Medido nas 1.332 subclasses em 22/09/2026: "comercio" achava 2 de
+  // 211, "servicos" 0 de 95, "manutencao" 0 de 51. Agora os dois lados são
+  // normalizados, as palavras casam em AND, e cada uma vira um OR das grafias
+  // que a CNAE usa para ela (farmácia → produtos farmacêuticos; src/vocabulario.ts).
+  const expandidos = expandirBuscaCnae(termo);
+  const encontrados = allData.filter((item: { descricao: string }) =>
+    casaBuscaCnae(normalizar(item.descricao), expandidos)
+  );
+  const notas = notasDeVocabularioCnae(expandidos);
+  const filtered = encontrados.slice(0, limite);
 
   if (filtered.length === 0) {
+    // Zero sem explicação é beco sem saída: o catálogo é do IBGE e usa o
+    // vocabulário dele. Dizer o que fazer em seguida é parte da resposta.
     return {
       markdown:
-        `Nenhuma atividade encontrada para "${termo}".\n\n` +
+        `Nenhuma atividade encontrada para "${termo}" (nível: ${searchLevel}).\n\n` +
+        (notas.length ? notas.map((n) => `- ${n}\n`).join("") + "\n" : "") +
+        `Todas as palavras precisam casar com a descrição da atividade (acento e caixa não importam).\n\n` +
         `Dicas:\n` +
-        `- Tente termos mais genéricos\n` +
+        `- Tente menos palavras, ou a palavra que a CNAE usa: "programas de computador" ` +
+        `(não software), "produtos farmacêuticos" (não farmácia), "condicionamento físico" ` +
+        `(não academia), "artes cênicas" (não teatro), "resíduos" (não lixo)\n` +
+        `- Oficina de carro está em "manutenção e reparação de veículos automotores" ` +
+        `(grupo 4520); comércio eletrônico cai em 4790-3 "comércio ambulante e outros ` +
+        `tipos de comércio varejista"\n` +
         `- Use ibge_cnae(nivel="secoes") para ver as categorias principais`,
       isError: true,
     };
   }
 
   let output = `## Busca CNAE: "${termo}"\n\n`;
-  output += `Encontrados ${filtered.length} resultados (nível: ${searchLevel}):\n\n`;
+  if (notas.length) {
+    output += notas.map((n) => `- ${n}\n`).join("") + "\n";
+  }
+  // O cabeçalho conta o que o catálogo TEM, não o que coube no limite: com o
+  // acento consertado "comercio" casa 211 subclasses, e anunciar as 20 exibidas
+  // como "encontrados 20" é a mesma resposta plausível e errada que se conserta.
+  output +=
+    encontrados.length > filtered.length
+      ? `Encontradas ${encontrados.length} atividades (nível: ${searchLevel}); mostrando as ${filtered.length} primeiras:\n\n`
+      : `Encontrados ${filtered.length} resultados (nível: ${searchLevel}):\n\n`;
 
   const rows = filtered.map((item) => [(item as { id: string }).id, truncate(item.descricao, 80)]);
   output += createMarkdownTable(["Código", "Descrição"], rows, {
     alignment: ["left", "left"],
   });
 
-  if (filtered.length === limite) {
-    output += `\n_Mostrando primeiros ${limite} resultados. Use limite maior para ver mais._\n`;
+  if (encontrados.length > filtered.length) {
+    output += `\n_Use \`limite\` maior para ver as outras ${encontrados.length - filtered.length}._\n`;
   }
 
   const resultados = filtered.map((item) => ({
@@ -392,7 +438,9 @@ async function searchCnae(
         termo,
         nivel: searchLevel,
         total: filtered.length,
+        encontrados: encontrados.length,
         resultados,
+        ...(notas.length ? { notas_vocabulario: notas } : {}),
       },
     },
     provenance: provenienciaIbge({
