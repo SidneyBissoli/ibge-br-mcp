@@ -11,6 +11,7 @@ descrições 12× menores em produção). Nenhum teste unitário pega essa class
 | Arquivo | Como foi capturado | O que representa |
 |:--|:--|:--|
 | `surface-stdio-5.2.0.json` | `--stdio` sobre `dist/index.js` do fonte atual | o que o canal npm publica desde a 5.2.0 |
+| `surface-http-prod-5.2.0.json` | `--url https://ibge.sidneybissoli.com/mcp` | o que o endpoint hospedado serve desde 22/09/2026 (5.2.0) — byte-idêntico ao stdio 5.2.0 |
 | `surface-stdio-5.1.0.json` | `--stdio` sobre `dist/index.js` do fonte atual | o que o canal npm publicou da 5.1.0 à 5.1.2 |
 | `surface-http-prod-5.1.0.json` | `--url https://ibge.sidneybissoli.com/mcp` | o que o endpoint hospedado serve desde 16/09/2026 (5.1.0) — byte-idêntico ao stdio 5.1.0 |
 | `surface-stdio-4.3.0.json` | `--stdio` sobre `dist/index.js` do fonte atual | o que o canal npm publica |
@@ -26,7 +27,7 @@ em `busca` no `outputSchema`: `encontrados` (obrigatório, quantas atividades
 casam o termo no catálogo inteiro) e `notas_vocabulario` (opcional). As três
 diferenças são as do conserto do vocabulário da CNAE, deliberadas e listadas no
 CHANGELOG. A 5.1.1 e a 5.1.2 não mexeram na superfície — o baseline 5.1.0
-valeu por elas.
+valeu por elas. Produção recapturada depois do deploy: byte-idêntica ao stdio.
 
 ## Recaptura 5.1.0 (2026-09-16)
 
