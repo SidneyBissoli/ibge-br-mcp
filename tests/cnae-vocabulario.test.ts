@@ -106,25 +106,32 @@ describe("o defeito relatado: busca=software", () => {
 });
 
 describe("ACENTO: o que o filtro antigo não achava", () => {
-  // Medido nas 1.332 subclasses em 2026-09-22. `servicos` e `moveis` passam do
-  // número cru porque a mecânica também casa o singular (SERVIÇO, MÓVEL).
+  // Medido nas 1.332 subclasses em 2026-09-22. `servicos` passa do número cru
+  // porque a mecânica também casa o singular (SERVIÇO).
+  //
+  // A coluna "agora" foi REMEDIDA com `@sbissoli/mcp-search` 0.6.0, que passou a
+  // exigir que o padrão comece uma palavra. Os que encolheram só perderam
+  // casamento de MIOLO, e o caso mais caro é `moveis`: caía em AUTOMÓVEIS, então
+  // quem perguntava por móveis recebia carros (30 → 17). Também saíram
+  // PREPARAÇÃO para `reparacao` (58 → 49), REPRODUÇÃO para `producao` (49 → 44)
+  // e COLOCAÇÃO para `locacao` (10 → 9).
   it.each([
     ["comercio", 2, 211],
     ["servicos", 0, 109],
-    ["reparacao", 0, 58],
+    ["reparacao", 0, 49],
     ["manutencao", 0, 51],
     ["maquinas", 0, 51],
-    ["producao", 0, 49],
+    ["producao", 0, 44],
     ["veiculos", 0, 42],
     ["construcao", 0, 35],
     ["agua", 2, 30],
-    ["moveis", 0, 30],
+    ["moveis", 0, 17],
     ["eletrico", 0, 16],
     ["gestao", 0, 12],
     ["alimenticio", 0, 11],
     ["calcados", 0, 11],
     ["saude", 0, 10],
-    ["locacao", 0, 10],
+    ["locacao", 0, 9],
     ["educacao", 0, 9],
     ["informatica", 0, 8],
   ])("%s: %i → %i", (termo, antes, agora) => {
@@ -208,7 +215,9 @@ describe("as duas tabelas são separadas, e é por medição", () => {
     // `etaria → idade` casaria 126 subclasses, e são "ATIVIDADE..."; `negro →
     // preta` casaria "INTERPRETAÇÃO"; `emprego → ocupa`, "TERAPIA OCUPACIONAL".
     // Se a tabela do SIDRA vazar para cá, estes números explodem.
-    expect(busca("etaria")).toHaveLength(1); // e é "INTERMEDIAÇÃO NÃO MONETÁRIA" (mon-ETÁRIA)
+    // Desde a 0.6.0 da mecânica é ZERO: o único que restava era
+    // "INTERMEDIAÇÃO NÃO MONETÁRIA" (mon-ETÁRIA), casamento de miolo.
+    expect(busca("etaria")).toHaveLength(0);
     expect(busca("negro")).toHaveLength(0);
     expect(busca("emprego")).toHaveLength(0);
   });
@@ -271,14 +280,29 @@ describe("o que ficou de FORA, e por quê", () => {
   });
 });
 
-describe("a armadilha da substring sem fronteira de palavra", () => {
-  it("uber casa TUBÉRCULOS — documentado, não consertado aqui", () => {
-    // A mecânica é de `@sbissoli/mcp-search` e vale para os cinco servidores
-    // que a usam; fronteira de palavra é mudança de lá, não de uma tabela.
-    // Este teste existe para que o dia em que mudar, mude sabendo.
-    const uber = busca("uber");
-    expect(uber).toHaveLength(1);
-    expect(uber[0].descricao).toContain("TUBÉRCULOS");
+describe("a substring sem fronteira de palavra — CONSERTADA na 0.6.0 da mecânica", () => {
+  // Esta seção nasceu documentando a dívida: `uber` casava 1 subclasse por
+  // estar dentro de TUBÉRCULOS, e o conserto era na lib, não numa tabela.
+  // `@sbissoli/mcp-search` 0.6.0 passou a exigir que o padrão COMECE uma
+  // palavra; os casos viraram a prova de que chegou aqui.
+  it("uber não casa mais dentro de TUBÉRCULOS", () => {
+    expect(busca("uber")).toHaveLength(0);
+    expect(SUBCLASSES.some((a) => a.descricao.includes("TUBÉRCULOS"))).toBe(true);
+  });
+
+  it("moveis deixa de trazer AUTOMÓVEIS — quem pede móveis não quer carro", () => {
+    const hits = busca("moveis");
+    expect(hits).toHaveLength(17);
+    expect(hits.some((a) => a.descricao.includes("AUTOMÓVEIS"))).toBe(false);
+    expect(hits.some((a) => a.descricao.includes("MÓVEIS"))).toBe(true);
+  });
+
+  it("e o prefixo de palavra continua valendo — é o que faz o radical funcionar", () => {
+    // "reparacao" ainda alcança REPARAÇÃO; o que saiu foi PREPARAÇÃO.
+    const hits = busca("reparacao");
+    expect(hits).toHaveLength(49);
+    expect(hits.some((a) => a.descricao.includes("PREPARAÇÃO"))).toBe(false);
+    expect(busca("dentista").map((a) => a.descricao)).toContain("ATIVIDADE ODONTOLÓGICA");
   });
 });
 

@@ -5,6 +5,34 @@ All notable changes to the IBGE MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.0] - 2026-09-22
+
+### Fixed
+- **A busca casava o MIOLO de uma palavra, e devolvia o vizinho errado sem dar
+  erro.** `@sbissoli/mcp-search` sobe para 0.6.0, que passou a exigir que o
+  padrão COMECE uma palavra. Remedido nas 1.332 subclasses da CNAE em
+  22/09/2026, e cada linha que encolheu só perdeu falso positivo:
+
+  | busca | antes | agora | o que saiu |
+  |---|---|---|---|
+  | `moveis` | 30 | **17** | `FABRICAÇÃO DE AUTOMÓVEIS` — quem pedia móveis recebia carro |
+  | `reparacao` | 58 | **49** | `PREPARAÇÃO DE TERRENO`, `PREPARAÇÃO DO LEITE` |
+  | `producao` | 49 | **44** | `REPRODUÇÃO DE SOM`, `REPRODUÇÃO DE VÍDEO` |
+  | `locacao` | 10 | **9** | `COLOCAÇÃO DE PIERCING` |
+  | `uber` | 1 | **0** | `…RAÍZES, TUBÉRCULOS…` — era o único, e era errado |
+
+  Nos 9.336 agregados do SIDRA a mesma regra tira `idade` de dentro de
+  `atividade`. O casamento por PREFIXO de palavra continua — é o que faz o
+  radical da tabela funcionar (`dentista` → `odontolog` segue alcançando
+  `ODONTOLÓGICA` e `ODONTOLOGIA`).
+
+  A dívida registrada na 5.2.0 (`uber` casando `TUBÉRCULOS`) está paga: era da
+  biblioteca, valia para os cinco servidores que a usam, e foi consertada lá.
+
+### Changed
+- Superfície **inalterada** contra `baselines/surface-stdio-5.2.0.json` — a
+  mudança é de comportamento da busca, não de contrato.
+
 ## [5.2.0] - 2026-09-22
 
 ### Fixed
