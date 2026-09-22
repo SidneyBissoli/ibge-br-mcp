@@ -218,6 +218,12 @@ const secaoCnae = { id: "J", descricao: "Informação e comunicação", observac
 /** Seção CNAE sem `observacoes` — a maioria das seções não tem nota. */
 const secaoCnaeMagra = { id: "K", descricao: "Atividades financeiras" };
 
+/** Subclasses reais, com o acento que a CNAE usa — o lado da fonte da busca. */
+const subclassesCnae = [
+  { id: "4771701", descricao: "COMÉRCIO VAREJISTA DE PRODUTOS FARMACÊUTICOS, SEM MANIPULAÇÃO DE FÓRMULAS" },
+  { id: "6202300", descricao: "DESENVOLVIMENTO E LICENCIAMENTO DE PROGRAMAS DE COMPUTADOR CUSTOMIZÁVEIS" },
+];
+
 const calendarioPayload = {
   count: 1,
   page: 1,
@@ -370,6 +376,20 @@ const CASOS: Caso[] = [
 
   { nome: "ibge_cnae", cobre: "seção com observações", mock: um(secaoCnae), args: { codigo: "J" } },
   { nome: "ibge_cnae", cobre: "seção sem observações", mock: um(secaoCnaeMagra), args: { codigo: "K" } },
+  {
+    // Payload CHEIO da busca: o termo foi traduzido, então `notas_vocabulario` vem.
+    nome: "ibge_cnae",
+    cobre: "busca com nota de vocabulário",
+    mock: um(subclassesCnae),
+    args: { busca: "farmacia" },
+  },
+  {
+    // Payload MAGRO: o termo é o da própria CNAE, então `notas_vocabulario` é omitido.
+    nome: "ibge_cnae",
+    cobre: "busca sem nota de vocabulário",
+    mock: um(subclassesCnae),
+    args: { busca: "comercio varejista" },
+  },
 
   { nome: "ibge_geocodigo", cobre: "município com hierarquia", mock: um(municipioSP), args: { codigo: "3550308" } },
 

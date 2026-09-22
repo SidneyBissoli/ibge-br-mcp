@@ -5,6 +5,88 @@ All notable changes to the IBGE MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.0] - 2026-09-22
+
+### Fixed
+- **`ibge_cnae(busca=...)` respondia com a palavra que a CNAE usa, e ninguém
+  escreve assim.** `busca="software"` devolvia UM resultado, e era o errado:
+  `1830003 REPRODUÇÃO DE SOFTWARE EM QUALQUER SUPORTE` — prensar mídia. As três
+  subclasses de desenvolvimento existem, e a CNAE as escreve "PROGRAMAS DE
+  COMPUTADOR". Não dava erro; devolvia resposta plausível, e quem perguntou ia
+  embora com ela. São duas causas, medidas em 22/09/2026 contra os cinco níveis
+  da API v2 (`scripts/medicoes/`, versionados desde a 5.1.2):
+  - **ACENTO.** O filtro fazia `descricao.toLowerCase().includes(termo)`, que
+    resolve caixa e não resolve acento — e as descrições da CNAE são em CAIXA
+    ALTA COM acento. Nas 1.332 subclasses: `comercio` achava **2 de 211**,
+    `servicos` 0 de 109, `reparacao` 0 de 58, `manutencao` e `maquinas` 0 de 51,
+    `producao` 0 de 49, `veiculos` 0 de 42, `construcao` 0 de 35. Agora os dois
+    lados passam pela mesma normalização (NFD sem diacríticos, caixa baixa), e
+    várias palavras casam em E, com as stopwords do pt-BR fora do E.
+  - **VOCABULÁRIO.** 29 pares MEDIDOS entram em `VOCABULARIO_CNAE`
+    (`src/vocabulario.ts`), cada um com o lado perguntado ausente do catálogo e
+    o lado da fonte presente: farmácia/drogaria → produtos farmacêuticos (0→3),
+    dentista → odontolog (0→5), advogado/advocacia → advocatícios (0→1),
+    hotel → hotéis (0→2, só o plural existe), academia → condicionamento físico,
+    salão/barbearia → cabeleireiro, teatro → artes cênicas (0→3), lixo →
+    resíduos (0→8), faculdade/universidade → educação superior (0→3),
+    propaganda → publicidade (0→5), pizzaria, petshop, caminhão/frete, delivery,
+    jardinagem, reciclagem, app/aplicativo/site. A tradução é **dita** na
+    resposta — sem isso o resultado parece vir da palavra que o usuário escreveu.
+
+  A mecânica é a de `@sbissoli/mcp-search` 0.5.0, a mesma que `ibge_sidra_tabelas`
+  usa desde a 5.1.0; aqui entra só a tabela. `busca` continua valendo para os
+  cinco níveis: medido, o lado perguntado dos 29 pares é 0 em seções, divisões,
+  grupos, classes e subclasses, então par nenhum REMOVE resultado — só acrescenta.
+
+### Added
+- `ibge_cnae` ganha, no modo de busca, `busca.encontrados` (quantas atividades
+  casam o termo no catálogo inteiro) e `busca.notas_vocabulario` (opcional,
+  presente quando o termo foi traduzido). `busca.total` continua sendo o que
+  coube em `limite`: com o acento consertado `comercio` passa a casar 211
+  subclasses, e apresentar as 20 exibidas como se fossem o total seria a mesma
+  resposta plausível e errada que esta versão conserta.
+- `tests/fixtures/cnae-catalogo.json` — cópia versionada dos cinco níveis da
+  CNAE (2.398 registros), para a guarda afirmar contagens medidas contra o
+  catálogo real sem ficar refém do portal externo.
+
+### Changed
+- **Superfície** (diff contra `baselines/surface-stdio-5.1.0.json`): três
+  diferenças, todas em `ibge_cnae`, todas deliberadas — a descrição de `busca`
+  no `inputSchema`, e os campos `encontrados` (obrigatório) e
+  `notas_vocabulario` (opcional) em `busca` no `outputSchema`. Nenhuma outra
+  tool, resource ou prompt mudou. Baseline recapturado em
+  `baselines/surface-stdio-5.2.0.json`.
+- A resposta de zero da busca CNAE deixa de dizer só "tente termos mais
+  genéricos" e passa a ensinar a palavra da fonte, incluindo os dois casos que
+  ficaram FORA da tabela por medição: oficina de carro (grupo 4520, "manutenção
+  e reparação de veículos automotores") e comércio eletrônico (4790-3).
+
+### Notes
+- **`oficina` ficou de fora da tabela, medindo.** OR de "manutenção e reparação"
+  com "veículos automotores" casa 63 subclasses, entre elas 12 de FABRICAÇÃO de
+  peças e o comércio varejista de combustíveis; "veículos automotores" sozinho
+  casa 26, metade fabricação e comércio; o AND das duas casaria 3 e perderia 5
+  das 8 do grupo 4520 (borracharia, lanternagem, alinhamento, lavagem,
+  capotaria). Par largo demais devolve resultado plausível e errado — o mesmo
+  defeito que esta versão conserta —, então `oficina` foi para a dica do zero.
+- **A tabela da CNAE é SEPARADA da do SIDRA, e é por medição.** A regra "só
+  entra par medido" é medida contra UM catálogo, e o par bom num é falso
+  positivo no outro: aplicados às 1.332 subclasses, os pares do SIDRA fariam
+  `etaria → idade` casar 126 registros, e são "ATIVIDADE..."; `negro → preta`
+  casaria "INTERPRETAÇÃO"; `emprego → ocupa`, "TERAPIA OCUPACIONAL".
+  `faculdade` e `universidade` existem nas duas tabelas com grafias de fonte
+  diferentes ("ensino superior" vs "educação superior") — cada catálogo escreve
+  do seu jeito.
+- **Medidos e deixados de fora**, para ninguém refazer: `startup`, `coworking`,
+  `influencer`, `ecommerce`, `streaming` (0 dos DOIS lados — a CNAE 2.0 não
+  publica esses rótulos, e inventar apelido para dado inexistente é prometer o
+  que a fonte não tem); `marketing`, `loja`, `mercado`, `bar`, `banco` (a
+  palavra de todo dia JÁ casa).
+- **Armadilha conhecida e NÃO consertada aqui:** `uber` casa 1 subclasse por
+  estar dentro de `TUBÉRCULOS`. A mecânica casa substring sem fronteira de
+  palavra; isso é de `@sbissoli/mcp-search` e vale para os cinco servidores que
+  a usam, não de uma tabela. Fica documentado em teste.
+
 ## [5.1.2] - 2026-09-22
 
 ### Fixed

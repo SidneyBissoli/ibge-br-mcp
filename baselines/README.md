@@ -10,11 +10,23 @@ descrições 12× menores em produção). Nenhum teste unitário pega essa class
 
 | Arquivo | Como foi capturado | O que representa |
 |:--|:--|:--|
-| `surface-stdio-5.1.0.json` | `--stdio` sobre `dist/index.js` do fonte atual | o que o canal npm publica desde a 5.1.0 |
+| `surface-stdio-5.2.0.json` | `--stdio` sobre `dist/index.js` do fonte atual | o que o canal npm publica desde a 5.2.0 |
+| `surface-stdio-5.1.0.json` | `--stdio` sobre `dist/index.js` do fonte atual | o que o canal npm publicou da 5.1.0 à 5.1.2 |
 | `surface-http-prod-5.1.0.json` | `--url https://ibge.sidneybissoli.com/mcp` | o que o endpoint hospedado serve desde 16/09/2026 (5.1.0) — byte-idêntico ao stdio 5.1.0 |
 | `surface-stdio-4.3.0.json` | `--stdio` sobre `dist/index.js` do fonte atual | o que o canal npm publica |
 | `surface-http-prod-4.3.0.json` | `--url https://ibge.sidneybissoli.com/mcp` | o que o endpoint hospedado serve DE FATO |
 | `surface-*-4.2.0.json` | idem, na 4.2.0 | histórico: a superfície antes de `search`/`fetch` |
+
+## Recaptura 5.2.0 (2026-09-22)
+
+Diff stdio 5.1.0 → 5.2.0: **uma** tool alterada, nenhuma nova, resources e
+prompts iguais. `ibge_cnae` — a descrição de `busca` no `inputSchema` (acento e
+caixa não importam, AND por palavra, vocabulário traduzido) e dois campos novos
+em `busca` no `outputSchema`: `encontrados` (obrigatório, quantas atividades
+casam o termo no catálogo inteiro) e `notas_vocabulario` (opcional). As três
+diferenças são as do conserto do vocabulário da CNAE, deliberadas e listadas no
+CHANGELOG. A 5.1.1 e a 5.1.2 não mexeram na superfície — o baseline 5.1.0
+valeu por elas.
 
 ## Recaptura 5.1.0 (2026-09-16)
 

@@ -99,12 +99,18 @@ describe("ibge_cnae", () => {
       expect(result).toContain("ibge_cnae(nivel=");
     });
 
-    it("notes truncation when the result hits the limit", async () => {
+    it("notes truncation, and says how many actually match", async () => {
+      // Até a 5.1.2 a nota dizia só "Mostrando primeiros N": o total real ficava
+      // de fora, e `busca` achava tão pouco que quase nunca truncava. Com o
+      // acento consertado "comercio" passa a casar 211 subclasses, e apresentar
+      // as 20 exibidas como se fossem o total é resposta plausível e errada.
       mockFetch.mockResolvedValueOnce(mockResponse(subclasseList));
 
       const { markdown: result } = await ibgeCnae({ busca: "Desenvolvimento", limite: 1 });
 
-      expect(result).toContain("Mostrando primeiros 1 resultados");
+      expect(result).toContain("Encontradas 2 atividades");
+      expect(result).toContain("mostrando as 1 primeiras");
+      expect(result).toContain("ver as outras 1");
     });
   });
 
