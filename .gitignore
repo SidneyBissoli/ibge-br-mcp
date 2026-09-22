@@ -37,3 +37,6 @@ ROADMAP.html
 
 # R history
 .Rhistory
+
+# Catálogo baixado pelas medições (não versionar — cinco GETs o reconstroem)
+scripts/medicoes/cnae-*.json
