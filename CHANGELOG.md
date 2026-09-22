@@ -5,6 +5,57 @@ All notable changes to the IBGE MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.2] - 2026-09-22
+
+### Fixed
+- **`ibge_cnae` estourava `TypeError` no próprio código que devolve.** Medido e
+  reproduzido em produção em 22/09/2026: `ibge_cnae(codigo="47211")` respondia
+  `Cannot read properties of undefined (reading 'divisao')`. O valor "47211" é
+  o que a hierarquia da própria ferramenta emite (`{"nivel":"Classe",
+  "id":"47211"}`), então realimentar a saída da tool quebrava a tool. A cadeia:
+  o ramo de classe fazia `normalized.slice(0, 4)` e pedia `/cnae/classes/4721`,
+  mas **o id de classe da CNAE tem cinco dígitos** (os quatro da classe mais o
+  verificador); a API respondia `[]` com HTTP 200; o array atravessava a camada
+  de rede com o tipo do chamador e chegava ao formatador, que lia
+  `data.grupo.divisao`. Código de quatro dígitos continua aceito — é como bases
+  cadastrais e gente escrevem a classe — e agora resolve pela lista do grupo:
+  medido no catálogo, as 673 classes têm id de 5 dígitos e nenhum prefixo de 4
+  dígitos é compartilhado por duas, então a resolução é inequívoca.
+- **Ausência com HTTP 200 atravessava a camada de rede, em duas famílias de
+  API.** A causa acima não é da CNAE: medido em 22/09/2026, as APIs de CNAE e
+  de Localidades respondem identificador inexistente com `[]` e HTTP 200, não
+  com 404 — em `/v2/cnae/classes/4721`, `/v2/cnae/subclasses/4721101`,
+  `/v1/localidades/municipios/9999999` e `/v1/localidades/estados/99`. Como
+  `cachedFetch` só olha `response.ok`, o array seguia com o tipo do chamador.
+  Consertar só o endpoint que estourou deixaria a classe aberta, então a defesa
+  ficou na borda: `cachedFetchOne` trata array como ausência em endpoint de
+  identificador único e lança `RecursoAusenteError`, que o `parseHttpError`
+  rende como "nenhum registro encontrado". A varredura do repositório achou o
+  mesmo padrão em mais cinco pontos, todos convertidos: `ibge_geocodigo`
+  (município e distrito), `ibge_vizinhos`, `ibge_comparar` (que gravava
+  `undefined` como nome da localidade, calado) e `ibge_cidades`. O limite da
+  classe também foi medido: Agregados v3 e Pesquisas v1 respondem ausência com
+  HTTP 500 e já caíam no tratamento de `UpstreamError` — seguem em
+  `cachedFetch`, como todo endpoint de LISTAGEM, onde `[]` é lista vazia e é
+  resposta válida.
+- **Exceção não prevista era anônima na telemetria.** O `TypeError` acima não
+  casava com nenhum padrão de `classifyError` e caía em `outro`, que já era 13
+  dos 23 erros da ferramenta na semana de 13/09 — o comentário do próprio
+  vocabulário avisava que classe que cresce é classe que falta. Entra a classe
+  `defeito` e o `classifyThrown`, que classifica pelo TIPO do erro
+  (`TypeError`, `RangeError`, `ReferenceError`, `SyntaxError` são bug nosso,
+  não condição da fonte) e não pela frase, que muda entre versões de Node.
+  `classifyError` fica intacta para o erro que nós escrevemos.
+
+### Changed
+- Fixtures de `tests/cnae.test.ts` passam a usar os ids REAIS da CNAE 2.0
+  (classe `62015`, subclasse `6201501`), conferidos contra a API. As antigas
+  (`"6201"`, `"6201-5/01"`) eram formas que a fonte não emite, e eram elas que
+  abençoavam o `slice` defeituoso. As asserções de URL viraram igualdade: a URL
+  errada era PREFIXO da certa, e o `toContain` passava nas duas.
+
+**Sem mudança de superfície:** `tools/list` sai idêntico ao baseline 5.1.0.
+
 ## [5.1.1] - 2026-09-16
 
 ### Changed

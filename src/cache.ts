@@ -2,7 +2,13 @@
  * Simple in-memory cache with TTL support for IBGE API requests
  */
 
-import { fetchWithRetry, motivoUpstream, UpstreamError, type RetryOptions } from "./retry.js";
+import {
+  fetchWithRetry,
+  motivoUpstream,
+  RecursoAusenteError,
+  UpstreamError,
+  type RetryOptions,
+} from "./retry.js";
 
 interface CacheEntry<T> {
   data: T;
@@ -188,6 +194,34 @@ export async function cachedFetch<T>(
   cache.recordFetch(cacheKeyStr, Date.now());
 
   return data;
+}
+
+/**
+ * `cachedFetch` para endpoint de identificador ÚNICO, onde a resposta esperada
+ * é um objeto.
+ *
+ * Existe porque as APIs do IBGE respondem ausência com `[]` e HTTP 200, não com
+ * 404 (ver `RecursoAusenteError`). Um array chegando aqui é, por definição
+ * destes endpoints, "não existe" — nunca um objeto legítimo —, então vira erro
+ * tipado ANTES de sair da camada de rede, com o tipo `T` do chamador intacto.
+ *
+ * Use sempre que a URL terminar num identificador e o tipo esperado NÃO for
+ * array. Para endpoint de listagem, onde `[]` significa lista vazia e é
+ * resposta válida, continue com `cachedFetch`.
+ */
+export async function cachedFetchOne<T>(
+  url: string,
+  cacheKeyStr: string,
+  recurso: string,
+  id: string,
+  ttlMinutes?: number,
+  retryOptions?: RetryOptions
+): Promise<T> {
+  const data = await cachedFetch<T | unknown[]>(url, cacheKeyStr, ttlMinutes, retryOptions);
+  if (Array.isArray(data)) {
+    throw new RecursoAusenteError(recurso, id);
+  }
+  return data as T;
 }
 
 /**

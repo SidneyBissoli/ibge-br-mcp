@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { IBGE_API } from "../types.js";
-import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { cacheKey, CACHE_TTL, cachedFetch, cachedFetchOne } from "../cache.js";
+import { RecursoAusenteError } from "../retry.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
@@ -168,6 +169,28 @@ export async function ibgeCnae(input: CnaeInput): Promise<StructuredToolResult> 
   });
 }
 
+/**
+ * Resolve uma classe escrita com 4 dígitos (sem o dígito verificador) para o id
+ * de 5 dígitos que a API usa.
+ *
+ * Vai pelo grupo (`/grupos/{3}/classes`) e não pelo catálogo inteiro: são 673
+ * classes contra ~5 do grupo, e a lista do grupo é o menor recorte que contém a
+ * resposta. Ausência aqui é ausência de verdade — grupo que não existe devolve
+ * `[]` — e vira `RecursoAusenteError` com o código que a pessoa digitou.
+ */
+async function resolveClasseDeQuatroDigitos(quatroDigitos: string): Promise<string> {
+  const grupo = quatroDigitos.slice(0, 3);
+  const url = `${IBGE_API.CNAE}/grupos/${grupo}/classes`;
+  const classes = await cachedFetch<Array<{ id: string }>>(
+    url,
+    cacheKey("cnae-grupo-classes", { grupo }),
+    CACHE_TTL.STATIC
+  );
+  const achada = classes.find((c) => c.id.startsWith(quatroDigitos));
+  if (!achada) throw new RecursoAusenteError("Classe CNAE", quatroDigitos);
+  return achada.id;
+}
+
 async function getCnaeByCode(codigo: string): Promise<StructuredToolResult> {
   // Normalize code
   const normalized = codigo.replace(/[.\-/]/g, "").toUpperCase();
@@ -187,33 +210,54 @@ async function getCnaeByCode(codigo: string): Promise<StructuredToolResult> {
   // Determine the level based on code format
   let endpoint: string;
   let level: string;
+  // O que se pediu, para a mensagem de ausência: a API do IBGE responde
+  // identificador inexistente com `[]` e HTTP 200, e quem traduz isso é
+  // `cachedFetchOne`. `idPedido` é o que foi realmente à URL, que para a classe
+  // de quatro dígitos não é o que o chamador digitou.
+  let recurso: string;
+  let idPedido = normalized;
 
   if (/^[A-U]$/.test(normalized)) {
     endpoint = `${IBGE_API.CNAE}/secoes/${normalized}`;
     level = "secao";
+    recurso = "Seção CNAE";
   } else if (/^\d{2}$/.test(normalized)) {
     endpoint = `${IBGE_API.CNAE}/divisoes/${normalized}`;
     level = "divisao";
+    recurso = "Divisão CNAE";
   } else if (/^\d{3}$/.test(normalized)) {
     endpoint = `${IBGE_API.CNAE}/grupos/${normalized}`;
     level = "grupo";
+    recurso = "Grupo CNAE";
   } else if (/^\d{4,5}$/.test(normalized)) {
-    // Class can be 4 or 5 digits (with check digit)
-    const classCode = normalized.slice(0, 4);
+    // O id de classe da CNAE tem CINCO dígitos: os quatro da classe mais o
+    // dígito verificador ("47.21-1" -> "47211"). Até 22/09/2026 este ramo fazia
+    // `normalized.slice(0, 4)` e pedia `/classes/4721`, que a API responde com
+    // `[]` e HTTP 200 — e o array seguia para o formatador e estourava
+    // `TypeError`. Pior: o valor que a própria ferramenta devolve na hierarquia
+    // ({"nivel":"Classe","id":"47211"}) é de cinco dígitos, então realimentar a
+    // saída da tool quebrava a tool.
+    // Quatro dígitos continuam sendo aceitos porque é como bases cadastrais e
+    // gente escrevem a classe; resolvê-los é inequívoco: medido no catálogo em
+    // 22/09/2026, as 673 classes têm id de 5 dígitos e NENHUM prefixo de 4
+    // dígitos é compartilhado por duas classes.
+    const classCode =
+      normalized.length === 5 ? normalized : await resolveClasseDeQuatroDigitos(normalized);
     endpoint = `${IBGE_API.CNAE}/classes/${classCode}`;
     level = "classe";
+    recurso = "Classe CNAE";
+    idPedido = classCode;
   } else {
     // Subclass is 7 digits
     endpoint = `${IBGE_API.CNAE}/subclasses/${normalized}`;
     level = "subclasse";
+    recurso = "Subclasse CNAE";
   }
 
   const key = cacheKey("cnae", { codigo: normalized });
-  const data = await cachedFetch<CnaeSecao | CnaeDivisao | CnaeGrupo | CnaeClasse | CnaeSubclasse>(
-    endpoint,
-    key,
-    CACHE_TTL.STATIC
-  );
+  const data = await cachedFetchOne<
+    CnaeSecao | CnaeDivisao | CnaeGrupo | CnaeClasse | CnaeSubclasse
+  >(endpoint, key, recurso, idPedido, CACHE_TTL.STATIC);
 
   return {
     markdown: formatCnaeDetail(data, level),

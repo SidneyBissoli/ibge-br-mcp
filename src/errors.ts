@@ -2,7 +2,7 @@
  * Standardized error handling for IBGE MCP Server
  */
 
-import { TimeoutError, UpstreamError } from "./retry.js";
+import { RecursoAusenteError, TimeoutError, UpstreamError } from "./retry.js";
 
 // Common IBGE API error codes and their meanings
 export const IBGE_ERROR_CODES: Record<number, { message: string; suggestion: string }> = {
@@ -100,6 +100,20 @@ export function parseHttpError(
   // A timed-out request gets a dedicated, actionable message.
   if (error instanceof TimeoutError) {
     return timeoutError(tool, error.timeoutMs, relatedTools);
+  }
+
+  // A fonte respondeu que não existe (o `[]` com HTTP 200 das APIs do IBGE).
+  // Não é falha da fonte nem erro de rede: é resposta, e a mensagem tem de
+  // dizer isso e o que fazer a seguir.
+  if (error instanceof RecursoAusenteError) {
+    return formatError({
+      message: `${error.recurso} "${error.id}": nenhum registro encontrado`,
+      tool,
+      params,
+      suggestion: `A API do IBGE respondeu sem registros para esse identificador.
+Confira o código ou use a busca por termo (\`busca\`) para localizá-lo.`,
+      relatedTools,
+    });
   }
 
   // Extract HTTP code from error message if present

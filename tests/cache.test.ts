@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { cacheKey, CACHE_TTL, cache, cachedFetch, lastFetchMeta } from "../src/cache.js";
+import {
+  cacheKey,
+  CACHE_TTL,
+  cache,
+  cachedFetch,
+  cachedFetchOne,
+  lastFetchMeta,
+} from "../src/cache.js";
+import { RecursoAusenteError } from "../src/retry.js";
 import { mockResponse } from "./helpers.js";
 
 describe("cacheKey", () => {
@@ -186,5 +194,68 @@ describe("fetch metadata (retrieved_at real + served_from_cache)", () => {
     expect(lastFetchMeta("key-1")).toBe(null);
     cache.clear();
     expect(lastFetchMeta("key-2")).toBe(null);
+  });
+});
+
+/**
+ * A ausência que a fonte responde com `[]` e HTTP 200.
+ *
+ * Medido nas APIs do IBGE em 22/09/2026: `/cnae/classes/4721`,
+ * `/cnae/subclasses/4721101`, `/localidades/municipios/9999999` e
+ * `/localidades/estados/99` respondem todas `200 []` para identificador
+ * inexistente. Sem esta borda o array seguia com o tipo do chamador e estourava
+ * no formatador.
+ */
+describe("cachedFetchOne", () => {
+  beforeEach(() => {
+    cache.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("throws RecursoAusenteError when the source answers 200 with an empty array", async () => {
+    global.fetch = vi.fn().mockResolvedValue(mockResponse([]));
+
+    await expect(
+      cachedFetchOne("https://api.example.com/classes/4721", "k-vazio", "Classe CNAE", "4721")
+    ).rejects.toBeInstanceOf(RecursoAusenteError);
+  });
+
+  // Array NÃO vazio também é ausência aqui: estes endpoints devolvem UM objeto
+  // quando o id existe. Qualquer array é a forma "não achei" da fonte.
+  it("treats any array as absence on a single-id endpoint", async () => {
+    global.fetch = vi.fn().mockResolvedValue(mockResponse([{ id: "x" }]));
+
+    await expect(
+      cachedFetchOne("https://api.example.com/municipios/1", "k-array", "Município", "1")
+    ).rejects.toBeInstanceOf(RecursoAusenteError);
+  });
+
+  it("carries the resource and the id asked, for the message to the caller", async () => {
+    global.fetch = vi.fn().mockResolvedValue(mockResponse([]));
+
+    const erro = await cachedFetchOne(
+      "https://api.example.com/classes/9999",
+      "k-msg",
+      "Classe CNAE",
+      "9999"
+    ).catch((e: unknown) => e as RecursoAusenteError);
+
+    expect(erro.recurso).toBe("Classe CNAE");
+    expect(erro.id).toBe("9999");
+    expect(erro.message).toContain("nenhum registro encontrado");
+  });
+
+  it("returns the object untouched when the id exists", async () => {
+    global.fetch = vi.fn().mockResolvedValue(mockResponse({ id: "47211", descricao: "Padaria" }));
+
+    const data = await cachedFetchOne<{ id: string }>(
+      "https://api.example.com/classes/47211",
+      "k-ok",
+      "Classe CNAE",
+      "47211",
+      CACHE_TTL.STATIC
+    );
+
+    expect(data.id).toBe("47211");
   });
 });

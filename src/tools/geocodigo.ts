@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IBGE_API, Municipio, MunicipioSimples } from "../types.js";
-import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { cacheKey, CACHE_TTL, cachedFetch, cachedFetchOne } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
 import { parseHttpError, ValidationErrors } from "../errors.js";
@@ -223,7 +223,13 @@ async function decodeMunicipio(codigo: string): Promise<StructuredToolResult> {
   const key = cacheKey("municipio", { codigo });
 
   try {
-    const data = await cachedFetch<Municipio>(endpoint, key, CACHE_TTL.STATIC);
+    const data = await cachedFetchOne<Municipio>(
+      endpoint,
+      key,
+      "Município",
+      codigo,
+      CACHE_TTL.STATIC
+    );
 
     let output = `## Município: ${data.nome}\n\n`;
     output += `**Código IBGE:** ${data.id}\n\n`;
@@ -334,11 +340,11 @@ async function decodeDistrito(codigo: string): Promise<StructuredToolResult> {
   const key = cacheKey("distrito", { codigo });
 
   try {
-    const data = await cachedFetch<{
+    const data = await cachedFetchOne<{
       id: number;
       nome: string;
       municipio: Municipio;
-    }>(endpoint, key, CACHE_TTL.STATIC);
+    }>(endpoint, key, "Distrito", codigo, CACHE_TTL.STATIC);
 
     let output = `## Distrito: ${data.nome}\n\n`;
     output += `**Código IBGE:** ${data.id}\n\n`;

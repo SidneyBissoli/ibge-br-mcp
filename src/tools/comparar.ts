@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IBGE_API } from "../types.js";
-import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { cacheKey, CACHE_TTL, cachedFetchOne } from "../cache.js";
 import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
@@ -294,9 +294,11 @@ async function getLocalidadeNames(
           : `${IBGE_API.LOCALIDADES}/municipios/${codigo}`;
 
       const key = cacheKey("localidade-nome", { codigo });
-      const data = await cachedFetch<{ nome: string; sigla?: string }>(
+      const data = await cachedFetchOne<{ nome: string; sigla?: string }>(
         endpoint,
         key,
+        nivel === "3" ? "Estado" : "Município",
+        codigo,
         CACHE_TTL.STATIC
       );
 

@@ -10,6 +10,12 @@ function lastUrl(): string {
   return String(mockFetch.mock.calls.at(-1)?.[0]);
 }
 
+// Os ids destas fixtures são os REAIS da CNAE 2.0, conferidos contra
+// servicodados.ibge.gov.br/api/v2/cnae em 22/09/2026 — não uma forma plausível.
+// A versão anterior usava `classe.id = "6201"` e `subclasse.id = "6201-5/01"`,
+// formas que a API não emite (classe tem 5 dígitos, subclasse tem 7 sem
+// pontuação), e era essa fixture que abençoava o `slice(0, 4)` defeituoso: o
+// mock normalizava justamente a diferença que a API recusava.
 const secao = { id: "J", descricao: "Informação e comunicação", observacoes: ["nota 1"] };
 
 const divisao = {
@@ -18,20 +24,29 @@ const divisao = {
   secao,
 };
 
-const grupo = { id: "62.0", descricao: "Atividades dos serviços de TI", divisao };
+const grupo = { id: "620", descricao: "Atividades dos serviços de TI", divisao };
 
-const classe = { id: "6201", descricao: "Desenvolvimento de programas sob encomenda", grupo };
+const classe = {
+  id: "62015",
+  descricao: "Desenvolvimento de programas de computador sob encomenda",
+  grupo,
+};
+
+const classesDoGrupo620 = [
+  { id: "62015", descricao: "Desenvolvimento de programas de computador sob encomenda" },
+  { id: "62023", descricao: "Desenvolvimento e licenciamento de programas customizáveis" },
+];
 
 const subclasse = {
-  id: "6201-5/01",
+  id: "6201501",
   descricao: "Desenvolvimento de programas de computador sob encomenda",
   classe,
 };
 
 const subclasseList = [
-  { id: "6201-5/01", descricao: "Desenvolvimento de programas de computador sob encomenda" },
-  { id: "6202-3/00", descricao: "Desenvolvimento e licenciamento de software customizável" },
-  { id: "5611-2/01", descricao: "Restaurantes e similares" },
+  { id: "6201501", descricao: "Desenvolvimento de programas de computador sob encomenda" },
+  { id: "6202300", descricao: "Desenvolvimento e licenciamento de software customizável" },
+  { id: "5611201", descricao: "Restaurantes e similares" },
 ];
 
 describe("ibge_cnae", () => {
@@ -120,17 +135,58 @@ describe("ibge_cnae", () => {
 
       const { markdown: result } = await ibgeCnae({ codigo: "620", limite: 20 });
 
-      expect(lastUrl()).toContain("/cnae/grupos/620");
+      expect(lastUrl()).toBe("https://servicodados.ibge.gov.br/api/v2/cnae/grupos/620");
       expect(result).toContain("**Grupo:**");
     });
 
-    it("resolves a class code (uses first 4 digits)", async () => {
+    // `toBe` e não `toContain`: a URL defeituosa (`/classes/6201`) é PREFIXO da
+    // correta (`/classes/62015`), então um `toContain("/cnae/classes/6201")`
+    // passa nas duas — foi exatamente assim que a guarda anterior não viu o
+    // defeito. Substring não distingue prefixo; igualdade distingue.
+    it("resolves a 5-digit class code straight to the API id", async () => {
       mockFetch.mockResolvedValueOnce(mockResponse(classe));
 
       const { markdown: result } = await ibgeCnae({ codigo: "6201-5", limite: 20 });
 
-      expect(lastUrl()).toContain("/cnae/classes/6201");
+      expect(lastUrl()).toBe("https://servicodados.ibge.gov.br/api/v2/cnae/classes/62015");
       expect(result).toContain("**Classe:**");
+    });
+
+    // Quatro dígitos é a classe sem o dígito verificador — como bases
+    // cadastrais e gente escrevem. Resolve pela lista do grupo; NUNCA vai à URL
+    // de quatro dígitos, que a API responde com `[]` e HTTP 200.
+    it("resolves a 4-digit class code through the group listing", async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(classesDoGrupo620))
+        .mockResolvedValueOnce(mockResponse(classe));
+
+      const { markdown: result } = await ibgeCnae({ codigo: "6201", limite: 20 });
+
+      const urls = mockFetch.mock.calls.map((c) => String(c[0]));
+      expect(urls).toEqual([
+        "https://servicodados.ibge.gov.br/api/v2/cnae/grupos/620/classes",
+        "https://servicodados.ibge.gov.br/api/v2/cnae/classes/62015",
+      ]);
+      expect(result).toContain("**Classe:**");
+    });
+
+    // A saída da tool tem de ser entrada válida: a hierarquia que ela devolve
+    // traz {"nivel":"Classe","id":"62015"}, e realimentar esse valor quebrava.
+    it("accepts back the class id it emits in the hierarchy", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse(subclasse));
+      const { structured } = await ibgeCnae({ codigo: "6201501", limite: 20 });
+
+      const hierarquia = (
+        structured as { codigo: { hierarquia: Array<{ nivel: string; id: string }> } }
+      ).codigo.hierarquia;
+      const idDaClasse = hierarquia.find((h) => h.nivel === "Classe")?.id;
+      expect(idDaClasse).toBe("62015");
+
+      mockFetch.mockResolvedValueOnce(mockResponse(classe));
+      const devolta = await ibgeCnae({ codigo: idDaClasse as string, limite: 20 });
+
+      expect(devolta.isError).toBeFalsy();
+      expect(lastUrl()).toBe(`https://servicodados.ibge.gov.br/api/v2/cnae/classes/${idDaClasse}`);
     });
 
     it("resolves a subclass code (7 digits) with full hierarchy", async () => {
@@ -138,9 +194,23 @@ describe("ibge_cnae", () => {
 
       const { markdown: result } = await ibgeCnae({ codigo: "6201-5/01", limite: 20 });
 
-      expect(lastUrl()).toContain("/cnae/subclasses/6201501");
+      expect(lastUrl()).toBe("https://servicodados.ibge.gov.br/api/v2/cnae/subclasses/6201501");
       expect(result).toContain("**Seção:**");
       expect(result).toContain("**Subclasse:**");
+    });
+
+    // O defeito medido em produção em 22/09/2026: a API do IBGE responde
+    // identificador inexistente com `[]` e HTTP 200 (não 404), o array
+    // atravessava a camada de rede com o tipo do chamador e o formatador lia
+    // `data.grupo.divisao` -> "Cannot read properties of undefined".
+    it("turns an empty-array 200 into a not-found, never a TypeError", async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse([]));
+
+      const { markdown: result, isError } = await ibgeCnae({ codigo: "6201501", limite: 20 });
+
+      expect(isError).toBe(true);
+      expect(result).toContain("nenhum registro encontrado");
+      expect(result).not.toContain("Cannot read properties");
     });
 
     it("rejects an invalid code format without calling the API", async () => {

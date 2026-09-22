@@ -1,5 +1,5 @@
 import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
-import { classifyError, errorText, paramNames } from "./call-shape.js";
+import { classifyError, classifyThrown, errorText, paramNames } from "./call-shape.js";
 // Version sourced from package.json (single source of truth — avoids drift).
 // Node ESM reads it via the import attribute; esbuild inlines it for the Worker build.
 import pkg from "../package.json" with { type: "json" };
@@ -231,9 +231,12 @@ export function registerAll(server: McpServer, record?: ToolUsageRecorder): void
         }
         return result;
       } catch (error) {
+        // `classifyThrown` e não `classifyError`: aqui o OBJETO do erro existe,
+        // e o tipo dele separa bug nosso (`TypeError` & cia. -> `defeito`) de
+        // condição da fonte. Pela mensagem, um `TypeError` caía em `outro`.
         const forma = {
           params: paramNames(args),
-          classe: classifyError(error instanceof Error ? error.message : String(error)),
+          classe: classifyThrown(error),
         };
         record?.("tool_call", name, forma);
         record?.("tool_error", name, forma);
