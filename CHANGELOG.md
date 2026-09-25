@@ -5,9 +5,20 @@ All notable changes to the IBGE MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.3.0] - 2026-09-22
+## [5.3.0] - 2026-09-25
+
+Numerada em 22/09 e publicada em 25/09: a tag leva o branch inteiro, então
+esta seção cobre tudo desde a 5.2.0.
 
 ### Fixed
+- **A recusa de esquema não era contada — nem como chamada nem como erro
+  (só o Worker; o canal stdio não muda).** A reconciliação entre o hook de
+  tools e a camada HTTP era por status e supunha que 200 implica hook gravado;
+  a recusa do zod é respondida antes do handler, então ninguém gravava.
+  Medido em produção em 24/09/2026 pela rota do dono. Agora a reconciliação é
+  por NOME contra o recibo do hook, e o desfecho sai do envelope da resposta
+  casado por `id` JSON-RPC — erro JSON-RPC dentro de um 200 deixa de sair
+  `ok`. Mesmo conserto dos seis servidores (nascido no ilo-mcp-server).
 - **A busca casava o MIOLO de uma palavra, e devolvia o vizinho errado sem dar
   erro.** `@sbissoli/mcp-search` sobe para 0.6.0, que passou a exigir que o
   padrão COMECE uma palavra. Remedido nas 1.332 subclasses da CNAE em
@@ -32,6 +43,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Superfície **inalterada** contra `baselines/surface-stdio-5.2.0.json` — a
   mudança é de comportamento da busca, não de contrato.
+- **A ficha do LobeHub passa a ser derivada da superfície e presa por
+  teste.** `scripts/gen-lhm-manifest.mjs` (`npm run manifest:lhm`) regenera
+  `lhm.plugin.json` do dump stdio; `tests/lhm-manifest.test.ts` compara o
+  arquivo com o servidor real. A ficha ganhou `cloudEndpoint` (era "local",
+  vira "hybrid"). Medido em 25/09/2026: a ficha publicada estava na 4.3.0 com
+  o npm em 5.2.0 — o LobeHub só ingere o que `lhm plugin update` publica.
+- `publish.yml`: a janela de espera até o npm expor a versão sobe de 100 s
+  para 10 min, antes do passo do MCP Registry.
 
 ## [5.2.0] - 2026-09-22
 
