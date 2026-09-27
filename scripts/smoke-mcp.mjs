@@ -243,9 +243,18 @@ console.log("\nibge_estados SE: ok,", Object.keys(estados.structuredContent ?? {
 
 const prov = estados.structuredContent?.provenance;
 if (!prov) fail("bloco de proveniência ausente em structuredContent");
+// As chaves esperadas vêm do pacote que define o contrato, não de um literal:
+// a lista escrita à mão ("source,...,license", v1.0) derrubou o deploy da 5.4.0
+// (27/09/2026) quando o contrato ganhou `retrieval` — o mesmo defeito do
+// outputSchema transcrito, agora no smoke.
+const { CONCISE_BLOCK_JSON_SCHEMA } = await import("@sbissoli/mcp-provenance");
 const chaves = Object.keys(prov).join(",");
-if (chaves !== "source,source_url,data_vintage,retrieved_at,citation,license")
-  fail(`chaves do bloco concise fora do contrato: ${chaves}`);
+const esperadas = Object.keys(CONCISE_BLOCK_JSON_SCHEMA.properties).join(",");
+if (chaves !== esperadas)
+  fail(`chaves do bloco concise fora do contrato: ${chaves} (esperado ${esperadas})`);
+if (prov.retrieval !== null && typeof prov.retrieval?.requests !== "number")
+  fail(`retrieval fora do contrato: ${JSON.stringify(prov.retrieval)}`);
+console.log("retrieval:", JSON.stringify(prov.retrieval));
 if (!/^Fonte: IBGE — .+, extraído em \d{2}\/\d{2}\/\d{4}\.$/.test(prov.citation))
   fail(`citation fora do padrão: ${prov.citation}`);
 if (!Array.isArray(estados.structuredContent.attribution) || estados.structuredContent.attribution.length === 0)
