@@ -1,26 +1,74 @@
 {
-  "identifier": "sidneybissoli-ibge-br-mcp",
-  "name": "IBGE Brasil MCP",
-  "version": "5.4.0",
-  "description": "MCP server giving AI assistants live, sourced access to Brazilian public data — geography, census, economy and health — from the official IBGE APIs. Exact figures with provenance, not approximations.",
-  "author": "Sidney Bissoli",
-  "authorUrl": "https://github.com/SidneyBissoli",
-  "homepage": "https://github.com/SidneyBissoli/ibge-br-mcp",
-  "icon": "🗺️",
-  "category": "data-analytics",
-  "cloudEndpoint": "https://ibge.sidneybissoli.com/mcp",
-  "tags": [
-    "ibge",
-    "brazil",
-    "brasil",
-    "census",
-    "censo",
-    "sidra",
-    "demographics",
-    "geography",
-    "open-data",
-    "statistics"
+  "prompts": [
+    {
+      "arguments": [
+        {
+          "description": "Localidades separadas por vírgula — códigos IBGE ou nomes (ex.: 'São Paulo, Rio de Janeiro, Belo Horizonte')",
+          "name": "localidades",
+          "required": true
+        },
+        {
+          "description": "Indicador a comparar (ex.: populacao, pib, densidade, alfabetizacao). Padrão: populacao",
+          "name": "indicador",
+          "required": false
+        }
+      ],
+      "description": "Compara 2 a 10 localidades (municípios ou UFs) em um indicador e produz um ranking comentado.",
+      "name": "comparar-municipios",
+      "title": "Comparar municípios"
+    },
+    {
+      "arguments": [
+        {
+          "description": "Município ou UF — código IBGE ou nome (ex.: '3550308' ou 'São Paulo')",
+          "name": "localidade",
+          "required": true
+        }
+      ],
+      "description": "Monta um perfil demográfico de uma localidade combinando população, censo e indicadores socioeconômicos.",
+      "name": "perfil-demografico",
+      "title": "Perfil demográfico"
+    }
   ],
+  "resources": [
+    {
+      "description": "Códigos dos 6 biomas brasileiros (usados por ibge_malhas_tema).",
+      "mimeType": "application/json",
+      "name": "biomas",
+      "title": "Biomas do Brasil",
+      "uri": "ibge://catalogos/biomas"
+    },
+    {
+      "description": "Códigos de nível territorial (nivel_territorial) aceitos pelas tools SIDRA, com rótulo e nome.",
+      "mimeType": "application/json",
+      "name": "niveis-territoriais",
+      "title": "Níveis territoriais SIDRA",
+      "uri": "ibge://catalogos/niveis-territoriais"
+    },
+    {
+      "description": "As 5 grandes regiões com código, sigla, nome e UFs que as compõem.",
+      "mimeType": "application/json",
+      "name": "regioes",
+      "title": "Regiões do Brasil",
+      "uri": "ibge://catalogos/regioes"
+    },
+    {
+      "description": "Códigos das tabelas SIDRA mais usadas (população, PIB, IPCA, etc.) com descrição.",
+      "mimeType": "application/json",
+      "name": "tabelas-sidra",
+      "title": "Tabelas SIDRA comuns",
+      "uri": "ibge://catalogos/tabelas-sidra"
+    },
+    {
+      "description": "As 27 Unidades da Federação com código IBGE (2 dígitos), sigla, nome e região.",
+      "mimeType": "application/json",
+      "name": "ufs",
+      "title": "UFs do Brasil",
+      "uri": "ibge://catalogos/ufs"
+    }
+  ],
+  "serverName": "ibge-br-mcp",
+  "toolCount": 23,
   "tools": [
     {
       "annotations": {
@@ -6716,74 +6764,6 @@
         "type": "object"
       },
       "title": "Busca para Deep Research"
-    }
-  ],
-  "resources": [
-    {
-      "description": "Códigos dos 6 biomas brasileiros (usados por ibge_malhas_tema).",
-      "mimeType": "application/json",
-      "name": "biomas",
-      "title": "Biomas do Brasil",
-      "uri": "ibge://catalogos/biomas"
-    },
-    {
-      "description": "Códigos de nível territorial (nivel_territorial) aceitos pelas tools SIDRA, com rótulo e nome.",
-      "mimeType": "application/json",
-      "name": "niveis-territoriais",
-      "title": "Níveis territoriais SIDRA",
-      "uri": "ibge://catalogos/niveis-territoriais"
-    },
-    {
-      "description": "As 5 grandes regiões com código, sigla, nome e UFs que as compõem.",
-      "mimeType": "application/json",
-      "name": "regioes",
-      "title": "Regiões do Brasil",
-      "uri": "ibge://catalogos/regioes"
-    },
-    {
-      "description": "Códigos das tabelas SIDRA mais usadas (população, PIB, IPCA, etc.) com descrição.",
-      "mimeType": "application/json",
-      "name": "tabelas-sidra",
-      "title": "Tabelas SIDRA comuns",
-      "uri": "ibge://catalogos/tabelas-sidra"
-    },
-    {
-      "description": "As 27 Unidades da Federação com código IBGE (2 dígitos), sigla, nome e região.",
-      "mimeType": "application/json",
-      "name": "ufs",
-      "title": "UFs do Brasil",
-      "uri": "ibge://catalogos/ufs"
-    }
-  ],
-  "prompts": [
-    {
-      "arguments": [
-        {
-          "description": "Localidades separadas por vírgula — códigos IBGE ou nomes (ex.: 'São Paulo, Rio de Janeiro, Belo Horizonte')",
-          "name": "localidades",
-          "required": true
-        },
-        {
-          "description": "Indicador a comparar (ex.: populacao, pib, densidade, alfabetizacao). Padrão: populacao",
-          "name": "indicador",
-          "required": false
-        }
-      ],
-      "description": "Compara 2 a 10 localidades (municípios ou UFs) em um indicador e produz um ranking comentado.",
-      "name": "comparar-municipios",
-      "title": "Comparar municípios"
-    },
-    {
-      "arguments": [
-        {
-          "description": "Município ou UF — código IBGE ou nome (ex.: '3550308' ou 'São Paulo')",
-          "name": "localidade",
-          "required": true
-        }
-      ],
-      "description": "Monta um perfil demográfico de uma localidade combinando população, censo e indicadores socioeconômicos.",
-      "name": "perfil-demografico",
-      "title": "Perfil demográfico"
     }
   ]
 }

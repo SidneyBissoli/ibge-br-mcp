@@ -8,6 +8,8 @@
  * - Response sizes
  */
 
+import { comColetorDeRede } from "./retry.js";
+
 export interface MetricEntry {
   timestamp: number;
   tool: string;
@@ -265,7 +267,10 @@ class MetricsCollector {
 export const metrics = new MetricsCollector();
 
 /**
- * Helper to measure and record a tool execution
+ * Helper to measure and record a tool execution. It is also where the network
+ * collector of the call is opened (`comColetorDeRede`): every tool body runs
+ * inside it, so every request counts toward the `retrieval` block of the
+ * provenance (nested calls reuse the collector already open).
  */
 export async function withMetrics<T>(
   tool: string,
@@ -278,7 +283,7 @@ export async function withMetrics<T>(
   let errorType: string | undefined;
 
   try {
-    return await fn();
+    return await comColetorDeRede(fn);
   } catch (error) {
     success = false;
     errorType = error instanceof Error ? error.name : "UnknownError";

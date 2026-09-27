@@ -5,6 +5,58 @@ All notable changes to the IBGE MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.4.0] - 2026-09-27
+
+### Added
+- **Diagnóstico de origem na proveniência (contrato v1.1): o bloco ganha
+  `retrieval`.** Até aqui a proveniência dizia de onde e quando cada número
+  veio (`retrieved_at` real, `served_from_cache`) e calava sobre *com que
+  dificuldade*: um sucesso obtido depois de duas respostas anômalas da fonte
+  era indistinguível de um sucesso na primeira tentativa. Agora toda resposta
+  traz `retrieval: { requests, attempts, anomalies[], unstable }` —
+  quantas idas à API do IBGE a chamada fez, quantas tentativas somou e que
+  anomalias contornou (`timeout`, `network`, `rate_limited`, `http_5xx`,
+  `http_4xx`, `malformed_body`), medido pelo coletor da chamada, nunca
+  inventado. `null` quando nada foi medido (resposta servida só do cache).
+  Sai em `structuredContent.provenance` e no espelho `_meta`, nas 23 tools
+  (`tests/provenance-wiring.test.ts` passa a exigir o bloco medido em todas).
+  Ideia de um leitor do artigo "Building an MCP server for financial data"
+  (dev.to, 26/09/2026); a medição de se o agente USA o campo fica para o
+  item de sessão longa do roadmap.
+
+### Changed
+- **A ida à origem é do `@sbissoli/mcp-upstream` (0.3.0), o fetch comum do
+  portfólio.** `src/retry.ts` deixa de ter o próprio laço de retry: o pacote
+  classifica (status, timeout, rede, corpo), e o servidor decide — os números
+  (5 tentativas de 2 → 16 s, 30 s por tentativa, presets `QUICK`/`NONE`), a
+  lista de status que repete (o 500 determinístico da API de Agregados
+  continua fora, via `RETRY_SIDRA`), a regra "o fetch lançou só repete se for
+  rede" e os erros tipados (`TimeoutError`, `UpstreamError` com o que a fonte
+  disse, `RecursoAusenteError`) são os mesmos. O que mudou de comportamento:
+  429 passa a honrar `Retry-After`; uma ida não ultrapassa o orçamento total
+  (180 s) mesmo que a origem responda devagar a cada tentativa; e a política de
+  repetição vira por ida (`retries`/`backoff`/`retryOn` por requisição — foi o
+  que a adoção pediu ao pacote, 0.2.0 → 0.3.0). O coletor abre em
+  `withMetrics`, que envolve toda tool; chamada aninhada (`search`/`fetch`)
+  reusa o coletor aberto. 200 com corpo que não é JSON continua NÃO repetindo:
+  nunca foi medido nas APIs do IBGE, e o pacote repetiria por padrão.
+- `@sbissoli/mcp-provenance` sobe para 0.2.0 (contrato v1.1). O `outputSchema`
+  do bloco deixa de ser transcrito à mão: a forma vem do `ConciseBlockSchema`
+  do pacote (achado de 26/09/2026: subir o contrato com a transcrição antiga e
+  `additionalProperties: false` derrubava TODA chamada — o SDK valida
+  `structuredContent` em runtime), com as descrições em pt-BR enxertadas nó a
+  nó (as do IBGE no topo, as do pacote em `retrieval`). Um campo novo do
+  contrato sem descrição aqui não compila.
+- Superfície: `baselines/surface-stdio-5.4.0.json`. Diferença contra a 5.2.0
+  (a 5.3.0 não mudou a superfície): só o nó `provenance` das 23 tools — a
+  descrição do bloco ("contrato v1.1 … diagnóstico de origem") e a chave
+  `retrieval`. Ficha do LobeHub regenerada.
+
+### Removed
+- `RETRY_PRESETS.AGGRESSIVE` (6 retries até 30 s): nada usava, e não cabia no
+  orçamento total de uma ida. `isRetryableStatus` e `calculateDelay` saem com
+  o laço que os usava (o backoff é do pacote).
+
 ## [5.3.0] - 2026-09-25
 
 Numerada em 22/09 e publicada em 25/09: a tag leva o branch inteiro, então

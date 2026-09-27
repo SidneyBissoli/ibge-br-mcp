@@ -1,8 +1,9 @@
 /**
- * pt-BR provenance adapter (contract v1.0) — the canonical block every tool
+ * pt-BR provenance adapter (contract v1.1) — the canonical block every tool
  * attaches and the three emission channels wired in `toMcpResult`.
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { CONCISE_BLOCK_JSON_SCHEMA, ConciseBlockSchema, renderConcise } from "@sbissoli/mcp-provenance";
 import { cache, cachedFetch, cacheKey } from "../src/cache.js";
 import {
   ATTRIBUTION_META_KEY,
@@ -11,8 +12,10 @@ import {
   IBGE_LICENSE,
   NOTA_DERIVACAO_ESTATISTICAS,
   PROVENANCE_META_KEY,
+  provenanceBlockSchema,
   provenienciaIbge,
 } from "../src/provenance.js";
+import { comColetorDeRede } from "../src/retry.js";
 import { toMcpResult } from "../src/structured.js";
 import { mockResponse } from "./helpers.js";
 import { z } from "zod";
@@ -29,14 +32,14 @@ describe("provenienciaIbge", () => {
     vi.unstubAllGlobals();
   });
 
-  it("builds a canonical v1.0 block with the normative license and IBGE source", () => {
+  it("builds a canonical v1.1 block with the normative license and IBGE source", () => {
     const p = provenienciaIbge({
       fonte: "LOCALIDADES",
       url: URL_EXEMPLO,
       pesquisa: "API de Localidades (estados)",
     });
 
-    expect(p.contract_version).toBe("1.0");
+    expect(p.contract_version).toBe("1.1");
     expect(p.source.name).toBe("IBGE — API de Localidades");
     expect(p.source.agency).toBe("IBGE");
     expect(p.source_url).toBe(URL_EXEMPLO);
@@ -107,6 +110,87 @@ describe("provenienciaIbge", () => {
     expect(p.derivation_note).toBe(NOTA_DERIVACAO_ESTATISTICAS);
     expect(p.dataset.id).toBe("6579");
   });
+
+  // v1.1 — `retrieval` is the REAL count of the call's network collector (opened
+  // by `withMetrics` for every tool); outside one there is nothing measured.
+  it("retrieval is null outside a tool call: not measured, never invented", () => {
+    const p = provenienciaIbge({ fonte: "CNAE", url: URL_EXEMPLO, pesquisa: "API CNAE" });
+    expect(p.retrieval).toBe(null);
+  });
+
+  it("inside a tool call, retrieval is the count the collector measured", async () => {
+    await comColetorDeRede(async () => {
+      const key = cacheKey(URL_EXEMPLO);
+      await cachedFetch(URL_EXEMPLO, key, 1);
+      const p = provenienciaIbge({
+        fonte: "LOCALIDADES",
+        url: URL_EXEMPLO,
+        chaveCache: key,
+        pesquisa: "API de Localidades (estados)",
+      });
+      expect(p.retrieval).toEqual({ requests: 1, attempts: 1, anomalies: [], unstable: false });
+    });
+  });
+
+  it("a response served only from cache carries retrieval null, not a fake clean count", async () => {
+    const key = cacheKey(URL_EXEMPLO);
+    await cachedFetch(URL_EXEMPLO, key, 1); // warms the cache outside the call
+    await comColetorDeRede(async () => {
+      await cachedFetch(URL_EXEMPLO, key, 1);
+      const p = provenienciaIbge({
+        fonte: "LOCALIDADES",
+        url: URL_EXEMPLO,
+        chaveCache: key,
+        pesquisa: "API de Localidades (estados)",
+      });
+      expect(p.served_from_cache).toBe(true);
+      expect(p.retrieval).toBe(null);
+    });
+  });
+});
+
+describe("provenanceBlockSchema — the package's shape, the IBGE wording", () => {
+  const bloco = () =>
+    renderConcise(
+      provenienciaIbge({ fonte: "LOCALIDADES", url: URL_EXEMPLO, pesquisa: "API de Localidades" })
+    );
+
+  it("has exactly the keys the package renders, sealed, and parses a rendered block", () => {
+    expect(Object.keys(provenanceBlockSchema.shape)).toEqual(Object.keys(ConciseBlockSchema.shape));
+    expect(provenanceBlockSchema.safeParse(bloco()).success).toBe(true);
+    // A key the contract does not know is refused — the SDK validates at runtime.
+    expect(provenanceBlockSchema.safeParse({ ...bloco(), extra: 1 }).success).toBe(false);
+  });
+
+  it("publishes the package's JSON Schema shape with a description on every node", () => {
+    type No = {
+      description?: string;
+      type?: string;
+      properties?: Record<string, No>;
+      required?: string[];
+      additionalProperties?: boolean;
+      anyOf?: No[];
+      oneOf?: No[];
+      items?: No;
+    };
+    const js = z.toJSONSchema(provenanceBlockSchema) as No;
+    expect(Object.keys(js.properties ?? {})).toEqual(Object.keys(CONCISE_BLOCK_JSON_SCHEMA.properties));
+    expect([...(js.required ?? [])].sort()).toEqual([...CONCISE_BLOCK_JSON_SCHEMA.required].sort());
+    expect(js.additionalProperties).toBe(false);
+    for (const [chave, no] of Object.entries(js.properties ?? {})) {
+      expect(no.description, chave).toBeTruthy();
+    }
+    expect(js.properties?.source.description).toBe("Fonte oficial do dado (API do IBGE consultada)");
+
+    // Underneath `retrieval`, the package's own pt-BR text reaches the client.
+    const retrieval = js.properties?.retrieval;
+    const objeto = (retrieval?.anyOf ?? retrieval?.oneOf ?? []).find((n) => n.type === "object");
+    expect(objeto, "retrieval object branch").toBeDefined();
+    for (const chave of ["requests", "attempts", "anomalies", "unstable"]) {
+      expect(objeto?.properties?.[chave]?.description, `retrieval.${chave}`).toBeTruthy();
+    }
+    expect(objeto?.properties?.anomalies?.items?.properties?.kind?.description).toBeTruthy();
+  });
 });
 
 describe("extrairPeriodoSidra", () => {
@@ -166,7 +250,7 @@ describe("toMcpResult with provenance (three channels)", () => {
       "A referência completa desta informação pode ser solicitada nesta própria conversa."
     );
 
-    // Channel 1: concise projection (6 keys) + attribution, visible to the model.
+    // Channel 1: concise projection (7 keys, v1.1) + attribution, visible to the model.
     const sc = result.structuredContent as Record<string, unknown>;
     expect(sc.total).toBe(27);
     expect(Object.keys(sc.provenance as object)).toEqual([
@@ -174,6 +258,7 @@ describe("toMcpResult with provenance (three channels)", () => {
       "source_url",
       "data_vintage",
       "retrieved_at",
+      "retrieval",
       "citation",
       "license",
     ]);

@@ -587,7 +587,7 @@ ibge-br-mcp/
 │   ├── types.ts              # TypeScript types
 │   ├── config.ts             # Configuration and constants
 │   ├── cache.ts              # Request caching system
-│   ├── retry.ts              # Retry with exponential backoff
+│   ├── retry.ts              # Trip to the source over @sbissoli/mcp-upstream (retry, timeout, budget, retrieval count)
 │   ├── errors.ts             # Standardized error handling
 │   ├── validation.ts         # Input validation helpers
 │   ├── metrics.ts            # Metrics and logging

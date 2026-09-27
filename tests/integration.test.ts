@@ -295,15 +295,12 @@ describe("Error handling", () => {
   });
 
   it("should handle malformed JSON", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: () => Promise.reject(new Error("Invalid JSON")),
-    } as Response);
+    mockFetch.mockResolvedValueOnce(new Response("<html>Just a moment...</html>", { status: 200 }));
 
     const result = (await ibgeEstados({})).markdown;
 
-    expect(result).toBeDefined();
+    expect(result).toContain("## Erro: ibge_estados");
+    expect(result).toContain("não é JSON válido");
   });
 });
 
