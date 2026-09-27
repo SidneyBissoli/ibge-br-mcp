@@ -1,5 +1,5 @@
 /**
- * Provenance block (portfolio contract v1.0) — pt-BR adapter over
+ * Provenance block (portfolio contract v1.1) — pt-BR adapter over
  * `@sbissoli/mcp-provenance`. The canonical model, the `concise`/`detailed`
  * projections, serialization determinism, timezone handling and the footer
  * wording live in the package; this module binds them to the IBGE server:
@@ -13,7 +13,13 @@
  *  - `provenienciaIbge(...)`, the per-call builder every tool uses. It pulls
  *    the REAL extraction instant (`retrieved_at`) and `served_from_cache` from
  *    the cache layer via `lastFetchMeta` (contract: cache hits keep the
- *    original fetch instant — it is the legally relevant extraction date).
+ *    original fetch instant — it is the legally relevant extraction date), and
+ *    since 5.4.0 the `retrieval` block (v1.1) from the network collector of the
+ *    call (`@sbissoli/mcp-upstream`, opened by `withMetrics` — see `retry.ts`):
+ *    how many requests went to the IBGE, how many attempts they took and which
+ *    anomalies were overcome. `null` when nothing was measured — response served
+ *    only from cache, or a direct call outside a tool (tests) — never an
+ *    invented `{ requests: 1, attempts: 1 }`.
  *
  * Emission happens in `toMcpResult` (`structured.ts`): tools attach the
  * canonical block to their `StructuredToolResult` and the handler emits the
@@ -29,11 +35,14 @@
 import { z } from "zod";
 import {
   attributionList,
+  CONCISE_BLOCK_JSON_SCHEMA,
+  ConciseBlockSchema,
   createProvenanceContext,
   renderConcise,
   type CanonicalProvenance,
   type ConciseBlock,
 } from "@sbissoli/mcp-provenance";
+import { currentCall } from "@sbissoli/mcp-upstream/als";
 import { lastFetchMeta } from "./cache.js";
 import { API_ENDPOINTS } from "./config.js";
 
@@ -177,6 +186,10 @@ export function provenienciaIbge(opts: ProvenienciaIbgeOptions): Provenance {
     derived: opts.derivado !== undefined,
     ...(opts.derivado !== undefined ? { derivation_note: opts.derivado.nota } : {}),
     served_from_cache: meta ? meta.servedFromCache : null,
+    // The REAL count of this call (requests, attempts, anomalies), measured by
+    // the collector `withMetrics` opened; `null` = not measured (cache only, or
+    // no collector), which the contract prefers over an invented clean block.
+    retrieval: currentCall()?.retrieval() ?? null,
   });
 }
 
@@ -207,30 +220,98 @@ export function extrairPeriodoSidra(
   return valores.length === 1 ? valores[0] : `${valores[0]}–${valores[valores.length - 1]}`;
 }
 
-/** Concise projection of a block (the shape embedded in `structuredContent`/`_meta`). */
-export const provenanceBlockSchema = z.object({
-  source: z.string().describe("Fonte oficial do dado (API do IBGE consultada)"),
-  source_url: z.string().describe("URL canônica que reproduz a consulta"),
-  data_vintage: z
-    .string()
-    .nullable()
-    .describe("Período de referência do dado segundo a fonte; null se a fonte não expõe"),
-  retrieved_at: z
-    .string()
-    .describe("Instante real da extração no upstream (ISO-8601, horário de Brasília)"),
-  citation: z.string().describe("Citação pronta para uso"),
-  license: z.string().nullable().describe("Regime legal do dado"),
-});
+/**
+ * IBGE wording for the top-level keys of the concise block. Typed against the
+ * package's shape on purpose: a key the contract adds and this map does not
+ * describe fails to compile, instead of reaching the client undescribed.
+ */
+const DESCRICOES_IBGE: Record<keyof typeof ConciseBlockSchema.shape, string> = {
+  source: "Fonte oficial do dado (API do IBGE consultada)",
+  source_url: "URL canônica que reproduz a consulta",
+  data_vintage: "Período de referência do dado segundo a fonte; null se a fonte não expõe",
+  retrieved_at: "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
+  retrieval:
+    "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)",
+  citation: "Citação pronta para uso",
+  license: "Regime legal do dado",
+};
+
+/** The subset of JSON Schema the walker reads: descriptions, and where the children are. */
+interface NoJsonSchema {
+  description?: string;
+  type?: string | readonly string[];
+  properties?: Record<string, NoJsonSchema>;
+  items?: NoJsonSchema;
+  oneOf?: readonly NoJsonSchema[];
+}
+
+/**
+ * Grafts descriptions onto a zod schema, node by node, from the JSON Schema
+ * the package publishes for the same projection (`overrides` win at the top
+ * level). The SHAPE — keys, types, strictness — stays the package's.
+ */
+function descreverPeloJsonSchema(
+  schema: z.ZodType,
+  no: NoJsonSchema | undefined,
+  overrides: Partial<Record<string, string>> = {},
+  /** Description of THIS node; `undefined` = the JSON Schema's, `""` = none (the parent carries it). */
+  texto: string | undefined = no?.description
+): z.ZodType {
+  let saida: z.ZodType;
+  if (schema instanceof z.ZodNullable) {
+    // `x | null` is `oneOf: [x, null]` (retrieval) or `type: [x, "null"]` (vintage).
+    const interno = no?.oneOf ? no.oneOf.find((n) => n.type !== "null") : no;
+    saida = descreverPeloJsonSchema(schema.unwrap() as z.ZodType, interno, {}, "").nullable();
+  } else if (schema instanceof z.ZodArray) {
+    saida = z.array(descreverPeloJsonSchema(schema.element as z.ZodType, no?.items));
+  } else if (schema instanceof z.ZodObject) {
+    saida = z.strictObject(
+      Object.fromEntries(
+        Object.entries(schema.shape).map(([chave, filho]) => [
+          chave,
+          descreverPeloJsonSchema(
+            filho as z.ZodType,
+            no?.properties?.[chave],
+            {},
+            overrides[chave] ?? no?.properties?.[chave]?.description
+          ),
+        ])
+      )
+    );
+  } else {
+    saida = schema;
+  }
+  return texto ? saida.describe(texto) : saida;
+}
+
+/**
+ * Concise projection of a block — the shape embedded in `structuredContent`
+ * and `_meta`, and the `provenance` node of every tool's `outputSchema`.
+ *
+ * The shape is the package's `ConciseBlockSchema`, not a transcription. Found
+ * on 26/09/2026: this module transcribed the six v1.0 keys by hand, the SDK
+ * validates `structuredContent` against the sealed `outputSchema` at runtime,
+ * and raising the package to a contract with a new key (v1.1, `retrieval`)
+ * without touching the transcription failed EVERY tool call — "must NOT have
+ * additional properties", 48 tests. Importing the shape means a new key
+ * arrives together with the lib that emits it. Descriptions are the IBGE
+ * wording at the top level and the package's own pt-BR text underneath.
+ */
+export const provenanceBlockSchema = descreverPeloJsonSchema(
+  ConciseBlockSchema,
+  CONCISE_BLOCK_JSON_SCHEMA,
+  DESCRICOES_IBGE
+) as typeof ConciseBlockSchema;
 
 /**
  * Extends a tool's output schema with the provenance channel of the contract
- * v1.0: the concise block + the `attribution` URL list (MCP RFC #711). Every
+ * v1.1: the concise block + the `attribution` URL list (MCP RFC #711). Every
  * successful response carries both (wired in `toMcpResult`).
  */
 export function comProveniencia<T extends z.ZodObject<z.ZodRawShape>>(schema: T) {
   return schema.extend({
     provenance: provenanceBlockSchema.describe(
-      "Bloco de proveniência (contrato v1.0): fonte, URL, período, extração e licença"
+      "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença"
     ),
     attribution: z
       .array(z.string())

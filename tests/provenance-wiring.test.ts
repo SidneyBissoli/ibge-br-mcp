@@ -474,6 +474,13 @@ describe("proveniência — fiação em todas as ferramentas (portão de release
       expect(p?.source.agency).toBe("IBGE");
       expect(p?.citation).toMatch(CITACAO_PADRAO);
       expect(p?.license.name).not.toBeNull();
+      // v1.1: the count is REAL. Every tool body runs inside the network
+      // collector (`withMetrics`), and this case went to the (mocked) network
+      // with a cold cache — so a null here means a tool builds its block
+      // outside the collector, and the diagnostic would lie by omission.
+      expect(p?.retrieval, "retrieval").not.toBeNull();
+      expect(p?.retrieval?.requests).toBeGreaterThanOrEqual(1);
+      expect(p?.retrieval?.unstable).toBe(false);
     });
   }
 });
