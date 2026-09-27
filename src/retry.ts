@@ -291,7 +291,11 @@ function upstreamIbge(): Upstream {
     timeoutMs: DEFAULT_OPTIONS.timeoutMs,
     retries: DEFAULT_OPTIONS.maxRetries,
     budgetMs: orcamentoTotalMs(),
-    backoff: { baseMs: DEFAULT_OPTIONS.initialDelayMs, maxMs: DEFAULT_OPTIONS.maxDelayMs, jitterMs: 0 },
+    backoff: {
+      baseMs: DEFAULT_OPTIONS.initialDelayMs,
+      maxMs: DEFAULT_OPTIONS.maxDelayMs,
+      jitterMs: 0,
+    },
     honorRetryAfter: true,
     retryOn: (ctx) => repetir(ctx, DEFAULT_OPTIONS),
     fetchImpl: (input, init) => globalThis.fetch(input, init),
@@ -387,14 +391,18 @@ async function traduzirErro(erro: unknown, o: Required<RetryOptions>): Promise<E
     case "network":
     case "aborted":
       // O que o fetch lançou é o que o servidor sempre viu.
-      return erro.cause instanceof Error ? erro.cause : new Error(erro.message, { cause: erro.cause });
+      return erro.cause instanceof Error
+        ? erro.cause
+        : new Error(erro.message, { cause: erro.cause });
     case "malformed_body":
       return new Error(`Resposta da API do IBGE não é JSON válido${sufixo}`, { cause: erro.cause });
     default: {
       // Um status chegou: http_4xx, http_5xx, rate_limited, not_found. O corpo
       // vai junto — é nele que a fonte diz QUAL parâmetro recusou e por quê.
       const status = erro.status ?? 0;
-      const detalhe = erro.response ? await motivoUpstream(erro.response) : motivoDoCorpo(erro.body);
+      const detalhe = erro.response
+        ? await motivoUpstream(erro.response)
+        : motivoDoCorpo(erro.body);
       const statusText = erro.response?.statusText || STATUS_TEXT[status] || "";
       return new UpstreamError(status, statusText, detalhe, sufixo);
     }
