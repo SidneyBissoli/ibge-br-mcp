@@ -37,6 +37,19 @@ export const ORCAMENTO_REQUISICAO_MS = 20_000;
 const TENTATIVAS = 3;
 const ESPERA_BASE_MS = 1000;
 
+/**
+ * Pior caso de UMA chamada a `fetchIntegracao`: três tentativas no orçamento
+ * inteiro mais as esperas entre elas (1 s + 2 s) = 63 s. Todo caso de teste que
+ * faz uma requisição por este helper precisa de timeout MAIOR que isso, senão
+ * o vitest derruba o caso enquanto a repetição ainda está cabendo — foi o que
+ * aconteceu em 21 e 28/09/2026 (`Test timed out in 30000ms`), e o painel leu
+ * lentidão da fonte como contrato quebrado. Casos com N requisições usam N ×.
+ */
+export const TIMEOUT_CASO_MS =
+  TENTATIVAS * ORCAMENTO_REQUISICAO_MS +
+  (ESPERA_BASE_MS * (TENTATIVAS * (TENTATIVAS - 1))) / 2 +
+  7_000;
+
 function dorme(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
