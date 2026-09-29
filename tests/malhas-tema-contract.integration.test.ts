@@ -27,7 +27,11 @@
 import { describe, expect, it } from "vitest";
 import { ibgeMalhasTema, RECORTES, TEMAS } from "../src/tools/malhas-tema.js";
 import { IBGE_API } from "../src/types.js";
-import { fetchIntegracao, TIMEOUT_CASO_MS } from "./integration-fetch.js";
+import {
+  fetchIntegracao,
+  TIMEOUT_CASO_FERRAMENTA_MS,
+  TIMEOUT_CASO_MS,
+} from "./integration-fetch.js";
 
 const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TESTS === "true";
 
@@ -121,5 +125,5 @@ describe.skipIf(!LIVE)("contrato dos recortes temáticos no WFS do IBGE", () => 
     expect(resposta.status, s.url_geometria).toBe(200);
     expect(resposta.headers.get("content-type"), s.url_geometria).toMatch(/json/i);
     await resposta.body?.cancel();
-  }, 120000);
+  }, TIMEOUT_CASO_FERRAMENTA_MS);
 });
