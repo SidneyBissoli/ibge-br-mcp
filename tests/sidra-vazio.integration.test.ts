@@ -20,7 +20,7 @@
 import { describe, expect, it } from "vitest";
 import { ibgeSidra, sidraSchema } from "../src/tools/sidra.js";
 import { IBGE_API } from "../src/types.js";
-import { fetchIntegracao } from "./integration-fetch.js";
+import { fetchIntegracao, TIMEOUT_CASO_FERRAMENTA_MS } from "./integration-fetch.js";
 
 const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TESTS === "true";
 
@@ -63,7 +63,7 @@ describe.skipIf(!LIVE)("resultado vazio do SIDRA explica a causa", () => {
     // E a lista do que existe precisa citar as pontas da série.
     expect(markdown).toContain(String(min));
     expect(markdown).toContain(String(max));
-  }, 60000);
+  }, TIMEOUT_CASO_FERRAMENTA_MS);
 
   it("no modo estatísticas a causa é a mesma, não marcador de ausência", async () => {
     const anos = await periodosDaFonte(TABELA);
@@ -84,7 +84,7 @@ describe.skipIf(!LIVE)("resultado vazio do SIDRA explica a causa", () => {
 
     expect(markdown).toContain("não publica o período");
     expect(markdown).not.toContain("marcador de ausência");
-  }, 60000);
+  }, TIMEOUT_CASO_FERRAMENTA_MS);
 
   it("um ano que a tabela PUBLICA continua respondendo dado", async () => {
     const anos = await periodosDaFonte(TABELA);
@@ -98,5 +98,5 @@ describe.skipIf(!LIVE)("resultado vazio do SIDRA explica a causa", () => {
     expect(markdown).not.toContain("não publica");
     // 27 unidades da federação: o diagnóstico não pode ter comido a resposta.
     expect((structured as { totalRegistros: number }).totalRegistros).toBe(27);
-  }, 60000);
+  }, TIMEOUT_CASO_FERRAMENTA_MS);
 });

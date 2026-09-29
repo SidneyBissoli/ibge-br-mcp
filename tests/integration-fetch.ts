@@ -19,6 +19,8 @@
  * isso; quem cura é runner novo, e disso cuida o workflow `Integration retry`.
  */
 
+import { orcamentoTotalMs } from "../src/retry.js";
+
 /** O IBGE não respondeu: DNS, TCP, TLS, abort. Diferente de um status HTTP. */
 export class FalhaDeTransporte extends Error {
   constructor(public readonly causa: unknown) {
@@ -49,6 +51,18 @@ export const TIMEOUT_CASO_MS =
   TENTATIVAS * ORCAMENTO_REQUISICAO_MS +
   (ESPERA_BASE_MS * (TENTATIVAS * (TENTATIVAS - 1))) / 2 +
   7_000;
+
+/**
+ * Caso que chama a FERRAMENTA inteira (`ibgeSidra`, `ibgeMalhas`…) além deste
+ * helper: a ferramenta vai à fonte pelo `fetchJson` do servidor, com a política
+ * padrão dele (5 tentativas de 30 s mais 2+4+8+16 s de espera = 180 s,
+ * `orcamentoTotalMs`). Uma tentativa lenta lá dentro é comportamento normal do
+ * servidor, não contrato quebrado — e em 29/09/2026 um caso de 60 s caiu por
+ * `Test timed out` enquanto os dois irmãos passavam em 13 s. Cobre o helper mais
+ * UMA ida completa da ferramenta; ferramenta que faça N idas no pior caso passa
+ * disso, e aí é o pior caso do servidor, não lentidão pontual.
+ */
+export const TIMEOUT_CASO_FERRAMENTA_MS = TIMEOUT_CASO_MS + orcamentoTotalMs();
 
 function dorme(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));

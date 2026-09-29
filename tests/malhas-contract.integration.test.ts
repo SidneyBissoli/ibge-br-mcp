@@ -32,7 +32,11 @@ import {
   type Nivel,
 } from "../src/tools/malhas.js";
 import { IBGE_API } from "../src/types.js";
-import { fetchIntegracao, TIMEOUT_CASO_MS } from "./integration-fetch.js";
+import {
+  fetchIntegracao,
+  TIMEOUT_CASO_FERRAMENTA_MS,
+  TIMEOUT_CASO_MS,
+} from "./integration-fetch.js";
 
 const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TESTS === "true";
 
@@ -112,7 +116,7 @@ describe.skipIf(!LIVE)("contrato de malhas contra a API v3 real", () => {
     // 27 UFs: o intrarregiao foi aplicado de verdade, não silenciosamente ignorado.
     expect(markdown).toContain("| **Número de features** | 27 |");
     expect(String((structured as { url?: string })?.url)).toContain("intrarregiao=UF");
-  }, 60000);
+  }, TIMEOUT_CASO_FERRAMENTA_MS);
 
   it("cada resolucao traduzida é um valor que a API aceita para BR", async () => {
     const doCodigo = Object.values(RESOLUCAO_PARA_INTRARREGIAO).filter(Boolean) as string[];
