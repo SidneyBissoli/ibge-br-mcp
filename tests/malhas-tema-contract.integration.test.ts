@@ -27,7 +27,7 @@
 import { describe, expect, it } from "vitest";
 import { ibgeMalhasTema, RECORTES, TEMAS } from "../src/tools/malhas-tema.js";
 import { IBGE_API } from "../src/types.js";
-import { fetchIntegracao } from "./integration-fetch.js";
+import { fetchIntegracao, TIMEOUT_CASO_MS } from "./integration-fetch.js";
 
 const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TESTS === "true";
 
@@ -65,7 +65,7 @@ describe.skipIf(!LIVE)("contrato dos recortes temáticos no WFS do IBGE", () => 
       const corpo = await consulta(r.camada, r.campos, r.filtro);
       expect(corpo.numberMatched ?? 0, `${tema}: recorte vazio`).toBeGreaterThan(0);
       expect(corpo.features?.length ?? 0).toBeGreaterThan(0);
-    }, 60000);
+    }, TIMEOUT_CASO_MS);
 
     it(`${tema}: todo campo declarado existe na camada`, async () => {
       const corpo = await consulta(r.camada, r.campos, r.filtro);
@@ -73,7 +73,7 @@ describe.skipIf(!LIVE)("contrato dos recortes temáticos no WFS do IBGE", () => 
       for (const campo of r.campos) {
         expect(Object.keys(props), `${tema}: campo "${campo}" sumiu da camada`).toContain(campo);
       }
-    }, 60000);
+    }, TIMEOUT_CASO_MS);
   }
 
   it("o filtro CQL ainda separa região metropolitana de RIDE", async () => {
@@ -92,7 +92,7 @@ describe.skipIf(!LIVE)("contrato dos recortes temáticos no WFS do IBGE", () => 
     // Os dois somados não podem valer o total sem filtro por acaso: se um dia o
     // campo sumir, o CQL falha e os dois voltariam iguais.
     expect(rm.numberMatched).not.toBe(ride.numberMatched);
-  }, 60000);
+  }, 2 * TIMEOUT_CASO_MS);
 
   it("os códigos de bioma vêm da fonte, não de uma tabela no código", async () => {
     // A versão antiga documentava 2 = Cerrado. Na camada, 2 é Caatinga. Por
@@ -101,7 +101,7 @@ describe.skipIf(!LIVE)("contrato dos recortes temáticos no WFS do IBGE", () => 
     const codigos = (corpo.features ?? []).map((f) => Number(f.properties?.cd_bioma));
     expect(codigos.length).toBeGreaterThanOrEqual(6);
     expect(new Set(codigos).size).toBe(codigos.length);
-  }, 60000);
+  }, TIMEOUT_CASO_MS);
 
   it("a ferramenta inteira responde, sem erro e sem geometria", async () => {
     const { markdown, structured, isError } = await ibgeMalhasTema({ tema: "biomas", limite: 10 });
@@ -112,9 +112,14 @@ describe.skipIf(!LIVE)("contrato dos recortes temáticos no WFS do IBGE", () => 
     expect(JSON.stringify(structured)).not.toContain("coordinates");
 
     // E a URL que a ferramenta entrega para baixar a geometria precisa VALER —
-    // é a única coisa que ela promete e não verifica sozinha. HEAD basta: o
-    // corpo passa de 9 MB.
-    const resposta = await fetchIntegracao(s.url_geometria, { method: "HEAD" });
+    // é a única coisa que ela promete e não verifica sozinha. Tem de ser GET,
+    // como o usuário vai usar: desde 2026-09-21 o Cloudflare na frente do
+    // geoservicos responde 403 a HEAD nesta mesma URL enquanto o GET segue 200
+    // (medido em 28/09/2026). Só o status e o tipo interessam; o corpo (33 MB)
+    // é cancelado antes de descer.
+    const resposta = await fetchIntegracao(s.url_geometria);
     expect(resposta.status, s.url_geometria).toBe(200);
+    expect(resposta.headers.get("content-type"), s.url_geometria).toMatch(/json/i);
+    await resposta.body?.cancel();
   }, 120000);
 });

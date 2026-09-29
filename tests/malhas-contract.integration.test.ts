@@ -32,7 +32,7 @@ import {
   type Nivel,
 } from "../src/tools/malhas.js";
 import { IBGE_API } from "../src/types.js";
-import { fetchIntegracao } from "./integration-fetch.js";
+import { fetchIntegracao, TIMEOUT_CASO_MS } from "./integration-fetch.js";
 
 const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TESTS === "true";
 
@@ -82,7 +82,7 @@ describe.skipIf(!LIVE)("contrato de malhas contra a API v3 real", () => {
     it(`${nivel}: a API confirma as divisões internas que o código promete`, async () => {
       const daApi = await aceitosSegundoApi(nivel);
       expect(new Set(daApi)).toEqual(new Set(INTRARREGIAO_POR_NIVEL[nivel]));
-    }, 30000);
+    }, TIMEOUT_CASO_MS);
   }
 
   for (const nivel of NIVEIS) {
@@ -90,14 +90,14 @@ describe.skipIf(!LIVE)("contrato de malhas contra a API v3 real", () => {
       const url = `${IBGE_API.MALHAS}/${nivel}/${EXEMPLO[nivel]}?formato=${GEOJSON}&qualidade=minima`;
       const resposta = await fetchIntegracao(url);
       expect(resposta.status, `${nivel} em ${url}`).toBe(200);
-    }, 30000);
+    }, TIMEOUT_CASO_MS);
   }
 
   for (const qualidade of QUALIDADE_V3) {
     it(`a API aceita qualidade="${qualidade}"`, async () => {
       const url = `${IBGE_API.MALHAS}/paises/BR?formato=${GEOJSON}&qualidade=${qualidade}`;
       expect((await fetchIntegracao(url)).status).toBe(200);
-    }, 30000);
+    }, TIMEOUT_CASO_MS);
   }
 
   it("a ferramenta inteira devolve malha, sem erro, no caminho mais comum", async () => {
@@ -120,5 +120,5 @@ describe.skipIf(!LIVE)("contrato de malhas contra a API v3 real", () => {
     for (const valor of doCodigo) {
       expect(daApi, `resolucao traduz para "${valor}", que a API de BR não aceita`).toContain(valor);
     }
-  }, 30000);
+  }, TIMEOUT_CASO_MS);
 });
