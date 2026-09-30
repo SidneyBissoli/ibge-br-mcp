@@ -34,7 +34,7 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { buildQueryString } from "../utils/index.js";
-import { formatError, parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, formatError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -312,7 +312,7 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<Structured
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(
+          ...erroDaFonte(
             error,
             "ibge_malhas_tema",
             { tema: input.tema, codigo: input.codigo, camada: recorte.camada },

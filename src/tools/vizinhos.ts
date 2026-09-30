@@ -3,7 +3,7 @@ import { IBGE_API, Municipio } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch, cachedFetchOne } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { formatNumber } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, ValidationErrors } from "../errors.js";
 import { isValidIbgeCode, formatValidationError } from "../validation.js";
 import { resolveUf } from "../config.js";
 import { fetchWithRetry, RETRY_PRESETS } from "../retry.js";
@@ -200,7 +200,7 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<StructuredTool
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(
+          ...erroDaFonte(
             error,
             "ibge_vizinhos",
             {

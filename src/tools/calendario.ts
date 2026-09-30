@@ -4,7 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate, buildQueryString } from "../utils/index.js";
 import { parseUserDate, toIbgeApiDate } from "../validation.js";
-import { ValidationErrors } from "../errors.js";
+import { comClasse, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -165,7 +165,11 @@ export async function ibgeCalendario(input: CalendarioInput): Promise<Structured
       };
     } catch (error) {
       if (error instanceof Error) {
-        return { markdown: formatCalendarioError(error.message, input), isError: true };
+        return {
+          markdown: formatCalendarioError(error.message, input),
+          isError: true,
+          ...comClasse(error),
+        };
       }
       return {
         markdown: "Erro desconhecido ao consultar calendário do IBGE.",

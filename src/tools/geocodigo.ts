@@ -3,7 +3,7 @@ import { IBGE_API, Municipio, MunicipioSimples } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch, cachedFetchOne } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, ValidationErrors } from "../errors.js";
 import { resolveUf } from "../config.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -151,7 +151,7 @@ export async function ibgeGeocodigo(input: GeocodigoInput): Promise<StructuredTo
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(
+          ...erroDaFonte(
             error,
             "ibge_geocodigo",
             {

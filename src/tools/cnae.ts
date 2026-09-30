@@ -4,7 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch, cachedFetchOne } from "../cache.js";
 import { RecursoAusenteError } from "../retry.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, ValidationErrors } from "../errors.js";
 import { isValidCnaeCode, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -178,7 +178,7 @@ export async function ibgeCnae(input: CnaeInput): Promise<StructuredToolResult> 
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_cnae", {
+          ...erroDaFonte(error, "ibge_cnae", {
             codigo: input.codigo,
             busca: input.busca,
           }),

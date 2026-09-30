@@ -4,7 +4,7 @@ import { CACHE_TTL } from "../cache.js";
 import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { ValidationErrors } from "../errors.js";
+import { comClasse, ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import {
   type StructuredToolResult,
@@ -421,6 +421,7 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
             "Verifique sua conexão ou tente novamente mais tarde."
           ),
           isError: true,
+          ...comClasse(error),
         };
       }
       return { markdown: "Erro desconhecido ao consultar indicador.", isError: true };

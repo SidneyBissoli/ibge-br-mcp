@@ -3,7 +3,7 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 import { casaBusca, expandirBusca, normalizar, notasDeVocabulario } from "../vocabulario.js";
@@ -165,7 +165,7 @@ export async function ibgeSidraTabelas(input: SidraTabelasInput): Promise<Struct
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(
+          ...erroDaFonte(
             error,
             "ibge_sidra_tabelas",
             {

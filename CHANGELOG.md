@@ -5,6 +5,27 @@ All notable changes to the IBGE MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Só telemetria do canal hospedado: nenhuma tool, parâmetro, campo ou mensagem
+muda, e a superfície publicada é idêntica à da 5.4.0.
+
+### Fixed
+- **Falha da origem gravada com a classe errada na telemetria.** Medido em
+  30/09/2026 rodando o classificador sobre o texto que `parseHttpError` monta:
+  rede ("fetch failed"), abort, 403 e corpo HTML em 200 caíam em `outro`, e o
+  429 caía em `contrato` ("Too Many Requests" casa "too many") — classe que o
+  painel exclui da taxa de erro. O tipo da falha existia em `retry.ts` e morria
+  no `catch` de cada tool. Agora os erros nascem com a classe
+  (`TimeoutError`, `UpstreamError`, `RecursoAusenteError` e o novo
+  `ErroDaOrigem`, que embrulha rede, abort e corpo não-JSON), `erroDaFonte`/
+  `comClasse` a levam ao resultado, `toMcpResult` a copia como propriedade
+  não enumerável e o hook a lê antes da frase. O que já estava certo não muda:
+  400 → `contrato` (o SIDRA recusa parâmetro com 400 e diz qual), 404 e `[]`
+  com 200 → `nao_encontrado`, 5xx e timeout → `fonte`. Mesmo conserto do
+  bcb-br-mcp (#45), ilo-mcp-server (#24) e uis-mcp-server (#22). Gate em
+  `tests/classe-do-erro.test.ts`.
+
 ## [5.4.0] - 2026-09-27
 
 ### Added

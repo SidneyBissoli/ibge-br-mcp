@@ -4,7 +4,7 @@ import { CACHE_TTL } from "../cache.js";
 import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import {
   type StructuredToolResult,
@@ -529,7 +529,7 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_censo", { ano: input.ano, tema: input.tema }, [
+          ...erroDaFonte(error, "ibge_censo", { ano: input.ano, tema: input.tema }, [
             "ibge_sidra_metadados",
             "ibge_sidra",
           ]),

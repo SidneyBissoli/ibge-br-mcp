@@ -3,7 +3,7 @@ import { IBGE_API, Pais, PaisIndicadorResultado } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -160,7 +160,7 @@ export async function ibgePaises(input: PaisesInput): Promise<StructuredToolResu
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_paises", {
+          ...erroDaFonte(error, "ibge_paises", {
             tipo: input.tipo,
             pais: input.pais,
             busca: input.busca,

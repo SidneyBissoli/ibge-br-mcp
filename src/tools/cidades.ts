@@ -4,7 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch, cachedFetchOne } from "../cache.js";
 import { RETRY_PRESETS } from "../retry.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, ValidationErrors } from "../errors.js";
 import { isValidIbgeCode, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -120,7 +120,7 @@ export async function ibgeCidades(input: CidadesInput): Promise<StructuredToolRe
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(
+          ...erroDaFonte(
             error,
             "ibge_cidades",
             {
@@ -451,7 +451,7 @@ async function listarPesquisas(pesquisaId?: string): Promise<StructuredToolResul
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_cidades", { pesquisa: pesquisaId }, [
+          ...erroDaFonte(error, "ibge_cidades", { pesquisa: pesquisaId }, [
             "ibge_comparar",
             "ibge_censo",
           ]),

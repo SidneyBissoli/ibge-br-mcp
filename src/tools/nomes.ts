@@ -3,7 +3,7 @@ import { IBGE_API, type NomeFrequencia, type NomeRanking } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber, buildQueryString } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, parseHttpError, ValidationErrors } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -350,7 +350,7 @@ async function ibgeNomesFrequenciaStructured(
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_nomes_frequencia", { nomes: input.nomes }),
+          ...erroDaFonte(error, "ibge_nomes_frequencia", { nomes: input.nomes }),
           isError: true,
         };
       }
@@ -409,7 +409,7 @@ async function ibgeNomesRankingStructured(input: NomesRankingInput): Promise<Str
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_nomes_ranking", { decada: input.decada }),
+          ...erroDaFonte(error, "ibge_nomes_ranking", { decada: input.decada }),
           isError: true,
         };
       }

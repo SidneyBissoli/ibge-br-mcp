@@ -3,7 +3,7 @@ import { IBGE_API, type Municipio, type MunicipioSimples } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, ValidationErrors } from "../errors.js";
 import { normalizeUf, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -155,7 +155,7 @@ export async function ibgeMunicipios(input: MunicipiosInput): Promise<Structured
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_municipios", { uf: input.uf, busca: input.busca }, [
+          ...erroDaFonte(error, "ibge_municipios", { uf: input.uf, busca: input.busca }, [
             "ibge_geocodigo",
             "ibge_localidade",
           ]),

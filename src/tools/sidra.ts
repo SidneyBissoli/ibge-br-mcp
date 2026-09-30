@@ -4,7 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, parseHttpError, ValidationErrors } from "../errors.js";
 import { isValidPeriod, isValidTerritorialLevel, formatValidationError } from "../validation.js";
 import { territorialLevelHint, territorialLevelList, ALL_TERRITORIAL_LEVELS } from "../config.js";
 import {
@@ -186,7 +186,7 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
       } catch (error) {
         if (error instanceof Error) {
           return {
-            markdown: parseHttpError(
+            ...erroDaFonte(
               error,
               "ibge_sidra",
               {
@@ -268,9 +268,7 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_sidra", { tabela: input.tabela }, [
-            "ibge_sidra_metadados",
-          ]),
+          ...erroDaFonte(error, "ibge_sidra", { tabela: input.tabela }, ["ibge_sidra_metadados"]),
           isError: true,
         };
       }

@@ -48,12 +48,34 @@ import {
 } from "@sbissoli/mcp-upstream";
 import { currentCall, withCall } from "@sbissoli/mcp-upstream/als";
 import { REQUEST_TIMEOUT_MS } from "./config.js";
+import type { ErrorClass } from "./call-shape.js";
+
+/**
+ * Falha da origem sem classe própria acima — rede, abort, corpo que não é
+ * JSON — com a classe já decidida. A `message` é a de sempre (a do `fetch`,
+ * no caso de rede): o texto ao chamador não muda, só deixa de ser a ÚNICA
+ * pista da classe. Antes disto a rede chegava como o próprio `TypeError` do
+ * fetch, que pela frase dava `outro` e, se escapasse, `defeito`.
+ */
+export class ErroDaOrigem extends Error {
+  constructor(
+    message: string,
+    public readonly classe: ErrorClass,
+    options?: { cause?: unknown }
+  ) {
+    super(message, options);
+    this.name = "ErroDaOrigem";
+  }
+}
 
 /**
  * Thrown when a request exceeds its configured timeout. Carries the limit so
  * callers (e.g. `parseHttpError`) can render a precise, user-facing message.
  */
 export class TimeoutError extends Error {
+  /** Classe pelo TIPO (ver `CLASSE_DO_ERRO` em call-shape.ts). */
+  readonly classe: ErrorClass = "fonte";
+
   constructor(public readonly timeoutMs: number) {
     super(`Request timeout after ${timeoutMs}ms`);
     this.name = "TimeoutError";
@@ -77,6 +99,15 @@ export class TimeoutError extends Error {
  * leitura em silêncio.
  */
 export class UpstreamError extends Error {
+  /**
+   * Classe pelo TIPO (ver `CLASSE_DO_ERRO` em call-shape.ts). O 400 é
+   * `contrato` porque aqui ele É recusa da chamada: o SIDRA responde 400 a
+   * parâmetro incompatível e diz qual no corpo. 404 é ausência respondida.
+   * Todo o resto — 429 inclusive, que pela frase ("Too Many Requests") caía
+   * em `contrato` — é a fonte recusando ou falhando.
+   */
+  readonly classe: ErrorClass;
+
   constructor(
     public readonly status: number,
     public readonly statusText: string,
@@ -86,6 +117,7 @@ export class UpstreamError extends Error {
   ) {
     super(`HTTP ${status}: ${statusText}${sufixo}${detalhe ? ` — ${detalhe}` : ""}`);
     this.name = "UpstreamError";
+    this.classe = status === 400 ? "contrato" : status === 404 ? "nao_encontrado" : "fonte";
   }
 }
 
@@ -126,6 +158,9 @@ export class UpstreamError extends Error {
  * limpa, e É: a origem respondeu. A ausência é semântica deste servidor.
  */
 export class RecursoAusenteError extends Error {
+  /** Classe pelo TIPO (ver `CLASSE_DO_ERRO` em call-shape.ts). */
+  readonly classe: ErrorClass = "nao_encontrado";
+
   constructor(
     /** O que se procurava, em português, para a mensagem ao chamador. Ex.: "Classe CNAE". */
     public readonly recurso: string,
@@ -390,12 +425,23 @@ async function traduzirErro(erro: unknown, o: Required<RetryOptions>): Promise<E
       return new TimeoutError(o.timeoutMs);
     case "network":
     case "aborted":
-      // O que o fetch lançou é o que o servidor sempre viu.
-      return erro.cause instanceof Error
-        ? erro.cause
-        : new Error(erro.message, { cause: erro.cause });
+      // Rejeição que NÃO é rede (um `Error` de outra camada, que `repetir` já
+      // não repetiu) sobe como veio: não é falha da origem e não ganha classe.
+      if (erro.kind === "network" && erro.cause instanceof Error && !isNetworkError(erro.cause)) {
+        return erro.cause;
+      }
+      // A mensagem do que o fetch lançou é o que o servidor sempre mostrou; o
+      // tipo é que agora diz a classe.
+      return new ErroDaOrigem(
+        erro.cause instanceof Error ? erro.cause.message : erro.message,
+        "fonte",
+        { cause: erro.cause }
+      );
     case "malformed_body":
-      return new Error(`Resposta da API do IBGE não é JSON válido${sufixo}`, { cause: erro.cause });
+      // HTML em 200 é página de erro da borda, não resposta: a fonte falhou.
+      return new ErroDaOrigem(`Resposta da API do IBGE não é JSON válido${sufixo}`, "fonte", {
+        cause: erro.cause,
+      });
     default: {
       // Um status chegou: http_4xx, http_5xx, rate_limited, not_found. O corpo
       // vai junto — é nele que a fonte diz QUAL parâmetro recusou e por quê.

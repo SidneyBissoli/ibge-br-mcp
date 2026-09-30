@@ -1,5 +1,11 @@
 import { McpServer, type ToolAnnotations } from "@modelcontextprotocol/server";
-import { classifyError, classifyThrown, errorText, paramNames } from "./call-shape.js";
+import {
+  classeAnexada,
+  classifyError,
+  classifyThrown,
+  errorText,
+  paramNames,
+} from "./call-shape.js";
 // Version sourced from package.json (single source of truth — avoids drift).
 // Node ESM reads it via the import attribute; esbuild inlines it for the Worker build.
 import pkg from "../package.json" with { type: "json" };
@@ -227,7 +233,10 @@ export function registerAll(server: McpServer, record?: ToolUsageRecorder): void
         const forma = { params: paramNames(args), classe: "" };
         record?.("tool_call", name, forma);
         if (result.isError === true) {
-          record?.("tool_error", name, { ...forma, classe: classifyError(errorText(result)) });
+          // A classe que a tool anexou pelo TIPO do erro vence a frase; a frase
+          // fica para o erro que nasceu sem tipo. Ver CLASSE_DO_ERRO.
+          const classe = classeAnexada(result) ?? classifyError(errorText(result));
+          record?.("tool_error", name, { ...forma, classe });
         }
         return result;
       } catch (error) {
