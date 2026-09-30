@@ -193,7 +193,58 @@ export function classifyThrown(error: unknown): ErrorClass {
   ) {
     return "defeito";
   }
+  const declarada = classeDeclarada(error);
+  if (declarada) return declarada;
   return classifyError(error instanceof Error ? error.message : String(error));
+}
+
+const CLASSES: ReadonlySet<string> = new Set<ErrorClass>([
+  "contrato",
+  "nao_encontrado",
+  "fonte",
+  "defeito",
+  "outro",
+]);
+
+function ehClasse(x: unknown): x is ErrorClass {
+  return typeof x === "string" && CLASSES.has(x);
+}
+
+/**
+ * A classe com que o erro NASCEU (`TimeoutError`, `UpstreamError`,
+ * `RecursoAusenteError`, `ErroDaOrigem` em retry.ts), ou `undefined` quando ele
+ * não declara nenhuma — aí vale a frase, como sempre.
+ */
+export function classeDeclarada(error: unknown): ErrorClass | undefined {
+  const c = (error as { classe?: unknown } | null)?.classe;
+  return ehClasse(c) ? c : undefined;
+}
+
+/**
+ * Onde um resultado de erro leva a classe decidida pelo TIPO da exceção.
+ *
+ * Por que existe. Medido em 30/09/2026, rodando este classificador sobre o
+ * texto que `parseHttpError` monta: falha de rede ("fetch failed") e abort
+ * ("This operation was aborted") caíam em `outro`; 403 e corpo HTML em 200
+ * ("não é JSON válido") também; e o 429 caía em `contrato` — "HTTP 429: Too
+ * Many Requests" casa "too many", instrução ao chamador, e `contrato` é a
+ * classe que o painel EXCLUI da taxa de erro. O tipo da falha existia em
+ * retry.ts e morria no `catch` de cada tool, que achata o erro em Markdown.
+ *
+ * O mesmo defeito de fundo foi consertado no bcb-br-mcp (#45), no
+ * ilo-mcp-server (#24) e no uis-mcp-server (#22). O conserto não reescreve
+ * frase nem mexe em regex: a classe viaja AO LADO do texto, nesta
+ * chave-símbolo, que `toMcpResult` copia para o resultado como propriedade não
+ * enumerável — o que o cliente recebe não muda. O hook do `registerAll` a lê
+ * antes de cair na frase.
+ */
+export const CLASSE_DO_ERRO: unique symbol = Symbol.for("br.com.sidneybissoli.mcp/classe-do-erro");
+
+/** A classe anexada a um resultado de erro, ou `undefined` quando não há. */
+export function classeAnexada(result: unknown): ErrorClass | undefined {
+  if (!result || typeof result !== "object") return undefined;
+  const c = (result as { [CLASSE_DO_ERRO]?: unknown })[CLASSE_DO_ERRO];
+  return ehClasse(c) ? c : undefined;
 }
 
 /**

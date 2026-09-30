@@ -3,6 +3,7 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetchOne } from "../cache.js";
 import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
+import { comClasse } from "../errors.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { type StructuredToolResult, sidraRecords } from "../structured.js";
 import { valorSidra } from "../stats.js";
@@ -258,7 +259,11 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
       };
     } catch (error) {
       if (error instanceof Error) {
-        return { markdown: formatCompararError(error.message, input, template), isError: true };
+        return {
+          markdown: formatCompararError(error.message, input, template),
+          isError: true,
+          ...comClasse(error),
+        };
       }
       return { markdown: "Erro desconhecido ao comparar localidades.", isError: true };
     }

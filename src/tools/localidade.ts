@@ -3,7 +3,7 @@ import { IBGE_API, type Municipio, type UF, type Distrito } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetchOne } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createKeyValueTable } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, ValidationErrors } from "../errors.js";
 import { isValidIbgeCode, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -208,7 +208,7 @@ export async function ibgeLocalidade(input: LocalidadeInput): Promise<Structured
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_localidade", { codigo: input.codigo }, [
+          ...erroDaFonte(error, "ibge_localidade", { codigo: input.codigo }, [
             "ibge_municipios",
             "ibge_estados",
           ]),

@@ -3,6 +3,31 @@
  */
 
 import { RecursoAusenteError, TimeoutError, UpstreamError } from "./retry.js";
+import { CLASSE_DO_ERRO, classeDeclarada, type ErrorClass } from "./call-shape.js";
+
+/**
+ * A classe com que o erro nasceu, pronta para espalhar num resultado de erro
+ * (`{ markdown, isError: true, ...comClasse(error) }`). Vazio quando o erro não
+ * declara classe — aí a telemetria classifica pela frase, como sempre.
+ */
+export function comClasse(error: unknown): { [CLASSE_DO_ERRO]?: ErrorClass } {
+  const classe = classeDeclarada(error);
+  return classe ? { [CLASSE_DO_ERRO]: classe } : {};
+}
+
+/**
+ * `parseHttpError` com a classe do erro ao lado: o Markdown de sempre, e a
+ * classe pelo TIPO para a telemetria. É o que o `catch` de cada tool espalha
+ * no resultado — ver `CLASSE_DO_ERRO` em call-shape.ts.
+ */
+export function erroDaFonte(
+  error: Error,
+  tool: string,
+  params?: Record<string, unknown>,
+  relatedTools?: string[]
+): { markdown: string; [CLASSE_DO_ERRO]?: ErrorClass } {
+  return { markdown: parseHttpError(error, tool, params, relatedTools), ...comClasse(error) };
+}
 
 // Common IBGE API error codes and their meanings
 export const IBGE_ERROR_CODES: Record<number, { message: string; suggestion: string }> = {

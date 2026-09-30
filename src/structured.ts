@@ -11,6 +11,7 @@
 
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { normalizeText } from "./config.js";
+import { CLASSE_DO_ERRO, type ErrorClass } from "./call-shape.js";
 import { formatNumber } from "./utils/index.js";
 import {
   ATTRIBUTION_META_KEY,
@@ -32,6 +33,12 @@ export interface StructuredToolResult {
   provenance?: Provenance;
   /** When true, this is an error result; structured-output validation is skipped. */
   isError?: boolean;
+  /**
+   * Classe do erro decidida pelo TIPO da exceção (ver `CLASSE_DO_ERRO` em
+   * call-shape.ts). Nunca vai ao fio: `toMcpResult` a copia como propriedade
+   * não enumerável, que só o hook de telemetria lê.
+   */
+  [CLASSE_DO_ERRO]?: ErrorClass;
 }
 
 /**
@@ -47,7 +54,12 @@ export function toMcpResult(result: StructuredToolResult): CallToolResult {
   const content = [{ type: "text" as const, text: result.markdown }];
 
   if (result.isError) {
-    return { content, isError: true };
+    const erro: CallToolResult = { content, isError: true };
+    const classe = result[CLASSE_DO_ERRO];
+    if (classe !== undefined) {
+      Object.defineProperty(erro, CLASSE_DO_ERRO, { value: classe, enumerable: false });
+    }
+    return erro;
   }
 
   if (result.provenance !== undefined) {

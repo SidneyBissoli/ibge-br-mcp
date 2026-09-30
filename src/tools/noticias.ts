@@ -7,7 +7,7 @@ import {
   formatDate as formatDateUtil,
   buildQueryString,
 } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, ValidationErrors } from "../errors.js";
 import { parseUserDate, toIbgeApiDate } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -141,9 +141,7 @@ export async function ibgeNoticias(input: NoticiasInput): Promise<StructuredTool
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_noticias", { busca: input.busca }, [
-            "ibge_calendario",
-          ]),
+          ...erroDaFonte(error, "ibge_noticias", { busca: input.busca }, ["ibge_calendario"]),
           isError: true,
         };
       }

@@ -4,7 +4,7 @@ import { CACHE_TTL } from "../cache.js";
 import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { parseHttpError, ValidationErrors } from "../errors.js";
+import { erroDaFonte, ValidationErrors } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import {
   type StructuredToolResult,
@@ -287,7 +287,7 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
     } catch (error) {
       if (error instanceof Error) {
         return {
-          markdown: parseHttpError(error, "ibge_datasaude", { indicador: input.indicador }, [
+          ...erroDaFonte(error, "ibge_datasaude", { indicador: input.indicador }, [
             "ibge_sidra",
             "ibge_sidra_metadados",
           ]),
