@@ -3,7 +3,7 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { erroDoCatch, erroNaoEncontrado } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -92,10 +92,9 @@ export async function ibgePesquisas(input: PesquisasInput): Promise<StructuredTo
         );
 
         if (!pesquisa) {
-          return {
-            markdown: `Pesquisa "${input.detalhes}" não encontrada. Use ibge_pesquisas() sem parâmetros para listar todas.`,
-            isError: true,
-          };
+          return erroNaoEncontrado(
+            `Pesquisa "${input.detalhes}" não encontrada. Use ibge_pesquisas() sem parâmetros para listar todas.`
+          );
         }
 
         return {
@@ -121,12 +120,11 @@ export async function ibgePesquisas(input: PesquisasInput): Promise<StructuredTo
       }
 
       if (filtered.length === 0) {
-        return {
-          markdown: input.busca
+        return erroNaoEncontrado(
+          input.busca
             ? `Nenhuma pesquisa encontrada para: "${input.busca}"`
-            : "Nenhuma pesquisa encontrada.",
-          isError: true,
-        };
+            : "Nenhuma pesquisa encontrada."
+        );
       }
 
       return {
@@ -139,16 +137,10 @@ export async function ibgePesquisas(input: PesquisasInput): Promise<StructuredTo
         }),
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_pesquisas", { busca: input.busca }, [
-            "ibge_sidra_tabelas",
-            "ibge_sidra",
-          ]),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_pesquisas"), isError: true };
+      return erroDoCatch(error, "ibge_pesquisas", { busca: input.busca }, [
+        "ibge_sidra_tabelas",
+        "ibge_sidra",
+      ]);
     }
   });
 }

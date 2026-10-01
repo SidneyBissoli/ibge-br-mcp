@@ -3,7 +3,7 @@ import { IBGE_API, type Municipio, type MunicipioSimples } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { erroDoCatch, erroContrato, erroNaoEncontrado } from "../errors.js";
 import { normalizeUf, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -55,14 +55,13 @@ export async function ibgeMunicipios(input: MunicipiosInput): Promise<Structured
         const ufCode = normalizeUf(input.uf);
 
         if (!ufCode) {
-          return {
-            markdown: formatValidationError(
+          return erroContrato(
+            formatValidationError(
               "uf",
               input.uf,
               "Estado por sigla (SP), nome (São Paulo) ou código IBGE (35)"
-            ),
-            isError: true,
-          };
+            )
+          );
         }
 
         url = `${IBGE_API.LOCALIDADES}/estados/${ufCode}/municipios`;
@@ -103,12 +102,11 @@ export async function ibgeMunicipios(input: MunicipiosInput): Promise<Structured
       }
 
       if (municipios.length === 0) {
-        return {
-          markdown: input.busca
+        return erroNaoEncontrado(
+          input.busca
             ? `Nenhum município encontrado com o termo "${input.busca}"${input.uf ? ` em ${input.uf.toUpperCase()}` : ""}.`
-            : "Nenhum município encontrado.",
-          isError: true,
-        };
+            : "Nenhum município encontrado."
+        );
       }
 
       // Format the response using createMarkdownTable
@@ -153,16 +151,10 @@ export async function ibgeMunicipios(input: MunicipiosInput): Promise<Structured
         }),
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_municipios", { uf: input.uf, busca: input.busca }, [
-            "ibge_geocodigo",
-            "ibge_localidade",
-          ]),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_municipios"), isError: true };
+      return erroDoCatch(error, "ibge_municipios", { uf: input.uf, busca: input.busca }, [
+        "ibge_geocodigo",
+        "ibge_localidade",
+      ]);
     }
   });
 }

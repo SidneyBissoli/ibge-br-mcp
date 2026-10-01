@@ -4,7 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch, cachedFetchOne } from "../cache.js";
 import { RecursoAusenteError } from "../retry.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { erroDoCatch, erroContrato, erroNaoEncontrado } from "../errors.js";
 import { isValidCnaeCode, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -176,16 +176,10 @@ export async function ibgeCnae(input: CnaeInput): Promise<StructuredToolResult> 
       // Default: show structure overview
       return showCnaeStructure();
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_cnae", {
-            codigo: input.codigo,
-            busca: input.busca,
-          }),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_cnae"), isError: true };
+      return erroDoCatch(error, "ibge_cnae", {
+        codigo: input.codigo,
+        busca: input.busca,
+      });
     }
   });
 }
@@ -218,14 +212,13 @@ async function getCnaeByCode(codigo: string): Promise<StructuredToolResult> {
 
   // Validate code format using centralized validation
   if (!isValidCnaeCode(codigo)) {
-    return {
-      markdown: formatValidationError(
+    return erroContrato(
+      formatValidationError(
         "codigo",
         codigo,
         "Seção (A-U), Divisão (2 dígitos), Grupo (3 dígitos), Classe (4-5 dígitos) ou Subclasse (7 dígitos)"
-      ),
-      isError: true,
-    };
+      )
+    );
   }
 
   // Determine the level based on code format
@@ -387,9 +380,8 @@ async function searchCnae(
   if (filtered.length === 0) {
     // Zero sem explicação é beco sem saída: o catálogo é do IBGE e usa o
     // vocabulário dele. Dizer o que fazer em seguida é parte da resposta.
-    return {
-      markdown:
-        `Nenhuma atividade encontrada para "${termo}" (nível: ${searchLevel}).\n\n` +
+    return erroNaoEncontrado(
+      `Nenhuma atividade encontrada para "${termo}" (nível: ${searchLevel}).\n\n` +
         (notas.length ? notas.map((n) => `- ${n}\n`).join("") + "\n" : "") +
         `Todas as palavras precisam casar com a descrição da atividade (acento e caixa não importam).\n\n` +
         `Dicas:\n` +
@@ -399,9 +391,8 @@ async function searchCnae(
         `- Oficina de carro está em "manutenção e reparação de veículos automotores" ` +
         `(grupo 4520); comércio eletrônico cai em 4790-3 "comércio ambulante e outros ` +
         `tipos de comércio varejista"\n` +
-        `- Use ibge_cnae(nivel="secoes") para ver as categorias principais`,
-      isError: true,
-    };
+        `- Use ibge_cnae(nivel="secoes") para ver as categorias principais`
+    );
   }
 
   let output = `## Busca CNAE: "${termo}"\n\n`;

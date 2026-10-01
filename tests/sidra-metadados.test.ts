@@ -170,7 +170,8 @@ describe("ibgeSidraMetadados", () => {
   });
 
   it("returns a friendly not-found message on a 404", async () => {
-    mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
+    // 404 de verdade: `UpstreamError` com status, que é o que o desvio lê.
+    mockFetch.mockResolvedValueOnce(mockResponse({}, 404));
 
     const { markdown: result } = await ibgeSidraMetadados({
       tabela: "99999",

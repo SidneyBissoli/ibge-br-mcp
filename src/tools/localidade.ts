@@ -3,7 +3,8 @@ import { IBGE_API, type Municipio, type UF, type Distrito } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetchOne } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createKeyValueTable } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { ValidationErrors, erroDoCatch, erroContrato, erroNaoEncontrado } from "../errors.js";
+import { UpstreamError } from "../retry.js";
 import { isValidIbgeCode, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -92,14 +93,13 @@ export async function ibgeLocalidade(input: LocalidadeInput): Promise<Structured
 
       // Validate IBGE code format
       if (!isValidIbgeCode(codigoStr)) {
-        return {
-          markdown: formatValidationError(
+        return erroContrato(
+          formatValidationError(
             "codigo",
             codigoStr,
             "Código IBGE válido: 2 dígitos (UF), 7 dígitos (município) ou 9 dígitos (distrito)"
-          ),
-          isError: true,
-        };
+          )
+        );
       }
 
       let tipo = input.tipo;
@@ -127,7 +127,7 @@ export async function ibgeLocalidade(input: LocalidadeInput): Promise<Structured
           url = `${IBGE_API.LOCALIDADES}/distritos/${input.codigo}`;
           break;
         default:
-          return { markdown: "Tipo de localidade inválido.", isError: true };
+          return erroContrato("Tipo de localidade inválido.");
       }
 
       // Use cache for static location data (24 hours TTL)
@@ -143,43 +143,40 @@ export async function ibgeLocalidade(input: LocalidadeInput): Promise<Structured
           CACHE_TTL.STATIC
         );
       } catch (error) {
-        if (error instanceof Error && error.message.includes("404")) {
-          return {
-            markdown: ValidationErrors.notFound(
+        if (error instanceof UpstreamError && error.status === 404) {
+          return erroNaoEncontrado(
+            ValidationErrors.notFound(
               `Localidade com código ${input.codigo}`,
               "ibge_localidade",
               "ibge_municipios ou ibge_estados"
-            ),
-            isError: true,
-          };
+            )
+          );
         }
         throw error;
       }
 
       // Check if empty response
       if (!data || (Array.isArray(data) && data.length === 0)) {
-        return {
-          markdown: ValidationErrors.notFound(
+        return erroNaoEncontrado(
+          ValidationErrors.notFound(
             `Localidade com código ${input.codigo}`,
             "ibge_localidade",
             "ibge_municipios ou ibge_estados"
-          ),
-          isError: true,
-        };
+          )
+        );
       }
 
       // Handle array response (some endpoints return arrays)
       const localidade = Array.isArray(data) ? data[0] : data;
 
       if (!localidade) {
-        return {
-          markdown: ValidationErrors.notFound(
+        return erroNaoEncontrado(
+          ValidationErrors.notFound(
             `Localidade com código ${input.codigo}`,
             "ibge_localidade",
             "ibge_municipios ou ibge_estados"
-          ),
-          isError: true,
-        };
+          )
+        );
       }
 
       const pesquisaPorTipo = {
@@ -203,19 +200,13 @@ export async function ibgeLocalidade(input: LocalidadeInput): Promise<Structured
         case "distrito":
           return { ...formatDistrito(localidade as Distrito), provenance };
         default:
-          return { markdown: "Tipo de localidade não suportado.", isError: true };
+          return erroContrato("Tipo de localidade não suportado.");
       }
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_localidade", { codigo: input.codigo }, [
-            "ibge_municipios",
-            "ibge_estados",
-          ]),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_localidade"), isError: true };
+      return erroDoCatch(error, "ibge_localidade", { codigo: input.codigo }, [
+        "ibge_municipios",
+        "ibge_estados",
+      ]);
     }
   });
 }

@@ -83,7 +83,8 @@ describe("ibge_geocodigo", () => {
     });
 
     it("handles a not-found municipality gracefully", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
+      // A API responde ausência com `[]` e HTTP 200 (medido em 22/09/2026).
+      mockFetch.mockResolvedValueOnce(mockResponse([]));
       const { markdown: result } = await ibgeGeocodigo({ codigo: "9999999" });
       expect(result).toContain("Município não encontrado");
     });
@@ -101,7 +102,7 @@ describe("ibge_geocodigo", () => {
     });
 
     it("handles a not-found district gracefully", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
+      mockFetch.mockResolvedValueOnce(mockResponse([]));
       const { markdown: result } = await ibgeGeocodigo({ codigo: "999999999" });
       expect(result).toContain("Distrito não encontrado");
     });

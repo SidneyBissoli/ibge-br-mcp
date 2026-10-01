@@ -4,7 +4,13 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate, buildQueryString } from "../utils/index.js";
 import { parseUserDate, toIbgeApiDate } from "../validation.js";
-import { comClasse, ValidationErrors } from "../errors.js";
+import {
+  erroDaExcecao,
+  ValidationErrors,
+  erroContrato,
+  erroNaoEncontrado,
+  erroDefeito,
+} from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -93,10 +99,7 @@ export async function ibgeCalendario(input: CalendarioInput): Promise<Structured
       if (input.de) {
         const parsed = parseUserDate(input.de);
         if (!parsed) {
-          return {
-            markdown: ValidationErrors.invalidDate(input.de, "ibge_calendario"),
-            isError: true,
-          };
+          return erroContrato(ValidationErrors.invalidDate(input.de, "ibge_calendario"));
         }
         de = toIbgeApiDate(parsed);
       }
@@ -105,10 +108,7 @@ export async function ibgeCalendario(input: CalendarioInput): Promise<Structured
       if (input.ate) {
         const parsed = parseUserDate(input.ate);
         if (!parsed) {
-          return {
-            markdown: ValidationErrors.invalidDate(input.ate, "ibge_calendario"),
-            isError: true,
-          };
+          return erroContrato(ValidationErrors.invalidDate(input.ate, "ibge_calendario"));
         }
         ate = toIbgeApiDate(parsed);
       }
@@ -134,7 +134,7 @@ export async function ibgeCalendario(input: CalendarioInput): Promise<Structured
       const data = await cachedFetch<CalendarioResponse>(url, key, CACHE_TTL.SHORT);
 
       if (!data.items || data.items.length === 0) {
-        return { markdown: formatNoResults(input), isError: true };
+        return erroNaoEncontrado(formatNoResults(input));
       }
 
       const eventos = data.items.map((item) => ({
@@ -165,16 +165,9 @@ export async function ibgeCalendario(input: CalendarioInput): Promise<Structured
       };
     } catch (error) {
       if (error instanceof Error) {
-        return {
-          markdown: formatCalendarioError(error.message, input),
-          isError: true,
-          ...comClasse(error),
-        };
+        return erroDaExcecao(formatCalendarioError(error.message, input), error);
       }
-      return {
-        markdown: "Erro desconhecido ao consultar calendário do IBGE.",
-        isError: true,
-      };
+      return erroDefeito("Erro desconhecido ao consultar calendário do IBGE.");
     }
   });
 }

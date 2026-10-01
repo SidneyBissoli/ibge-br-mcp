@@ -3,7 +3,14 @@ import { IBGE_API, type NomeFrequencia, type NomeRanking } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber, buildQueryString } from "../utils/index.js";
-import { erroDaFonte, parseHttpError, ValidationErrors } from "../errors.js";
+import {
+  parseHttpError,
+  ValidationErrors,
+  erroDoCatch,
+  erroContrato,
+  erroNaoEncontrado,
+} from "../errors.js";
+import { UpstreamError } from "../retry.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -67,7 +74,7 @@ export async function ibgeNomesFrequencia(input: NomesFrequenciaInput): Promise<
       try {
         data = await cachedFetch<NomeFrequencia[]>(url, key, CACHE_TTL.MEDIUM);
       } catch (error) {
-        if (error instanceof Error && error.message.includes("404")) {
+        if (error instanceof UpstreamError && error.status === 404) {
           return `Nenhum dado encontrado para o(s) nome(s): ${input.nomes}`;
         }
         throw error;
@@ -268,10 +275,9 @@ export const nomesOutputSchema = z.object({
 export async function ibgeNomes(input: NomesInput): Promise<StructuredToolResult> {
   if (input.tipo === "frequencia") {
     if (!input.nomes) {
-      return {
-        markdown: "Para consultar a frequência, informe o(s) nome(s) no parâmetro 'nomes'.",
-        isError: true,
-      };
+      return erroContrato(
+        "Para consultar a frequência, informe o(s) nome(s) no parâmetro 'nomes'."
+      );
     }
     return ibgeNomesFrequenciaStructured({
       nomes: input.nomes,
@@ -310,20 +316,14 @@ async function ibgeNomesFrequenciaStructured(
       try {
         data = await cachedFetch<NomeFrequencia[]>(url, key, CACHE_TTL.MEDIUM);
       } catch (error) {
-        if (error instanceof Error && error.message.includes("404")) {
-          return {
-            markdown: `Nenhum dado encontrado para o(s) nome(s): ${input.nomes}`,
-            isError: true,
-          };
+        if (error instanceof UpstreamError && error.status === 404) {
+          return erroNaoEncontrado(`Nenhum dado encontrado para o(s) nome(s): ${input.nomes}`);
         }
         throw error;
       }
 
       if (!data || data.length === 0) {
-        return {
-          markdown: `Nenhum dado encontrado para o(s) nome(s): ${input.nomes}`,
-          isError: true,
-        };
+        return erroNaoEncontrado(`Nenhum dado encontrado para o(s) nome(s): ${input.nomes}`);
       }
 
       const frequencia = data.map((nome) => ({
@@ -348,13 +348,7 @@ async function ibgeNomesFrequenciaStructured(
         }),
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_nomes_frequencia", { nomes: input.nomes }),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_nomes_frequencia"), isError: true };
+      return erroDoCatch(error, "ibge_nomes_frequencia", { nomes: input.nomes });
     }
   });
 }
@@ -377,7 +371,7 @@ async function ibgeNomesRankingStructured(input: NomesRankingInput): Promise<Str
       const data = await cachedFetch<NomeRanking[]>(url, key, CACHE_TTL.MEDIUM);
 
       if (!data || data.length === 0) {
-        return { markdown: "Nenhum dado encontrado para o ranking.", isError: true };
+        return erroNaoEncontrado("Nenhum dado encontrado para o ranking.");
       }
 
       const ranking = data[0];
@@ -407,13 +401,7 @@ async function ibgeNomesRankingStructured(input: NomesRankingInput): Promise<Str
         }),
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_nomes_ranking", { decada: input.decada }),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_nomes_ranking"), isError: true };
+      return erroDoCatch(error, "ibge_nomes_ranking", { decada: input.decada });
     }
   });
 }

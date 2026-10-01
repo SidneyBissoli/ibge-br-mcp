@@ -3,7 +3,14 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { buildQueryString } from "../utils/index.js";
-import { erroDaFonte, formatError, ValidationErrors } from "../errors.js";
+import {
+  formatError,
+  ValidationErrors,
+  erroDoCatch,
+  erroContrato,
+  erroNaoEncontrado,
+} from "../errors.js";
+import { UpstreamError } from "../retry.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -173,10 +180,7 @@ export async function ibgeMalhas(input: MalhasInput): Promise<StructuredToolResu
         input.intrarregiao ?? RESOLUCAO_PARA_INTRARREGIAO[input.resolucao || "0"];
       const aceitos = INTRARREGIAO_POR_NIVEL[nivel];
       if (intrarregiao && !aceitos.includes(intrarregiao)) {
-        return {
-          markdown: malhasDivisaoInvalida(input, nivel, intrarregiao, aceitos),
-          isError: true,
-        };
+        return erroContrato(malhasDivisaoInvalida(input, nivel, intrarregiao, aceitos));
       }
       const qualidade =
         QUALIDADE_V2_PARA_V3[input.qualidade || "maxima"] ?? (input.qualidade || "maxima");
@@ -220,15 +224,14 @@ export async function ibgeMalhas(input: MalhasInput): Promise<StructuredToolResu
           CACHE_TTL.STATIC
         );
       } catch (error) {
-        if (error instanceof Error && error.message.includes("404")) {
-          return {
-            markdown: ValidationErrors.notFound(
+        if (error instanceof UpstreamError && error.status === 404) {
+          return erroNaoEncontrado(
+            ValidationErrors.notFound(
               `Malha para localidade ${input.localidade}`,
               "ibge_malhas",
               "ibge_municipios ou ibge_estados"
-            ),
-            isError: true,
-          };
+            )
+          );
         }
         throw error;
       }
@@ -244,21 +247,15 @@ export async function ibgeMalhas(input: MalhasInput): Promise<StructuredToolResu
         }),
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(
-            error,
-            "ibge_malhas",
-            {
-              localidade: input.localidade,
-              formato: input.formato,
-            },
-            ["ibge_malhas_tema"]
-          ),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_malhas"), isError: true };
+      return erroDoCatch(
+        error,
+        "ibge_malhas",
+        {
+          localidade: input.localidade,
+          formato: input.formato,
+        },
+        ["ibge_malhas_tema"]
+      );
     }
   });
 }

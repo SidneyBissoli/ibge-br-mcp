@@ -157,3 +157,203 @@ describe("a classe viaja FORA do fio", () => {
     expect(Object.keys(result).sort()).toEqual(["content", "isError"]);
   });
 });
+
+/**
+ * Onda 2 (30/09/2026): todo resultado de erro sai com a classe DECLARADA, e os
+ * pontos onde a classe estava errada — não só ausente — foram consertados.
+ * Cada caso abaixo falha no código anterior: ou a classe vinha da frase (e a
+ * frase dizia outra coisa), ou o erro da origem era engolido e virava "não
+ * encontrado".
+ */
+function porUrl(fn: (url: string) => Response | Promise<Response>) {
+  global.fetch = vi.fn(async (input: unknown) =>
+    fn(typeof input === "string" ? input : String((input as { url?: string }).url ?? input))
+  ) as unknown as typeof fetch;
+}
+
+const indisponivel = () => new Response("", { status: 503, statusText: "Service Unavailable" });
+
+const MUNICIPIO_SP = {
+  id: 3550308,
+  nome: "São Paulo",
+  microrregiao: {
+    id: 35061,
+    nome: "São Paulo",
+    mesorregiao: {
+      id: 3515,
+      nome: "Metropolitana de São Paulo",
+      UF: {
+        id: 35,
+        sigla: "SP",
+        nome: "São Paulo",
+        regiao: { id: 3, sigla: "SE", nome: "Sudeste" },
+      },
+    },
+  },
+};
+
+describe("D2 ibge_geocodigo — o `catch` local não engole a queda da origem", () => {
+  it("município com a origem fora do ar é `fonte`, não 'Município não encontrado'", async () => {
+    porUrl(indisponivel);
+    const { result, classes } = await chamar("ibge_geocodigo", { codigo: "3550308" });
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).not.toContain("Município não encontrado");
+    expect(classes).toEqual(["fonte"]);
+  });
+
+  it("distrito com a origem fora do ar é `fonte`", async () => {
+    porUrl(indisponivel);
+    const { classes } = await chamar("ibge_geocodigo", { codigo: "355030805" });
+    expect(classes).toEqual(["fonte"]);
+  });
+
+  it("bug de formatação nosso é `defeito`, não 'não encontrado'", async () => {
+    // Município sem `microrregiao`: o formatador estoura com TypeError.
+    porUrl(() => mockResponse({ id: 3550308, nome: "São Paulo", microrregiao: null }));
+    const { classes } = await chamar("ibge_geocodigo", { codigo: "3550308" });
+    expect(classes).toEqual(["defeito"]);
+  });
+
+  it("ausência respondida (`[]` em 200) continua `nao_encontrado`", async () => {
+    porUrl(() => mockResponse([]));
+    const { result, classes } = await chamar("ibge_geocodigo", { codigo: "3599999" });
+    expect(JSON.stringify(result.content)).toContain("Município não encontrado");
+    expect(classes).toEqual(["nao_encontrado"]);
+  });
+});
+
+describe("D3 ibge_vizinhos — os helpers não engolem a falha da origem", () => {
+  it("lookup do município com a origem fora do ar é `fonte`", async () => {
+    porUrl(indisponivel);
+    const { classes } = await chamar("ibge_vizinhos", { municipio: "3550308" });
+    expect(classes).toEqual(["fonte"]);
+  });
+
+  it("lista do estado (busca por nome) com a origem fora do ar é `fonte`", async () => {
+    porUrl(indisponivel);
+    const { classes } = await chamar("ibge_vizinhos", { municipio: "Campinas", uf: "SP" });
+    expect(classes).toEqual(["fonte"]);
+  });
+
+  it("malha fora do ar é `fonte`, não 'Não foi possível determinar os vizinhos'", async () => {
+    porUrl((url) => {
+      if (url.includes("/malhas/")) return indisponivel();
+      if (url.includes("/estados/35/municipios"))
+        return mockResponse([MUNICIPIO_SP, { ...MUNICIPIO_SP, id: 3509502, nome: "Campinas" }]);
+      return mockResponse(MUNICIPIO_SP);
+    });
+    const { result, classes } = await chamar("ibge_vizinhos", { municipio: "3550308" });
+    expect(JSON.stringify(result.content)).not.toContain("Não foi possível determinar");
+    expect(classes).toEqual(["fonte"]);
+  });
+
+  it("município ausente (`[]` em 200) continua `nao_encontrado`", async () => {
+    porUrl(() => mockResponse([]));
+    const { classes } = await chamar("ibge_vizinhos", { municipio: "3599999" });
+    expect(classes).toEqual(["nao_encontrado"]);
+  });
+});
+
+describe("recusas da CHAMADA são `contrato`, mesmo quando a frase diz outra coisa", () => {
+  it("D4 ibge_paises tipo=buscar sem `busca` ('Nenhum dado encontrado')", async () => {
+    porUrl(() => mockResponse([]));
+    const { classes } = await chamar("ibge_paises", { tipo: "buscar" });
+    expect(classes).toEqual(["contrato"]);
+  });
+
+  it("D5 ibge_comparar com 11 localidades ('Máximo de 10')", async () => {
+    porUrl(() => mockResponse([]));
+    const localidades = Array.from({ length: 11 }, (_, i) => String(3550308 + i)).join(",");
+    const { classes } = await chamar("ibge_comparar", { localidades });
+    expect(classes).toEqual(["contrato"]);
+  });
+
+  it("D6 ibge_malhas_tema com `codigo` num recorte sem código por feição", async () => {
+    porUrl(() => mockResponse({ features: [] }));
+    const { classes } = await chamar("ibge_malhas_tema", { tema: "amazonia_legal", codigo: "1" });
+    expect(classes).toEqual(["contrato"]);
+  });
+
+  it("D8 ibge_datasaude com indicador fora do catálogo ('não encontrado')", async () => {
+    porUrl(() => mockResponse([]));
+    const { classes } = await chamar("ibge_datasaude", { indicador: "xyz" });
+    expect(classes).toEqual(["contrato"]);
+  });
+
+  it("D8 ibge_indicadores com indicador fora do catálogo ('não encontrado')", async () => {
+    porUrl(() => mockResponse([]));
+    const { classes } = await chamar("ibge_indicadores", { indicador: "xyz" });
+    expect(classes).toEqual(["contrato"]);
+  });
+
+  it("D9 ibge_censo com tema sem tabela para o ano ('não disponíveis')", async () => {
+    porUrl(() => mockResponse([]));
+    const { classes } = await chamar("ibge_censo", { tema: "religiao", ano: "1970" });
+    expect(classes).toEqual(["contrato"]);
+  });
+});
+
+describe("D7 estatísticas — a classe vem de estatisticasSidra, não da frase", () => {
+  const popByUf = [
+    { D1N: "Unidade da Federação", D2N: "Ano", V: "Valor" },
+    { D1N: "São Paulo", D2N: "2022", V: "44411238" },
+    { D1N: "Rio de Janeiro", D2N: "2022", V: "16055174" },
+  ];
+
+  it("`agruparPor` que não existe é `contrato` ('não encontrada no resultado')", async () => {
+    porUrl(() => mockResponse(popByUf));
+    const { classes } = await chamar("ibge_sidra", {
+      tabela: "6579",
+      nivel_territorial: "3",
+      estatisticas: true,
+      agruparPor: "Municipio",
+    });
+    expect(classes).toEqual(["contrato"]);
+  });
+
+  it("`agruparPor` ambíguo é `contrato`", async () => {
+    porUrl(() =>
+      mockResponse([
+        { D1N: "Grupo de idade", D2N: "Grupo de cor", V: "Valor" },
+        { D1N: "0 a 4 anos", D2N: "Branca", V: "10" },
+        { D1N: "5 a 9 anos", D2N: "Parda", V: "20" },
+      ])
+    );
+    const { classes } = await chamar("ibge_sidra", {
+      tabela: "6579",
+      nivel_territorial: "1",
+      estatisticas: true,
+      agruparPor: "Grupo",
+    });
+    expect(classes).toEqual(["contrato"]);
+  });
+
+  it("consulta sem coluna 'Valor' é `defeito` (suposição nossa sobre a forma do SIDRA)", async () => {
+    porUrl(() =>
+      mockResponse([
+        { D1N: "Unidade da Federação", V: "Quantidade" },
+        { D1N: "São Paulo", V: "1" },
+      ])
+    );
+    const { classes } = await chamar("ibge_sidra", {
+      tabela: "6579",
+      nivel_territorial: "3",
+      estatisticas: true,
+    });
+    expect(classes).toEqual(["defeito"]);
+  });
+});
+
+describe("D11 ibge_malhas_tema — camada vazia", () => {
+  it("SEM `codigo`, camada vazia é `fonte` (o recorte não pode ser vazio)", async () => {
+    porUrl(() => mockResponse({ features: [], numberMatched: 0 }));
+    const { classes } = await chamar("ibge_malhas_tema", { tema: "amazonia_legal" });
+    expect(classes).toEqual(["fonte"]);
+  });
+
+  it("COM `codigo`, vazio é `nao_encontrado` (já era; continua)", async () => {
+    porUrl(() => mockResponse({ features: [], numberMatched: 0 }));
+    const { classes } = await chamar("ibge_malhas_tema", { tema: "biomas", codigo: "9" });
+    expect(classes).toEqual(["nao_encontrado"]);
+  });
+});

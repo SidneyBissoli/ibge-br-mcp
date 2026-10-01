@@ -32,6 +32,7 @@ import {
 import { normalizeText } from "./config.js";
 import { createMarkdownTable } from "./utils/index.js";
 import type { SidraRecords } from "./structured.js";
+import type { ErrorClass } from "./call-shape.js";
 
 /** Ranking size cap for `topN` (mirrors the senado precedent). */
 export const TOP_N_MAX = 100;
@@ -161,8 +162,16 @@ export interface EstatisticasOpcoes {
   topN: number;
 }
 
+/**
+ * `classe` vai junto da recusa porque as quatro tools que chamam isto (sidra,
+ * censo, indicadores, datasaude) não sabem POR QUE ela recusou: rótulo de
+ * agrupamento errado ou ambíguo é culpa da chamada (`contrato`); consulta sem
+ * coluna "Valor" é suposição nossa sobre a forma do SIDRA (`defeito`); nada
+ * numérico para resumir é resposta vazia legítima (`nao_encontrado`).
+ */
 export type EstatisticasResultado =
-  { ok: true; bloco: Record<string, unknown>; markdown: string } | { ok: false; erro: string };
+  | { ok: true; bloco: Record<string, unknown>; markdown: string }
+  | { ok: false; erro: string; classe: ErrorClass };
 
 /** Finds a column by accent/case-insensitive label match (exact, then substring). */
 function acharColuna(colunas: string[], rotulo: string): string | undefined {
@@ -292,6 +301,7 @@ export function estatisticasSidra(
   if (!colunaValor) {
     return {
       ok: false,
+      classe: "defeito",
       erro:
         `A consulta não retornou uma coluna "Valor" para computar estatísticas.\n\n` +
         `Colunas disponíveis: ${colunas.join(", ") || "(nenhuma)"}.`,
@@ -325,6 +335,7 @@ export function estatisticasSidra(
     if (resolucao.tipo === "ambigua") {
       return {
         ok: false,
+        classe: "contrato",
         erro:
           `Coluna de agrupamento "${agruparPor}" é ambígua: casa com ` +
           `${listarEmPortugues(resolucao.candidatas.map((c) => `"${c}"`))}.\n\n` +
@@ -334,6 +345,7 @@ export function estatisticasSidra(
     if (resolucao.tipo === "nenhuma") {
       return {
         ok: false,
+        classe: "contrato",
         erro:
           `Coluna de agrupamento "${agruparPor}" não encontrada no resultado.\n\n` +
           `Colunas disponíveis: ${colunas.join(", ")}.`,
@@ -366,6 +378,7 @@ export function estatisticasSidra(
     // com `tabela=6579, periodos=2023`, que a tabela não publica.
     return {
       ok: false,
+      classe: "nao_encontrado",
       erro:
         registros.length === 0
           ? `A consulta não retornou nenhum registro, então não há o que resumir. ` +

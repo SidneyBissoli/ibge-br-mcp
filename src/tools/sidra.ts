@@ -4,7 +4,13 @@ import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { erroDaFonte, parseHttpError, ValidationErrors } from "../errors.js";
+import {
+  parseHttpError,
+  ValidationErrors,
+  erroContrato,
+  erroComClasse,
+  erroDoCatch,
+} from "../errors.js";
 import { isValidPeriod, isValidTerritorialLevel, formatValidationError } from "../validation.js";
 import { territorialLevelHint, territorialLevelList, ALL_TERRITORIAL_LEVELS } from "../config.js";
 import {
@@ -132,26 +138,24 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
     try {
       // Validate territorial level
       if (input.nivel_territorial && !isValidTerritorialLevel(input.nivel_territorial)) {
-        return {
-          markdown: ValidationErrors.invalidTerritory(
+        return erroContrato(
+          ValidationErrors.invalidTerritory(
             input.nivel_territorial,
             "ibge_sidra",
             territorialLevelList(ALL_TERRITORIAL_LEVELS)
-          ),
-          isError: true,
-        };
+          )
+        );
       }
 
       // Validate period format
       if (input.periodos && !isValidPeriod(input.periodos)) {
-        return {
-          markdown: formatValidationError(
+        return erroContrato(
+          formatValidationError(
             "periodos",
             input.periodos,
             "'last', 'all', ano (YYYY), intervalo (YYYY-YYYY), ou múltiplos separados por vírgula"
-          ),
-          isError: true,
-        };
+          )
+        );
       }
 
       // Build the SIDRA API URL
@@ -185,20 +189,17 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
         ({ url, chaveCache: key, data } = await fetchSidra<SidraRecord[]>(path, CACHE_TTL.SHORT));
       } catch (error) {
         if (error instanceof Error) {
-          return {
-            ...erroDaFonte(
-              error,
-              "ibge_sidra",
-              {
-                tabela: input.tabela,
-                nivel_territorial: input.nivel_territorial,
-                localidades: input.localidades,
-                periodos: input.periodos,
-              },
-              ["ibge_sidra_metadados", "ibge_sidra_tabelas"]
-            ),
-            isError: true,
-          };
+          return erroDoCatch(
+            error,
+            "ibge_sidra",
+            {
+              tabela: input.tabela,
+              nivel_territorial: input.nivel_territorial,
+              localidades: input.localidades,
+              periodos: input.periodos,
+            },
+            ["ibge_sidra_metadados", "ibge_sidra_tabelas"]
+          );
         }
         throw error;
       }
@@ -266,13 +267,7 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
         proveniencia({ dataVintage })
       );
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_sidra", { tabela: input.tabela }, ["ibge_sidra_metadados"]),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_sidra"), isError: true };
+      return erroDoCatch(error, "ibge_sidra", { tabela: input.tabela }, ["ibge_sidra_metadados"]);
     }
   });
 }
@@ -450,7 +445,7 @@ function buildSidraStatsResult(
   });
 
   if (!resultado.ok) {
-    return { markdown: `## SIDRA - ${tabelaNome}\n\n${resultado.erro}`, isError: true };
+    return erroComClasse(`## SIDRA - ${tabelaNome}\n\n${resultado.erro}`, resultado.classe);
   }
 
   const structured = {

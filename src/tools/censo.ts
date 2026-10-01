@@ -4,7 +4,8 @@ import { CACHE_TTL } from "../cache.js";
 import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { ValidationErrors, erroDoCatch, erroContrato, erroComClasse } from "../errors.js";
+import { UpstreamError } from "../retry.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import {
   type StructuredToolResult,
@@ -363,10 +364,9 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
     const temaTabelas = CENSO_TABELAS[tema];
 
     if (!temaTabelas) {
-      return {
-        markdown: `Tema "${tema}" não encontrado. Temas disponíveis: ${TEMAS_CENSO.join(", ")}`,
-        isError: true,
-      };
+      return erroContrato(
+        `Tema "${tema}" não encontrado. Temas disponíveis: ${TEMAS_CENSO.join(", ")}`
+      );
     }
 
     // Determine which table to use based on year
@@ -399,24 +399,17 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
     }
 
     if (!tabelaInfo) {
-      return {
-        markdown:
-          `Dados de "${tema}" não disponíveis para o ano ${input.ano || "solicitado"}.\n\n` +
-          `Use ibge_censo(tema="listar") para ver tabelas disponíveis.`,
-        isError: true,
-      };
+      return erroContrato(
+        `Dados de "${tema}" não disponíveis para o ano ${input.ano || "solicitado"}.\n\n` +
+          `Use ibge_censo(tema="listar") para ver tabelas disponíveis.`
+      );
     }
 
     const nivel = input.nivel_territorial ?? "1";
     if (!CENSO_NIVEIS.includes(nivel)) {
-      return {
-        markdown: ValidationErrors.invalidTerritory(
-          nivel,
-          "ibge_censo",
-          territorialLevelList(CENSO_NIVEIS)
-        ),
-        isError: true,
-      };
+      return erroContrato(
+        ValidationErrors.invalidTerritory(nivel, "ibge_censo", territorialLevelList(CENSO_NIVEIS))
+      );
     }
 
     const meta = {
@@ -444,14 +437,12 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
       try {
         ({ url, chaveCache: key, data } = await fetchSidra(caminho, CACHE_TTL.MEDIUM));
       } catch (error) {
-        if (error instanceof Error && error.message.includes("400")) {
-          return {
-            markdown:
-              `Erro na consulta: Parâmetros inválidos para a tabela ${tabelaInfo.tabela}.\n` +
+        if (error instanceof UpstreamError && error.status === 400) {
+          return erroContrato(
+            `Erro na consulta: Parâmetros inválidos para a tabela ${tabelaInfo.tabela}.\n` +
               `Descrição: ${tabelaInfo.descricao}\n\n` +
-              `Use ibge_sidra_metadados(tabela="${tabelaInfo.tabela}") para ver a estrutura da tabela.`,
-            isError: true,
-          };
+              `Use ibge_sidra_metadados(tabela="${tabelaInfo.tabela}") para ver a estrutura da tabela.`
+          );
         }
         throw error;
       }
@@ -491,7 +482,7 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
           topN: input.topN ?? TOP_N_DEFAULT,
         });
         if (!resultado.ok) {
-          return { markdown: output + resultado.erro, isError: true };
+          return erroComClasse(output + resultado.erro, resultado.classe);
         }
         return {
           markdown: output + resultado.markdown,
@@ -527,16 +518,10 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
 
       return { markdown: output, structured, provenance: proveniencia({ dataVintage }) };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_censo", { ano: input.ano, tema: input.tema }, [
-            "ibge_sidra_metadados",
-            "ibge_sidra",
-          ]),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_censo"), isError: true };
+      return erroDoCatch(error, "ibge_censo", { ano: input.ano, tema: input.tema }, [
+        "ibge_sidra_metadados",
+        "ibge_sidra",
+      ]);
     }
   });
 }

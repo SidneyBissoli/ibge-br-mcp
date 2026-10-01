@@ -3,7 +3,8 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, createKeyValueTable, truncate } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { erroDoCatch, erroNaoEncontrado } from "../errors.js";
+import { UpstreamError } from "../retry.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -157,11 +158,10 @@ export async function ibgeSidraMetadados(
       try {
         metadados = await cachedFetch<Metadados>(metadadosUrl, metadadosKey, CACHE_TTL.STATIC);
       } catch (error) {
-        if (error instanceof Error && error.message.includes("404")) {
-          return {
-            markdown: `Tabela ${input.tabela} não encontrada. Use ibge_sidra_tabelas para listar tabelas disponíveis.`,
-            isError: true,
-          };
+        if (error instanceof UpstreamError && error.status === 404) {
+          return erroNaoEncontrado(
+            `Tabela ${input.tabela} não encontrada. Use ibge_sidra_tabelas para listar tabelas disponíveis.`
+          );
         }
         throw error;
       }
@@ -190,15 +190,9 @@ export async function ibgeSidraMetadados(
         }),
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_sidra_metadados", { tabela: input.tabela }, [
-            "ibge_sidra_tabelas",
-          ]),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_sidra_metadados"), isError: true };
+      return erroDoCatch(error, "ibge_sidra_metadados", { tabela: input.tabela }, [
+        "ibge_sidra_tabelas",
+      ]);
     }
   });
 }

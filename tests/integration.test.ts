@@ -198,7 +198,9 @@ describe("Integration Tests with Mocks", () => {
     });
 
     it("should handle not found with 404", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("404 Not Found"));
+      // Um 404 de verdade chega como `UpstreamError` (status tipado), não
+      // como um `Error` cuja frase contém "404" — o desvio lê o status.
+      mockFetch.mockResolvedValueOnce(mockResponse({}, 404));
 
       // Use a valid IBGE code format (starts with valid state prefix)
       const { markdown: result } = await ibgeLocalidade({ codigo: 3599999 });
