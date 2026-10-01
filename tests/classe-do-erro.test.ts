@@ -127,9 +127,9 @@ describe("o que já estava certo não muda", () => {
 
 describe("bug nosso no `catch` da tool é `defeito` (varredura de 30/09/2026)", () => {
   it("TypeError do nosso código", () => {
-    expect(comClasse(new TypeError("Cannot read properties of undefined (reading 'x')"))[CLASSE_DO_ERRO]).toBe(
-      "defeito",
-    );
+    expect(
+      comClasse(new TypeError("Cannot read properties of undefined (reading 'x')"))[CLASSE_DO_ERRO]
+    ).toBe("defeito");
   });
 
   it("a falha de rede crua da undici NÃO é bug nosso — fica para o tipo de retry.ts ou a frase", () => {

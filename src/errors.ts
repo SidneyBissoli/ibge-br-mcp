@@ -29,7 +29,9 @@ export function comClasse(error: unknown): { [CLASSE_DO_ERRO]?: ErrorClass } {
  */
 function ehBugNosso(error: unknown): boolean {
   if (error instanceof TypeError) return error.message !== "fetch failed";
-  return error instanceof RangeError || error instanceof ReferenceError || error instanceof SyntaxError;
+  return (
+    error instanceof RangeError || error instanceof ReferenceError || error instanceof SyntaxError
+  );
 }
 
 /**
