@@ -18,7 +18,8 @@ import { McpServer, InMemoryTransport } from "@modelcontextprotocol/server";
 import { Client } from "@modelcontextprotocol/client";
 import { registerAll } from "../src/server.js";
 import { cache } from "../src/cache.js";
-import { classifyThrown } from "../src/call-shape.js";
+import { classifyThrown, CLASSE_DO_ERRO } from "../src/call-shape.js";
+import { comClasse } from "../src/errors.js";
 import { TimeoutError } from "../src/retry.js";
 import { mockResponse } from "./helpers.js";
 
@@ -120,6 +121,31 @@ describe("o que já estava certo não muda", () => {
     responder(async () => mockResponse([]));
     // Subclasse inexistente: medido em 22/09/2026, a API responde 200 [].
     const { classes } = await chamar("ibge_cnae", { codigo: "4721101" });
+    expect(classes).toEqual(["nao_encontrado"]);
+  });
+});
+
+describe("bug nosso no `catch` da tool é `defeito` (varredura de 30/09/2026)", () => {
+  it("TypeError do nosso código", () => {
+    expect(
+      comClasse(new TypeError("Cannot read properties of undefined (reading 'x')"))[CLASSE_DO_ERRO]
+    ).toBe("defeito");
+  });
+
+  it("a falha de rede crua da undici NÃO é bug nosso — fica para o tipo de retry.ts ou a frase", () => {
+    expect(comClasse(new TypeError("fetch failed"))[CLASSE_DO_ERRO]).toBeUndefined();
+  });
+
+  it("Error comum sem classe continua sem classe (a frase decide)", () => {
+    expect(comClasse(new Error("algo"))[CLASSE_DO_ERRO]).toBeUndefined();
+  });
+});
+
+describe("search/fetch pelo tipo (mcp-search 0.8.0)", () => {
+  it("id desconhecido é nao_encontrado mesmo ecoando uma palavra de `contrato`", async () => {
+    responder(async () => new Response("[]", { status: 200 }));
+    const { result, classes } = await chamar("fetch", { id: "invalid" });
+    expect(result.isError).toBe(true);
     expect(classes).toEqual(["nao_encontrado"]);
   });
 });

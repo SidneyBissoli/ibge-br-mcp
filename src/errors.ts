@@ -8,11 +8,30 @@ import { CLASSE_DO_ERRO, classeDeclarada, type ErrorClass } from "./call-shape.j
 /**
  * A classe com que o erro nasceu, pronta para espalhar num resultado de erro
  * (`{ markdown, isError: true, ...comClasse(error) }`). Vazio quando o erro não
- * declara classe — aí a telemetria classifica pela frase, como sempre.
+ * declara classe nem é bug nosso — aí a telemetria classifica pela frase.
+ *
+ * Bug nosso (`TypeError` & cia.) é `defeito` pelo TIPO, como em
+ * `classifyThrown`. Medido em 30/09/2026 na varredura da frota: os 24 `catch`
+ * de tool engolem a exceção antes do hook, e um "Cannot read properties of
+ * undefined" saía `outro` — ou `contrato`, quando o bloco "Parâmetros
+ * utilizados" ecoava uma palavra como "inválido".
  */
 export function comClasse(error: unknown): { [CLASSE_DO_ERRO]?: ErrorClass } {
-  const classe = classeDeclarada(error);
+  const classe = classeDeclarada(error) ?? (ehBugNosso(error) ? "defeito" : undefined);
   return classe ? { [CLASSE_DO_ERRO]: classe } : {};
+}
+
+/**
+ * Erro do motor de JS no NOSSO código. A falha de rede da undici também é um
+ * `TypeError` ("fetch failed"); todo `fetch` daqui passa por retry.ts, que a
+ * tipa como `fonte` antes de chegar a um `catch` — a exclusão é guarda, para
+ * uma ida crua futura não virar `defeito`.
+ */
+function ehBugNosso(error: unknown): boolean {
+  if (error instanceof TypeError) return error.message !== "fetch failed";
+  return (
+    error instanceof RangeError || error instanceof ReferenceError || error instanceof SyntaxError
+  );
 }
 
 /**

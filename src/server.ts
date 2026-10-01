@@ -1040,6 +1040,9 @@ Behavior: read-only and idempotent — a live GET against the public IBGE APIs (
     // Sem ele o pacote grava os nomes dos parâmetros e deixa a classe
     // vazia, que foi o que a produção mostrou antes da 0.4.0.
     classifyError,
+    // A classe de uma EXCEÇÃO pelo tipo (mcp-search 0.8.0); a declarada
+    // (`error.classe`) o pacote lê antes deste e da frase.
+    classifyThrown,
     ...(record !== undefined ? { record } : {}),
   });
 
