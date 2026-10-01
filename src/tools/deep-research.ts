@@ -47,6 +47,7 @@ import { normalizeText } from "../config.js";
 import { palavrasPerguntadas } from "../vocabulario.js";
 import { withMetrics } from "../metrics.js";
 import type { StructuredToolResult } from "../structured.js";
+import { CLASSE_DO_ERRO } from "../call-shape.js";
 import {
   ATTRIBUTION_META_KEY,
   PROVENANCE_META_KEY,
@@ -274,8 +275,12 @@ export async function deepResearchSearch(query: string): Promise<DeepResearchSea
 /** Text of a document = the tool's Markdown, minus nothing: the provenance footer is not in it. */
 function textoDe(result: StructuredToolResult, tool: string): string {
   if (result.isError === true || result.provenance === undefined) {
-    // The tool already rendered a pt-BR error; surface it as the failure reason.
-    throw new Error(result.markdown || `\`${tool}\` não devolveu conteúdo`);
+    // The tool already rendered a pt-BR error; surface it as the failure reason,
+    // with the class it decided by TYPE (mcp-search 0.8.0 reads `error.classe`;
+    // a plain `new Error` dropped it and the phrase decided — 30/09/2026).
+    throw Object.assign(new Error(result.markdown || `\`${tool}\` não devolveu conteúdo`), {
+      classe: result[CLASSE_DO_ERRO],
+    });
   }
   return result.markdown;
 }
