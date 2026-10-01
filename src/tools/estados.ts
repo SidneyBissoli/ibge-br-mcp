@@ -3,7 +3,7 @@ import { IBGE_API, type UF } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { erroDoCatch } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -111,16 +111,10 @@ export async function ibgeEstados(input: EstadosInput): Promise<StructuredToolRe
         provenance,
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_estados", { regiao: input.regiao }, [
-            "ibge_municipios",
-            "ibge_localidade",
-          ]),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_estados"), isError: true };
+      return erroDoCatch(error, "ibge_estados", { regiao: input.regiao }, [
+        "ibge_municipios",
+        "ibge_localidade",
+      ]);
     }
   });
 }

@@ -3,7 +3,7 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetchOne } from "../cache.js";
 import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
-import { comClasse } from "../errors.js";
+import { erroDaExcecao, erroContrato, erroDefeito } from "../errors.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
 import { type StructuredToolResult, sidraRecords } from "../structured.js";
 import { valorSidra } from "../stats.js";
@@ -168,32 +168,26 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
 
     const template = TEMPLATES_COMPARACAO[input.indicador || "populacao"];
     if (!template) {
-      return {
-        markdown:
-          `Indicador "${input.indicador}" não encontrado.\n\n` +
-          `Use ibge_comparar(indicador="listar") para ver os indicadores disponíveis.`,
-        isError: true,
-      };
+      return erroContrato(
+        `Indicador "${input.indicador}" não encontrado.\n\n` +
+          `Use ibge_comparar(indicador="listar") para ver os indicadores disponíveis.`
+      );
     }
 
     // Parse localities
     const localidadesList = input.localidades.split(",").map((l) => l.trim());
     if (localidadesList.length < 2) {
-      return {
-        markdown:
-          "Informe pelo menos 2 localidades para comparação.\n\n" +
-          `Exemplo: localidades="3550308,3304557" para comparar São Paulo e Rio de Janeiro.`,
-        isError: true,
-      };
+      return erroContrato(
+        "Informe pelo menos 2 localidades para comparação.\n\n" +
+          `Exemplo: localidades="3550308,3304557" para comparar São Paulo e Rio de Janeiro.`
+      );
     }
 
     if (localidadesList.length > 10) {
-      return {
-        markdown:
-          "Máximo de 10 localidades por comparação.\n\n" +
-          "Para consultas maiores, use ibge_sidra diretamente.",
-        isError: true,
-      };
+      return erroContrato(
+        "Máximo de 10 localidades por comparação.\n\n" +
+          "Para consultas maiores, use ibge_sidra diretamente."
+      );
     }
 
     // Determine territorial level based on first code
@@ -259,13 +253,9 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
       };
     } catch (error) {
       if (error instanceof Error) {
-        return {
-          markdown: formatCompararError(error.message, input, template),
-          isError: true,
-          ...comClasse(error),
-        };
+        return erroDaExcecao(formatCompararError(error.message, input, template), error);
       }
-      return { markdown: "Erro desconhecido ao comparar localidades.", isError: true };
+      return erroDefeito("Erro desconhecido ao comparar localidades.");
     }
   });
 }

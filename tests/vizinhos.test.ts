@@ -73,12 +73,12 @@ describe("ibge_vizinhos", () => {
       expect(result).toContain("10.000");
     });
 
-    it("falls back when the malha fetch fails (no neighbors)", async () => {
-      // municipio ok, state list ok, malha rejects -> getVizinhosFromMalha returns []
+    it("falls back when the malha is absent (no neighbors)", async () => {
+      // municipio ok, state list ok, malha 404 -> getVizinhosFromMalha returns []
       mockFetch
         .mockResolvedValueOnce(mockResponse(municipioMatriz))
         .mockResolvedValueOnce(mockResponse(stateMunicipios))
-        .mockRejectedValueOnce(new Error("HTTP 500: boom"));
+        .mockResolvedValueOnce(mockResponse({}, 404));
 
       const { markdown: result } = await ibgeVizinhos({ municipio: "3550308" });
 
@@ -86,10 +86,26 @@ describe("ibge_vizinhos", () => {
       expect(result).toContain("Não foi possível determinar os municípios vizinhos");
     });
 
+    it("a malha que FALHA não vira 'sem vizinhos' — sobe como erro da fonte", async () => {
+      // Até 30/09/2026 um 5xx/rede na malha virava `[]` e a resposta dizia
+      // "Não foi possível determinar os municípios vizinhos".
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(municipioMatriz))
+        .mockResolvedValueOnce(mockResponse(stateMunicipios))
+        .mockRejectedValueOnce(new Error("HTTP 500: boom"));
+
+      const { markdown: result, isError } = await ibgeVizinhos({ municipio: "3550308" });
+
+      expect(isError).toBe(true);
+      expect(result).not.toContain("Não foi possível determinar os municípios vizinhos");
+      expect(result).toContain("**Código HTTP:** 500");
+    });
+
     it("reports a not-found municipality when the lookup fails", async () => {
       // Code with a valid UF prefix (35) so it passes isValidIbgeCode, but the
       // lookup 404s -> getMunicipioInfo swallows the error and returns null.
-      mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
+      // A API responde ausência com `[]` e HTTP 200 (medido em 22/09/2026).
+      mockFetch.mockResolvedValueOnce(mockResponse([]));
       const { markdown: result } = await ibgeVizinhos({ municipio: "3599999" });
       expect(result).toContain("não encontrado");
     });

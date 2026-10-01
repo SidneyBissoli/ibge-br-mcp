@@ -69,7 +69,8 @@ describe("ibge_nomes_frequencia", () => {
   });
 
   it("reports no data on a 404", async () => {
-    mockFetch.mockRejectedValueOnce(new Error("HTTP 404: Not Found"));
+    // 404 de verdade: `UpstreamError` com status, que é o que o desvio lê.
+    mockFetch.mockResolvedValueOnce(mockResponse({}, 404));
     const result = await ibgeNomesFrequencia({ nomes: "Zzzqqq" });
     expect(result).toContain("Nenhum dado encontrado");
   });

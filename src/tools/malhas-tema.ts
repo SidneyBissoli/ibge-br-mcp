@@ -34,7 +34,7 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { buildQueryString } from "../utils/index.js";
-import { erroDaFonte, formatError, ValidationErrors } from "../errors.js";
+import { formatError, erroDoCatch, erroContrato, erroComClasse } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -264,13 +264,13 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<Structured
 
     const recorte = RECORTES[input.tema as Tema];
     if (!recorte) {
-      return { markdown: recorteInvalido(input.tema), isError: true };
+      return erroContrato(recorteInvalido(input.tema));
     }
     if (input.codigo && !recorte.codigo) {
-      return { markdown: semCodigo(input), isError: true };
+      return erroContrato(semCodigo(input));
     }
     if (input.codigo && recorte.codigo?.numerico && !/^\d+$/.test(input.codigo)) {
-      return { markdown: codigoNaoNumerico(input, recorte), isError: true };
+      return erroContrato(codigoNaoNumerico(input, recorte));
     }
 
     try {
@@ -282,7 +282,12 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<Structured
       const feicoes = data.features ?? [];
       const total = data.numberMatched ?? data.totalFeatures ?? feicoes.length;
       if (total === 0) {
-        return { markdown: nadaEncontrado(input, recorte), isError: true };
+        // Com `codigo`, vazio é a feição que não existe. Sem `codigo`, a camada
+        // inteira veio vazia — um recorte oficial não é vazio: a fonte falhou.
+        return erroComClasse(
+          nadaEncontrado(input, recorte),
+          input.codigo ? "nao_encontrado" : "fonte"
+        );
       }
 
       const urlGeometria = urlWfs(recorte, { filtro, comGeometria: true });
@@ -310,18 +315,12 @@ export async function ibgeMalhasTema(input: MalhasTemaInput): Promise<Structured
         }),
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(
-            error,
-            "ibge_malhas_tema",
-            { tema: input.tema, codigo: input.codigo, camada: recorte.camada },
-            ["ibge_malhas"]
-          ),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_malhas_tema"), isError: true };
+      return erroDoCatch(
+        error,
+        "ibge_malhas_tema",
+        { tema: input.tema, codigo: input.codigo, camada: recorte.camada },
+        ["ibge_malhas"]
+      );
     }
   });
 }

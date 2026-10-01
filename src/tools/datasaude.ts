@@ -4,7 +4,7 @@ import { CACHE_TTL } from "../cache.js";
 import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { ValidationErrors, erroDoCatch, erroContrato, erroComClasse } from "../errors.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import {
   type StructuredToolResult,
@@ -175,24 +175,21 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
     const indicadorInfo = INDICADORES_SAUDE[input.indicador.toLowerCase()];
 
     if (!indicadorInfo) {
-      return {
-        markdown:
-          `Indicador "${input.indicador}" não encontrado.\n\n` +
-          `Use indicador="listar" para ver indicadores disponíveis.`,
-        isError: true,
-      };
+      return erroContrato(
+        `Indicador "${input.indicador}" não encontrado.\n\n` +
+          `Use indicador="listar" para ver indicadores disponíveis.`
+      );
     }
 
     const nivel = input.nivel_territorial ?? "1";
     if (!DATASAUDE_NIVEIS.includes(nivel)) {
-      return {
-        markdown: ValidationErrors.invalidTerritory(
+      return erroContrato(
+        ValidationErrors.invalidTerritory(
           nivel,
           "ibge_datasaude",
           territorialLevelList(DATASAUDE_NIVEIS)
-        ),
-        isError: true,
-      };
+        )
+      );
     }
 
     const meta = {
@@ -259,7 +256,7 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
           topN: input.topN ?? TOP_N_DEFAULT,
         });
         if (!resultado.ok) {
-          return { markdown: cabecalho + resultado.erro, isError: true };
+          return erroComClasse(cabecalho + resultado.erro, resultado.classe);
         }
         return {
           markdown: cabecalho + resultado.markdown,
@@ -285,16 +282,10 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
         provenance: proveniencia({ dataVintage }),
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_datasaude", { indicador: input.indicador }, [
-            "ibge_sidra",
-            "ibge_sidra_metadados",
-          ]),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_datasaude"), isError: true };
+      return erroDoCatch(error, "ibge_datasaude", { indicador: input.indicador }, [
+        "ibge_sidra",
+        "ibge_sidra_metadados",
+      ]);
     }
   });
 }

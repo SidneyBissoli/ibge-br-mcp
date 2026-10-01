@@ -48,6 +48,86 @@ export function erroDaFonte(
   return { markdown: parseHttpError(error, tool, params, relatedTools), ...comClasse(error) };
 }
 
+/**
+ * Resultado de erro de tool. O ÚNICO lugar de `src/` (fora de structured.ts,
+ * que monta o fio) onde se escreve `isError: true` é este arquivo — a guarda
+ * `tests/sem-iserror-literal.test.ts` reprova o literal em qualquer outro.
+ *
+ * Por que existe. Varredura de 30/09/2026: de ~118 resultados de erro nas
+ * tools, só ~24 (os `catch` com `erroDaFonte`) levavam a classe; o resto a
+ * deixava para a FRASE, e a frase ecoa argumento do chamador. No medical, o
+ * código ecoado "INVALID" casou `\binvalid` e um não-encontrado saiu
+ * `contrato`. Aqui a classe é parâmetro OBRIGATÓRIO (ou o nome do helper), e
+ * o compilador pega quem esquecer.
+ */
+export interface ResultadoDeErro {
+  markdown: string;
+  isError: true;
+  [CLASSE_DO_ERRO]?: ErrorClass;
+}
+
+/** Erro com a classe decidida por quem conhece a situação. */
+export function erroComClasse(markdown: string, classe: ErrorClass): ResultadoDeErro {
+  return { markdown, isError: true, [CLASSE_DO_ERRO]: classe };
+}
+
+/** Culpa da chamada: argumento inválido, faltando, ambíguo ou fora do catálogo local. */
+export function erroContrato(markdown: string): ResultadoDeErro {
+  return erroComClasse(markdown, "contrato");
+}
+
+/** A origem respondeu, e respondeu que não existe / veio vazio legitimamente. */
+export function erroNaoEncontrado(markdown: string): ResultadoDeErro {
+  return erroComClasse(markdown, "nao_encontrado");
+}
+
+/** A origem falhou ou respondeu o que não devia (vazio onde não pode haver vazio). */
+export function erroFonte(markdown: string): ResultadoDeErro {
+  return erroComClasse(markdown, "fonte");
+}
+
+/** Bug ou configuração nossa. */
+export function erroDefeito(markdown: string): ResultadoDeErro {
+  return erroComClasse(markdown, "defeito");
+}
+
+/**
+ * Texto próprio da tool para uma EXCEÇÃO: a classe vem do tipo do erro
+ * (`comClasse`). É o único caminho em que a classe pode faltar — exceção
+ * `Error` sem tipo conhecido —, e aí a telemetria cai na frase, como último
+ * recurso. Valor lançado que nem `Error` é vira `defeito`.
+ */
+export function erroDaExcecao(markdown: string, error: unknown): ResultadoDeErro {
+  if (!(error instanceof Error)) return erroDefeito(markdown);
+  return { markdown, isError: true, ...comClasse(error) };
+}
+
+/**
+ * O `catch` padrão de tool: `Error` vira o Markdown de `parseHttpError` com a
+ * classe pelo tipo; o que nem `Error` é (o ramo "Erro desconhecido") é bug
+ * nosso — `defeito` — com o texto de sempre (`emptyResult` da tool, ou o
+ * `semErro` que a tool já usava).
+ */
+export function erroDoCatch(
+  error: unknown,
+  tool: string,
+  params?: Record<string, unknown>,
+  relatedTools?: string[],
+  semErro?: string
+): ResultadoDeErro {
+  if (error instanceof Error) {
+    return { ...erroDaFonte(error, tool, params, relatedTools), isError: true };
+  }
+  return erroDefeito(semErro ?? ValidationErrors.emptyResult(tool));
+}
+
+/** A ausência que a origem RESPONDEU: `[]` em 200 (`RecursoAusenteError`) ou 404. */
+export function ehAusencia(error: unknown): boolean {
+  return (
+    error instanceof RecursoAusenteError || (error instanceof UpstreamError && error.status === 404)
+  );
+}
+
 // Common IBGE API error codes and their meanings
 export const IBGE_ERROR_CODES: Record<number, { message: string; suggestion: string }> = {
   400: {

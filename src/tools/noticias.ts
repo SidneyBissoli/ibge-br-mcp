@@ -7,7 +7,7 @@ import {
   formatDate as formatDateUtil,
   buildQueryString,
 } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { ValidationErrors, erroDoCatch, erroContrato, erroNaoEncontrado } from "../errors.js";
 import { parseUserDate, toIbgeApiDate } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -66,10 +66,7 @@ export async function ibgeNoticias(input: NoticiasInput): Promise<StructuredTool
       if (input.de) {
         const parsed = parseUserDate(input.de);
         if (!parsed) {
-          return {
-            markdown: ValidationErrors.invalidDate(input.de, "ibge_noticias"),
-            isError: true,
-          };
+          return erroContrato(ValidationErrors.invalidDate(input.de, "ibge_noticias"));
         }
         de = toIbgeApiDate(parsed);
       }
@@ -78,10 +75,7 @@ export async function ibgeNoticias(input: NoticiasInput): Promise<StructuredTool
       if (input.ate) {
         const parsed = parseUserDate(input.ate);
         if (!parsed) {
-          return {
-            markdown: ValidationErrors.invalidDate(input.ate, "ibge_noticias"),
-            isError: true,
-          };
+          return erroContrato(ValidationErrors.invalidDate(input.ate, "ibge_noticias"));
         }
         ate = toIbgeApiDate(parsed);
       }
@@ -103,12 +97,11 @@ export async function ibgeNoticias(input: NoticiasInput): Promise<StructuredTool
       const data = await cachedFetch<NoticiasResponse>(url, key, CACHE_TTL.SHORT);
 
       if (!data.items || data.items.length === 0) {
-        return {
-          markdown: input.busca
+        return erroNaoEncontrado(
+          input.busca
             ? `Nenhuma notícia encontrada para: "${input.busca}"`
-            : "Nenhuma notícia encontrada.",
-          isError: true,
-        };
+            : "Nenhuma notícia encontrada."
+        );
       }
 
       const noticias = data.items.map((noticia) => ({
@@ -139,13 +132,7 @@ export async function ibgeNoticias(input: NoticiasInput): Promise<StructuredTool
         }),
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_noticias", { busca: input.busca }, ["ibge_calendario"]),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_noticias"), isError: true };
+      return erroDoCatch(error, "ibge_noticias", { busca: input.busca }, ["ibge_calendario"]);
     }
   });
 }

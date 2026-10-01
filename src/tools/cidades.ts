@@ -4,7 +4,7 @@ import { cacheKey, CACHE_TTL, cachedFetch, cachedFetchOne } from "../cache.js";
 import { RETRY_PRESETS } from "../retry.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { ValidationErrors, erroDoCatch, erroContrato } from "../errors.js";
 import { isValidIbgeCode, formatValidationError } from "../validation.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -85,14 +85,13 @@ export async function ibgeCidades(input: CidadesInput): Promise<StructuredToolRe
       switch (input.tipo) {
         case "panorama":
           if (!input.municipio) {
-            return {
-              markdown: ValidationErrors.invalidCode(
+            return erroContrato(
+              ValidationErrors.invalidCode(
                 "",
                 "ibge_cidades",
                 "Informe o código IBGE do município (7 dígitos)"
-              ),
-              isError: true,
-            };
+              )
+            );
           }
           return await panoramaMunicipio(input.municipio);
         case "indicador":
@@ -104,36 +103,29 @@ export async function ibgeCidades(input: CidadesInput): Promise<StructuredToolRe
           return await listarPesquisas(input.pesquisa);
         case "historico":
           if (!input.municipio || !input.indicador) {
-            return {
-              markdown: formatValidationError(
+            return erroContrato(
+              formatValidationError(
                 "municipio/indicador",
                 "",
                 "Informe o código do município e o ID do indicador para ver histórico"
-              ),
-              isError: true,
-            };
+              )
+            );
           }
           return await historicoIndicador(input.municipio, input.indicador);
         default:
           return listarIndicadoresDisponiveis();
       }
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(
-            error,
-            "ibge_cidades",
-            {
-              tipo: input.tipo,
-              municipio: input.municipio,
-              indicador: input.indicador,
-            },
-            ["ibge_comparar", "ibge_censo"]
-          ),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_cidades"), isError: true };
+      return erroDoCatch(
+        error,
+        "ibge_cidades",
+        {
+          tipo: input.tipo,
+          municipio: input.municipio,
+          indicador: input.indicador,
+        },
+        ["ibge_comparar", "ibge_censo"]
+      );
     }
   });
 }
@@ -141,14 +133,13 @@ export async function ibgeCidades(input: CidadesInput): Promise<StructuredToolRe
 async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToolResult> {
   // Validar código do município
   if (!isValidIbgeCode(codigoMunicipio) || codigoMunicipio.length !== 7) {
-    return {
-      markdown: formatValidationError(
+    return erroContrato(
+      formatValidationError(
         "municipio",
         codigoMunicipio,
         "Código IBGE de 7 dígitos (ex: 3550308 para São Paulo)"
-      ),
-      isError: true,
-    };
+      )
+    );
   }
 
   // Buscar nome do município
@@ -334,14 +325,13 @@ async function consultarIndicador(
 
   if (indicadorInfo) {
     if (!municipio) {
-      return {
-        markdown: formatValidationError(
+      return erroContrato(
+        formatValidationError(
           "municipio",
           "",
           "Informe o código do município para consultar o indicador"
-        ),
-        isError: true,
-      };
+        )
+      );
     }
 
     const url = `${IBGE_API.PESQUISAS}/${indicadorInfo.pesquisa}/indicadores/${indicadorInfo.id}/resultados/${municipio}`;
@@ -449,16 +439,10 @@ async function listarPesquisas(pesquisaId?: string): Promise<StructuredToolResul
         }),
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_cidades", { pesquisa: pesquisaId }, [
-            "ibge_comparar",
-            "ibge_censo",
-          ]),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_cidades"), isError: true };
+      return erroDoCatch(error, "ibge_cidades", { pesquisa: pesquisaId }, [
+        "ibge_comparar",
+        "ibge_censo",
+      ]);
     }
   }
 

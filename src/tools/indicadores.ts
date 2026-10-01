@@ -4,7 +4,14 @@ import { CACHE_TTL } from "../cache.js";
 import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { comClasse, ValidationErrors } from "../errors.js";
+import {
+  erroDaExcecao,
+  ValidationErrors,
+  erroContrato,
+  erroComClasse,
+  erroDefeito,
+} from "../errors.js";
+import { UpstreamError } from "../retry.js";
 import { territorialLevelHint, territorialLevelList } from "../config.js";
 import {
   type StructuredToolResult,
@@ -276,25 +283,22 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
 
     const indicador = INDICADORES_CONHECIDOS[indicadorKey];
     if (!indicador) {
-      return {
-        markdown:
-          `Indicador "${input.indicador}" não encontrado.\n\n` +
+      return erroContrato(
+        `Indicador "${input.indicador}" não encontrado.\n\n` +
           `Use ibge_indicadores(indicador="listar") para ver os indicadores disponíveis.\n\n` +
-          `Dica: Você também pode usar ibge_sidra_tabelas para buscar tabelas específicas.`,
-        isError: true,
-      };
+          `Dica: Você também pode usar ibge_sidra_tabelas para buscar tabelas específicas.`
+      );
     }
 
     const nivel = input.nivel_territorial ?? "1";
     if (!INDICADORES_NIVEIS.includes(nivel)) {
-      return {
-        markdown: ValidationErrors.invalidTerritory(
+      return erroContrato(
+        ValidationErrors.invalidTerritory(
           nivel,
           "ibge_indicadores",
           territorialLevelList(INDICADORES_NIVEIS)
-        ),
-        isError: true,
-      };
+        )
+      );
     }
 
     try {
@@ -316,16 +320,15 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
         ({ url, chaveCache: key, data } = await fetchSidra(caminho, CACHE_TTL.SHORT));
       } catch (fetchError) {
         // Provide helpful error message
-        if (fetchError instanceof Error && fetchError.message.includes("400")) {
-          return {
-            markdown: formatErrorMessage(
+        if (fetchError instanceof UpstreamError && fetchError.status === 400) {
+          return erroContrato(
+            formatErrorMessage(
               "Parâmetros inválidos",
               indicador,
               indicadorKey,
               "Verifique se o nível territorial e localidades são suportados para este indicador."
-            ),
-            isError: true,
-          };
+            )
+          );
         }
         throw fetchError;
       }
@@ -379,7 +382,7 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
           topN: input.topN ?? TOP_N_DEFAULT,
         });
         if (!resultado.ok) {
-          return { markdown: output + resultado.erro, isError: true };
+          return erroComClasse(output + resultado.erro, resultado.classe);
         }
         return {
           markdown: output + resultado.markdown,
@@ -413,18 +416,17 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
       return { markdown: output, structured, provenance: proveniencia({ dataVintage }) };
     } catch (error) {
       if (error instanceof Error) {
-        return {
-          markdown: formatErrorMessage(
+        return erroDaExcecao(
+          formatErrorMessage(
             error.message,
             indicadorKey ? INDICADORES_CONHECIDOS[indicadorKey] : undefined,
             indicadorKey ?? "unknown",
             "Verifique sua conexão ou tente novamente mais tarde."
           ),
-          isError: true,
-          ...comClasse(error),
-        };
+          error
+        );
       }
-      return { markdown: "Erro desconhecido ao consultar indicador.", isError: true };
+      return erroDefeito("Erro desconhecido ao consultar indicador.");
     }
   });
 }

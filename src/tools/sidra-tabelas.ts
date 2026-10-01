@@ -3,7 +3,7 @@ import { IBGE_API } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, truncate } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { erroDoCatch, erroNaoEncontrado } from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 import { casaBusca, expandirBusca, normalizar, notasDeVocabulario } from "../vocabulario.js";
@@ -124,19 +124,17 @@ export async function ibgeSidraTabelas(input: SidraTabelasInput): Promise<Struct
       if (limited.length === 0) {
         // Zero resultado sem explicação é beco sem saída: o catálogo é do IBGE
         // e usa o vocabulário dele. Dizer o que fazer em seguida é parte da resposta.
-        return {
-          markdown:
-            input.busca || input.pesquisa
-              ? `Nenhuma tabela encontrada para os critérios especificados.\n\n` +
+        return erroNaoEncontrado(
+          input.busca || input.pesquisa
+            ? `Nenhuma tabela encontrada para os critérios especificados.\n\n` +
                 (notas.length ? notas.map((n) => `- ${n}\n`).join("") + "\n" : "") +
                 "Todas as palavras precisam casar com o nome do agregado (acento e caixa não importam). " +
                 "Tente menos palavras, ou a palavra que o IBGE usa: rendimento (não renda), desocupação " +
                 "(não desemprego), domicílio (não moradia/casa), município (não cidade), sexo (não gênero), " +
                 "cor ou raça (não negros), nascidos vivos (não natalidade), óbitos (não mortes), IPCA/INPC " +
                 "(não inflação). Ou liste as pesquisas com `ibge_pesquisas` e filtre por `pesquisa`."
-              : "Nenhuma tabela encontrada.",
-          isError: true,
-        };
+            : "Nenhuma tabela encontrada."
+        );
       }
 
       const markdown = formatTabelasResponse(limited, allAgregados.length, input, notas);
@@ -163,21 +161,15 @@ export async function ibgeSidraTabelas(input: SidraTabelasInput): Promise<Struct
         }),
       };
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(
-            error,
-            "ibge_sidra_tabelas",
-            {
-              busca: input.busca,
-              pesquisa: input.pesquisa,
-            },
-            ["ibge_sidra_metadados", "ibge_sidra"]
-          ),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_sidra_tabelas"), isError: true };
+      return erroDoCatch(
+        error,
+        "ibge_sidra_tabelas",
+        {
+          busca: input.busca,
+          pesquisa: input.pesquisa,
+        },
+        ["ibge_sidra_metadados", "ibge_sidra"]
+      );
     }
   });
 }

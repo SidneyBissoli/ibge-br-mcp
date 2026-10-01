@@ -3,7 +3,13 @@ import { IBGE_API, Pais, PaisIndicadorResultado } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import {
+  ValidationErrors,
+  erroDoCatch,
+  erroContrato,
+  erroFonte,
+  erroNaoEncontrado,
+} from "../errors.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
 
@@ -131,44 +137,38 @@ export async function ibgePaises(input: PaisesInput): Promise<StructuredToolResu
           return await listarPaises(input.busca, input.regiao);
         case "detalhes":
           if (!input.pais) {
-            return {
-              markdown: ValidationErrors.invalidCode(
+            return erroContrato(
+              ValidationErrors.invalidCode(
                 "",
                 "ibge_paises",
                 "Informe o código ISO-ALPHA-2 do país (ex: BR, US, AR)"
-              ),
-              isError: true,
-            };
+              )
+            );
           }
           return await detalhesPais(input.pais);
         case "indicadores":
           return listarIndicadores();
         case "buscar":
           if (!input.busca) {
-            return {
-              markdown: ValidationErrors.emptyResult(
+            // Falta parâmetro: é `contrato`, embora o texto (de sempre) diga
+            // "Nenhum dado encontrado" — a classe não sai mais da frase.
+            return erroContrato(
+              ValidationErrors.emptyResult(
                 "ibge_paises",
                 "Informe um termo de busca para encontrar países"
-              ),
-              isError: true,
-            };
+              )
+            );
           }
           return await listarPaises(input.busca, input.regiao);
         default:
           return await listarPaises(input.busca, input.regiao);
       }
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(error, "ibge_paises", {
-            tipo: input.tipo,
-            pais: input.pais,
-            busca: input.busca,
-          }),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_paises"), isError: true };
+      return erroDoCatch(error, "ibge_paises", {
+        tipo: input.tipo,
+        pais: input.pais,
+        busca: input.busca,
+      });
     }
   });
 }
@@ -180,7 +180,7 @@ async function listarPaises(busca?: string, regiao?: string): Promise<Structured
   const paises = await cachedFetch<Pais[]>(url, key, CACHE_TTL.STATIC);
 
   if (!paises || paises.length === 0) {
-    return { markdown: ValidationErrors.emptyResult("ibge_paises"), isError: true };
+    return erroFonte(ValidationErrors.emptyResult("ibge_paises"));
   }
 
   let resultado = paises;
@@ -201,13 +201,12 @@ async function listarPaises(busca?: string, regiao?: string): Promise<Structured
   }
 
   if (resultado.length === 0) {
-    return {
-      markdown: ValidationErrors.emptyResult(
+    return erroNaoEncontrado(
+      ValidationErrors.emptyResult(
         "ibge_paises",
         busca ? `Nenhum país encontrado para "${busca}"` : "Nenhum país encontrado"
-      ),
-      isError: true,
-    };
+      )
+    );
   }
 
   let output = `## Países${busca ? ` - Busca: "${busca}"` : ""}${regiao ? ` - Região: ${regiao}` : ""}\n\n`;
@@ -257,14 +256,13 @@ async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
   const paises = await cachedFetch<Pais[]>(url, key, CACHE_TTL.STATIC);
 
   if (!paises || paises.length === 0) {
-    return {
-      markdown: ValidationErrors.notFound(
+    return erroNaoEncontrado(
+      ValidationErrors.notFound(
         `País com código "${codigoPais}"`,
         "ibge_paises",
         "ibge_paises tipo='listar'"
-      ),
-      isError: true,
-    };
+      )
+    );
   }
 
   const pais = paises[0];

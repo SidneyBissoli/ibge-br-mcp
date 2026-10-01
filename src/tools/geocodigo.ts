@@ -3,7 +3,7 @@ import { IBGE_API, Municipio, MunicipioSimples } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch, cachedFetchOne } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable } from "../utils/index.js";
-import { erroDaFonte, ValidationErrors } from "../errors.js";
+import { ehAusencia, erroDoCatch, erroContrato, erroNaoEncontrado } from "../errors.js";
 import { resolveUf } from "../config.js";
 import type { StructuredToolResult } from "../structured.js";
 import { provenienciaIbge } from "../provenance.js";
@@ -147,23 +147,17 @@ export async function ibgeGeocodigo(input: GeocodigoInput): Promise<StructuredTo
       }
 
       // Show help
-      return { markdown: showGeocodigoHelp(), isError: true };
+      return erroContrato(showGeocodigoHelp());
     } catch (error) {
-      if (error instanceof Error) {
-        return {
-          ...erroDaFonte(
-            error,
-            "ibge_geocodigo",
-            {
-              codigo: input.codigo,
-              nome: input.nome,
-            },
-            ["ibge_municipios", "ibge_estados"]
-          ),
-          isError: true,
-        };
-      }
-      return { markdown: ValidationErrors.emptyResult("ibge_geocodigo"), isError: true };
+      return erroDoCatch(
+        error,
+        "ibge_geocodigo",
+        {
+          codigo: input.codigo,
+          nome: input.nome,
+        },
+        ["ibge_municipios", "ibge_estados"]
+      );
     }
   });
 }
@@ -175,10 +169,9 @@ async function decodeIbgeCode(codigo: string): Promise<StructuredToolResult> {
     // Region code
     const regiao = REGIOES_MAP[parseInt(normalized)];
     if (!regiao) {
-      return {
-        markdown: `Código de região inválido: "${codigo}"\n\nRegiões válidas: 1 (Norte), 2 (Nordeste), 3 (Sudeste), 4 (Sul), 5 (Centro-Oeste)`,
-        isError: true,
-      };
+      return erroContrato(
+        `Código de região inválido: "${codigo}"\n\nRegiões válidas: 1 (Norte), 2 (Nordeste), 3 (Sudeste), 4 (Sul), 5 (Centro-Oeste)`
+      );
     }
     return formatRegiaoInfo(parseInt(normalized), regiao);
   }
@@ -187,10 +180,9 @@ async function decodeIbgeCode(codigo: string): Promise<StructuredToolResult> {
     // State code
     const estado = ESTADOS_MAP[parseInt(normalized)];
     if (!estado) {
-      return {
-        markdown: `Código de UF inválido: "${codigo}"\n\nUse ibge_estados() para ver a lista de estados.`,
-        isError: true,
-      };
+      return erroContrato(
+        `Código de UF inválido: "${codigo}"\n\nUse ibge_estados() para ver a lista de estados.`
+      );
     }
     return formatEstadoInfo(parseInt(normalized), estado);
   }
@@ -205,17 +197,15 @@ async function decodeIbgeCode(codigo: string): Promise<StructuredToolResult> {
     return await decodeDistrito(normalized);
   }
 
-  return {
-    markdown:
-      `Código IBGE inválido: "${codigo}"\n\n` +
+  return erroContrato(
+    `Código IBGE inválido: "${codigo}"\n\n` +
       `Formatos aceitos:\n` +
       `- 1 dígito: Região (1-5)\n` +
       `- 2 dígitos: UF (11-53)\n` +
       `- 7 dígitos: Município\n` +
       `- 9 dígitos: Distrito\n\n` +
-      `Use ibge_geocodigo(nome="...") para buscar por nome.`,
-    isError: true,
-  };
+      `Use ibge_geocodigo(nome="...") para buscar por nome.`
+  );
 }
 
 async function decodeMunicipio(codigo: string): Promise<StructuredToolResult> {
@@ -325,13 +315,16 @@ async function decodeMunicipio(codigo: string): Promise<StructuredToolResult> {
         pesquisa: "API de Localidades (municípios)",
       }),
     };
-  } catch {
-    return {
-      markdown:
-        `Município não encontrado para o código: ${codigo}\n\n` +
-        `Use ibge_municipios(busca="nome") para buscar municípios.`,
-      isError: true,
-    };
+  } catch (error) {
+    // Só a AUSÊNCIA que a origem respondeu (`[]` em 200, ou 404) é "não
+    // encontrado". Rede, 5xx, timeout e bug de formatação sobem ao `catch` da
+    // tool, que os classifica pelo tipo — antes este `catch` engolia tudo e
+    // respondia "não encontrado" com a origem fora do ar.
+    if (!ehAusencia(error)) throw error;
+    return erroNaoEncontrado(
+      `Município não encontrado para o código: ${codigo}\n\n` +
+        `Use ibge_municipios(busca="nome") para buscar municípios.`
+    );
   }
 }
 
@@ -399,13 +392,13 @@ async function decodeDistrito(codigo: string): Promise<StructuredToolResult> {
         pesquisa: "API de Localidades (distritos)",
       }),
     };
-  } catch {
-    return {
-      markdown:
-        `Distrito não encontrado para o código: ${codigo}\n\n` +
-        `Verifique se o código possui 9 dígitos.`,
-      isError: true,
-    };
+  } catch (error) {
+    // Idem `decodeMunicipio`: só a ausência respondida é "não encontrado".
+    if (!ehAusencia(error)) throw error;
+    return erroNaoEncontrado(
+      `Distrito não encontrado para o código: ${codigo}\n\n` +
+        `Verifique se o código possui 9 dígitos.`
+    );
   }
 }
 
@@ -455,15 +448,13 @@ async function searchByName(nome: string, uf?: string): Promise<StructuredToolRe
     .slice(0, 20);
 
   if (matches.length === 0) {
-    return {
-      markdown:
-        `Nenhuma localidade encontrada para "${nome}"${uf ? ` em ${uf.toUpperCase()}` : ""}.\n\n` +
+    return erroNaoEncontrado(
+      `Nenhuma localidade encontrada para "${nome}"${uf ? ` em ${uf.toUpperCase()}` : ""}.\n\n` +
         `Dicas:\n` +
         `- Verifique a grafia do nome\n` +
         `- Tente um termo mais específico\n` +
-        `- Use ibge_municipios(busca="...") para busca mais detalhada`,
-      isError: true,
-    };
+        `- Use ibge_municipios(busca="...") para busca mais detalhada`
+    );
   }
 
   if (matches.length === 1) {
