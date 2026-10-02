@@ -31,6 +31,7 @@ on:
       - "worker/**"
       - "package.json"
       - "package-lock.json"
+      - "surface.lock.json"
       - ".github/workflows/deploy-worker.yml"
   workflow_dispatch:
 
@@ -74,6 +75,15 @@ jobs:
           npm run typecheck
           npm run build
 
+      # O DEPLOY SE RECUSA A RODAR COM TESTE VERMELHO. Até 02/10/2026 este job
+      # só checava tipos: o push no main publicava mesmo com a suíte quebrada.
+      # Entre os testes está a trava da superfície declarada
+      # (tests/surface-lock.test.ts): mudou sem subir a versão = vermelho aqui,
+      # e o wrangler abaixo não roda.
+      - if: steps.cf.outputs.ok == 'true'
+        name: Testes (raiz) — inclui a trava da superfície declarada
+        run: npm test
+
       - if: steps.cf.outputs.ok == 'true'
         name: Install (worker)
         run: npm ci
@@ -82,6 +92,14 @@ jobs:
       - if: steps.cf.outputs.ok == 'true'
         name: Typecheck (worker)
         run: npm run typecheck
+        working-directory: worker
+
+      # A outra metade da trava (worker/tests/surface-lock.test.ts): o servidor
+      # que o Worker monta à parte serve a superfície travada, e quais métodos
+      # respondem sem token — comportamento que nenhuma listagem mostra.
+      - if: steps.cf.outputs.ok == 'true'
+        name: Testes (worker) — inclui a trava de quem responde sem token
+        run: npm test
         working-directory: worker
 
       - if: steps.cf.outputs.ok == 'true'
@@ -115,3 +133,10 @@ jobs:
       - if: steps.cf.outputs.ok == 'true'
         name: Smoke em produção
         run: node scripts/smoke-mcp.mjs
+
+      # O que subiu é o que foi travado: superfície declarada servida sem
+      # credencial e, método a método, quem responde sem token (produção =
+      # API_KEY ausente). Os testes provam o CÓDIGO; isto prova o ENDPOINT.
+      - if: steps.cf.outputs.ok == 'true'
+        name: Superfície no ar = surface.lock.json
+        run: npx mcp-surface verificar https://ibge.sidneybissoli.com/mcp --tool ibge_indicadores --args '{"indicador":"listar"}'
