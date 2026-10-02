@@ -7,8 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Só telemetria do canal hospedado: nenhuma tool, parâmetro, campo ou mensagem
-muda, e a superfície publicada é idêntica à da 5.4.0.
+Telemetria do canal hospedado e uma trava de CI: nenhuma tool, parâmetro, campo
+ou mensagem muda, e a superfície publicada é idêntica à da 5.4.0 — agora
+afirmado por teste (`surface.lock.json`).
+
+### Added
+- **Impressão digital da superfície: mudou sem subir a versão = build vermelho
+  e deploy recusado** (`@sbissoli/mcp-surface`). `surface.lock.json` trava o
+  sha256 de `initialize` (instructions, capabilities, identidade sem a versão)
+  + tools/resources/templates/prompts do `createServer` e, numa segunda seção,
+  QUAIS MÉTODOS RESPONDEM SEM TOKEN em `/mcp` e na rota privada, com e sem
+  `API_KEY`. `worker/tests/surface-lock.test.ts` prova ainda que o servidor
+  que o Worker monta À PARTE serve a mesma superfície do stdio. O
+  `deploy-worker.yml` passou a rodar as suítes da raiz e do worker ANTES do
+  wrangler (até aqui só checava tipos) e termina conferindo o endpoint no ar
+  contra a trava (`mcp-surface verificar`). Replay das versões publicadas em
+  `baselines/replay-2026-10-02.md`. Proposta de um leitor (dev.to, 3g5m4 e
+  3g607); molde no bcb-br-mcp.
 
 ### Fixed
 - **Falha da origem gravada com a classe errada na telemetria.** Medido em
