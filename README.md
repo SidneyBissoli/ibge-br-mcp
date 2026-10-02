@@ -17,7 +17,7 @@
 
 Ask an LLM _"what was Belo Horizonte's population in the 2022 Census?"_ and you get a plausible number from its training data: maybe right, maybe outdated, with no source. `ibge-br-mcp` instead has your assistant query the official **IBGE** APIs in real time — returning the exact figure together with the table and period it came from.
 
-🇧🇷 [Leia em Português](README.pt-BR.md)
+🇧🇷 [Leia em Português](LEIA-ME.md)
 
 This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) to give AI assistants live, structured access to Brazil's public geographic, demographic, economic, and health data — sourced from the IBGE APIs (including health indicators served through IBGE's SIDRA system).
 

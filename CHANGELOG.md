@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.5.1] - 2026-10-02
+
+Só documentação e empacotamento: nenhuma tool, recurso, prompt ou esquema
+mudou; a superfície é a da 5.5.0.
+
+### Fixed
+- **A página do pacote no npm mostrava o README em português.** O npm empacota
+  SEMPRE todo `README*` da raiz, ignorando o campo `files` (aqui só `dist`) —
+  até a negação `!README.pt-BR.md` é ignorada —, e entre os dois o registro
+  escolheu o par traduzido. O README em português passa a se chamar
+  `LEIA-ME.md` (continua na raiz, então os links relativos dele seguem
+  valendo); o link "Leia em Português" do `README.md` e a referência em
+  `examples/README.pt-BR.md` apontam para o nome novo. O teste novo
+  `tests/pacote-npm-readme.test.ts` roda `npm pack --dry-run` e exige que o
+  tarball leve exatamente um README, o `README.md`.
+
 ## [5.5.0] - 2026-10-02
 
 Cobre tudo desde a 5.4.0, a última versão publicada (nenhuma versão foi
