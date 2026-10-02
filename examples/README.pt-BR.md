@@ -215,4 +215,4 @@ extraído em 28/08/2026.
 ```
 
 🇺🇸 [Read in English](README.md) · [Demo completa](../docs/demo.pt-BR.md) ·
-[Referência das ferramentas](../README.pt-BR.md#ferramentas-disponíveis)
+[Referência das ferramentas](../LEIA-ME.md#ferramentas-disponíveis)

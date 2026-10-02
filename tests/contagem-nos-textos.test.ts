@@ -44,7 +44,7 @@ const leia = (f: string) => readFileSync(join(raiz, f), "utf8");
 /** Textos vivos, voltados ao público, que podem afirmar um total. */
 const TEXTOS = [
   "README.md",
-  "README.pt-BR.md",
+  "LEIA-ME.md",
   "server.json",
   "package.json",
   "worker/src/config.ts",
@@ -78,7 +78,7 @@ describe("contagem de ferramentas nos textos públicos", () => {
 });
 
 describe("paridade entre o README em inglês e o em português", () => {
-  const pt = "README.pt-BR.md";
+  const pt = "LEIA-ME.md";
 
   it("o README em português existe", () => {
     expect(existsSync(join(raiz, pt)), `${pt} ausente — metade da superfície em pt`).toBe(true);
