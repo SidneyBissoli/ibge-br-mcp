@@ -157,9 +157,11 @@ const READ_ONLY: ToolAnnotations = {
  * não aparece na telemetria. Troca-se visibilidade por prevenção, como em
  * `ilo_get_data`.
  *
- * `search`/`fetch` ficam de fora: o contrato deles é da OpenAI e quem os
- * registra é `@sbissoli/mcp-search`. `tests/server.test.ts` é a guarda — ele
- * varre as tools anunciadas e reprova a que aceitar parâmetro desconhecido.
+ * `search`/`fetch` (contrato Deep Research da OpenAI) são registrados por
+ * `@sbissoli/mcp-search`, que desde a 0.9.0 publica os dois esquemas como
+ * `z.strictObject` — a mesma recusa chega a eles pelo pacote, sem exceção
+ * aqui. `tests/server.test.ts` é a guarda — ele varre TODAS as tools
+ * anunciadas e reprova a que aceitar parâmetro desconhecido.
  */
 
 /**

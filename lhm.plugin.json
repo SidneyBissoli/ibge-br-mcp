@@ -1,7 +1,7 @@
 {
   "identifier": "sidneybissoli-ibge-br-mcp",
   "name": "IBGE Brasil MCP",
-  "version": "5.4.0",
+  "version": "5.5.0",
   "description": "MCP server giving AI assistants live, sourced access to Brazilian public data — geography, census, economy and health — from the official IBGE APIs. Exact figures with provenance, not approximations.",
   "author": "Sidney Bissoli",
   "authorUrl": "https://github.com/SidneyBissoli",
@@ -32,6 +32,7 @@
       "description": "Returns the full document for an id obtained from `search`, as { id, title, text, url, metadata }: `text` is the readable content (Markdown) and `url` the canonical public page to cite.\n\nCompanion of `search` in the OpenAI Deep Research contract, over the IBGE (Brazilian official statistics: SIDRA tables, municipalities, known indicators) catalog. Only ids returned by `search` are valid; an unknown id returns an error.\nThe `ibge_*` tools (`ibge_sidra`, `ibge_cidades`, `ibge_indicadores`, `ibge_comparar`…) remain the tools for data queries.\n\nBehavior: read-only and idempotent — a live GET against the public source when the document needs it.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
         "properties": {
           "id": {
             "description": "Identificador de um documento devolvido por `search`",
@@ -6542,6 +6543,7 @@
       "description": "Searches the IBGE (Brazilian official statistics: SIDRA tables, municipalities, known indicators) catalog and returns up to 10 matching documents as { id, title, url }, ordered by relevance (an empty list means nothing matched).\n\nThis tool exists for the OpenAI Deep Research contract: ChatGPT deep research, company knowledge and research workflows over the Responses API require exactly the tools `search` and `fetch`. Pass one of the returned ids to `fetch` to read the document.\nFor direct questions and for data (values, series, rankings) prefer the `ibge_*` tools (`ibge_sidra`, `ibge_cidades`, `ibge_indicadores`, `ibge_comparar`…), which return the actual data with provenance — this is a catalog index, not a data query.\n\nQuery: natural language or keywords, Portuguese or English; accents and case are ignored.\n\nBehavior: read-only and idempotent — the catalog comes from the public source and is cached in memory.",
       "inputSchema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
         "properties": {
           "query": {
             "description": "Termos de busca em linguagem natural ou palavras-chave (acentos e caixa são ignorados)",
