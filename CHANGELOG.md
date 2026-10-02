@@ -7,9 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Telemetria do canal hospedado e uma trava de CI: nenhuma tool, parâmetro, campo
-ou mensagem muda, e a superfície publicada é idêntica à da 5.4.0 — agora
-afirmado por teste (`surface.lock.json`).
+## [5.5.0] - 2026-10-02
+
+Cobre tudo desde a 5.4.0, a última versão publicada (nenhuma versão foi
+numerada sem chegar ao npm no meio). A única mudança de superfície é a de
+`search`/`fetch`, que passam a recusar parâmetro desconhecido; o resto é
+telemetria do canal hospedado e uma trava de CI que agora afirma, por teste
+(`surface.lock.json`), o que mudou.
+
+### Changed
+- **`search` e `fetch` recusam parâmetro que não existe, nomeando a chave.**
+  Eram as duas únicas tools fora da regra de 11/09/2026 (toda tool publica
+  `additionalProperties: false`): o contrato Deep Research é da OpenAI e quem
+  as registra é `@sbissoli/mcp-search`, cujo esquema descartava a chave
+  desconhecida em silêncio — `search({ query, periodo })` respondia como se
+  `periodo` não tivesse sido pedido. O pacote 0.9.0 passou os dois esquemas
+  a `z.strictObject`; com a dependência em `^0.9.0` a recusa chega aqui sem
+  código próprio. A guarda de `tests/server.test.ts` deixa de isentá-las e
+  ganha um caso que chama `search` com `periodo` e exige erro que nomeie a
+  chave. Ninguém que mande só `query`/`id` percebe diferença.
 
 ### Added
 - **Impressão digital da superfície: mudou sem subir a versão = build vermelho
@@ -40,6 +56,29 @@ afirmado por teste (`surface.lock.json`).
   com 200 → `nao_encontrado`, 5xx e timeout → `fonte`. Mesmo conserto do
   bcb-br-mcp (#45), ilo-mcp-server (#24) e uis-mcp-server (#22). Gate em
   `tests/classe-do-erro.test.ts`.
+- **Bug nosso gravado como `defeito`, e `search`/`fetch` classificadas pelo
+  tipo** (`@sbissoli/mcp-search` 0.8.0). `TypeError`/`RangeError`/
+  `ReferenceError`/`SyntaxError` lançados pelo nosso código saíam `outro`
+  (ou `contrato`, quando o eco dos parâmetros dizia "inválido"); e
+  `search`/`fetch` relançavam a falha da tool interna como `Error` de
+  texto, perdendo a classe (429 → `contrato`). Id desconhecido em `fetch`
+  passa a `nao_encontrado` pelo tipo.
+- **Classe declarada em TODO resultado de erro (onda 2).** Dos 118
+  `isError: true` em `src/tools`, só ~24 levavam a classe; o resto deixava a
+  telemetria ler a frase, que ecoa argumento do chamador. Helpers com a classe
+  obrigatória em `src/errors.ts`; texto ao cliente inalterado. A guarda
+  `tests/sem-iserror-literal.test.ts` reprova `isError: true` literal fora
+  de `errors.ts`/`structured.ts`. De carona: `ibge_geocodigo` só responde
+  "não encontrado" para ausência respondida pela fonte, e `ibge_vizinhos`
+  deixa de engolir falha da origem.
+- **Smoke pós-deploy** lê as chaves do bloco `concise` do pacote do contrato
+  em vez de um literal (reprovava a 5.4.0 por `retrieval`, que o contrato
+  v1.1 acrescentou).
+
+### Security
+- `brace-expansion` 5.0.9 → 5.0.12 (GHSA-q2hr-2g5m-vwhr, GHSA-qhr7-859c-m2p7,
+  GHSA-6j4f-fj2g-mc7p). Transitiva só de desenvolvimento (eslint); não chega
+  ao pacote publicado.
 
 ## [5.4.0] - 2026-09-27
 

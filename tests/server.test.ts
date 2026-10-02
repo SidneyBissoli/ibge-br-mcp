@@ -59,18 +59,18 @@ describe("MCP server protocol surface", () => {
    * procedência e nenhum aviso. Um agente reporta isso como o número de 2023.
    * Singular/plural é o engano mais comum que existe, e esta é a guarda.
    *
-   * `search`/`fetch` ficam de fora: o contrato é da OpenAI e quem os registra é
-   * `@sbissoli/mcp-search`.
+   * `search`/`fetch` entram na varredura desde `@sbissoli/mcp-search` 0.9.0, que
+   * passou os dois esquemas a `z.strictObject`. Nenhuma tool fica de fora.
    */
   describe("esquema de entrada recusa parâmetro que não existe", () => {
-    const DEEP_RESEARCH = ["search", "fetch"];
-
-    it("toda tool publica additionalProperties: false", async () => {
+    it("toda tool publica additionalProperties: false — search/fetch inclusive", async () => {
       const { tools } = await client.listTools();
-      const proprias = tools.filter((t) => !DEEP_RESEARCH.includes(t.name));
+      const nomes = tools.map((t) => t.name);
 
-      expect(proprias.length).toBeGreaterThanOrEqual(21);
-      for (const tool of proprias) {
+      expect(nomes).toContain("search");
+      expect(nomes).toContain("fetch");
+      expect(tools.length).toBeGreaterThanOrEqual(23);
+      for (const tool of tools) {
         const schema = tool.inputSchema as { additionalProperties?: unknown };
         expect(schema.additionalProperties, `tool ${tool.name} aceita chave desconhecida`).toBe(
           false
@@ -82,6 +82,19 @@ describe("MCP server protocol surface", () => {
       const result = await client.callTool({
         name: "ibge_indicadores",
         arguments: { indicador: "populacao", periodo: "2023" },
+      });
+
+      expect(result.isError).toBe(true);
+      const texto = Array.isArray(result.content)
+        ? result.content.map((c) => ("text" in c ? c.text : "")).join(" ")
+        : "";
+      expect(texto).toContain("periodo");
+    });
+
+    it("search (contrato Deep Research) também recusa e nomeia a chave", async () => {
+      const result = await client.callTool({
+        name: "search",
+        arguments: { query: "população", periodo: "2023" },
       });
 
       expect(result.isError).toBe(true);
