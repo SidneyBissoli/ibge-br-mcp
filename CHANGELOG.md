@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Testes
+
+- **O contrato de saída tem forma de cliente** (ideia de leitor,
+  https://dev.to/arhancanli/comment/3g4i4). `tests/output-contract.test.ts` não
+  valida mais com um validador escolhido por nós (`CfWorkerJsonSchemaValidator`)
+  sobre um JSON serializado à mão. Agora o servidor de verdade (`createServer`)
+  é interrogado pelo `Client` do SDK, que faz `tools/list` e `tools/call` e
+  reprova o resultado contra o schema **listado**, como a sessão do usuário
+  reprovaria; cada mensagem do servidor atravessa JSON antes de chegar ao
+  cliente, como na rede. Quem faz o circuito é o `@sbissoli/mcp-surface/cliente`
+  0.2.0, comum aos sete servidores.
+- Entram controles negativos em `ibge_estados` (resultado quebrado no fio tem
+  de reprovar, inclusive campo a mais, porque o nível de cima do schema listado
+  é fechado; e a armadilha do `tools/list` fica fixada) no lugar do teste que
+  validava um schema desonesto com o nosso validador. A asserção de cobertura
+  (toda tool publicada com ao menos um caso) continua. Para provar que o portão
+  pode falhar, anunciar `ranking.sexo` de `ibge_nomes` como `string` com uma
+  checagem permissiva no servidor (`.catch("")`) faz o próprio `Client` recusar
+  o ranking: "Structured content does not match the tool's output schema:
+  data/ranking/sexo must be string".
+
+Sem mudança de superfície nem de versão: só testes e dependência de
+desenvolvimento.
+
 ## [5.5.1] - 2026-10-02
 
 Só documentação e empacotamento: nenhuma tool, recurso, prompt ou esquema
