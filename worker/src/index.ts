@@ -7,12 +7,16 @@
  * MCP SDK v2 + agents 0.20+).
  */
 
+import { autenticacaoDaTrava, capturarCard, cardEmCache } from "@sbissoli/mcp-surface/card";
 import { createMcpHandler } from "agents/mcp/server";
+
+// Import nomeado: o esbuild descarta as outras chaves da trava (a `declarada`
+// tem ~300 KB) e só a medição `semToken` entra no bundle.
+import { semToken } from "../../surface.lock.json";
 
 import { SELF_ROUTE, tagRequest, withAnalytics, recordProtocolMethods, sessionFromRequest, withSessionHeader } from "./analytics.js";
 import { desfechosDoCorpo, teeResposta, type Desfecho } from "./envelope.js";
 import { checkAuth } from "./auth.js";
-import { getServerCard } from "./card.js";
 import { SERVER_CONFIG } from "./config.js";
 import { landingResponse } from "./landing.js";
 import { discoveryResponseForPath } from "./discovery.js";
@@ -27,6 +31,14 @@ import { unknownCursorError } from "../../dist/pagination.js";
 
 // Decodificado uma vez por isolate, nao por request.
 const ICON_PNG = Uint8Array.from(atob(ICON_PNG_BASE64), (c) => c.charCodeAt(0));
+
+// Server card derivado da mesma captura que a trava normaliza (serverInfo do
+// `initialize` real, listas reais), montado pela MESMA fábrica do /mcp;
+// `authentication` sai da seção `semToken` do surface.lock.json. Cacheado por
+// isolate só depois de dar certo.
+const serverCard = cardEmCache(() =>
+  capturarCard(buildServer(), { authentication: autenticacaoDaTrava({ semToken }) }),
+);
 
 // O runtime instancia o Durable Object a partir do export do entrypoint.
 export { UsageTracker };
@@ -76,7 +88,7 @@ export default {
     // MCP server card para scanners de registry que o leem em vez do /mcp.
     if (url.pathname === "/.well-known/mcp/server-card.json") {
       try {
-        return new Response(await getServerCard(), {
+        return new Response(await serverCard(), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
