@@ -13,23 +13,38 @@
  * pares: o payload cheio e o payload MAGRO, com os campos opcionais da fonte
  * ausentes.
  *
- * O teste roda o servidor de verdade pelo transporte em memória e valida com o
- * MESMO validador que o servidor aplica na entrada (`CfWorkerJsonSchemaValidator`,
- * que já vem no SDK), contra o schema que o `tools/list` publica — a visão
- * exata do cliente. A rede nunca é tocada.
+ * Desde 04/10/2026 o teste tem FORMA DE CLIENTE (ideia de leitor,
+ * https://dev.to/arhancanli/comment/3g4i4): o servidor de verdade
+ * (`createServer`, a mesma fábrica que o STDIO serve) é interrogado pelo
+ * `Client` do SDK, que faz `tools/list` e `tools/call` e reprova o resultado
+ * contra o schema LISTADO — sem validador escolhido por nós. O teste falha como
+ * a sessão do usuário falharia. O circuito é o `@sbissoli/mcp-surface/cliente`,
+ * comum aos sete servidores; ele passa cada mensagem do servidor por JSON antes
+ * de entregá-la ao cliente, como a rede passaria — é aí que a chave `undefined`
+ * some. A rede de verdade nunca é tocada (`fetch` é dublê).
  */
 
-import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
-import { Client } from "@modelcontextprotocol/client";
-import { InMemoryTransport } from "@modelcontextprotocol/server";
-import { CfWorkerJsonSchemaValidator } from "@modelcontextprotocol/server/validators/cf-worker";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { Client } from "@modelcontextprotocol/client";
+import { chamarComoCliente, conectarComoCliente, controlesNegativos } from "@sbissoli/mcp-surface/cliente";
 import { createServer } from "../src/server.js";
 import { cache } from "../src/cache.js";
 import { limparIndice } from "../src/tools/deep-research.js";
 import { mockResponse, sidraResponse } from "./helpers.js";
 
-const validador = new CfWorkerJsonSchemaValidator();
 const mockFetch = vi.fn();
+
+/** Uma chamada no percurso do cliente, numa conexão própria. */
+async function chamar(nome: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const client: Client = await conectarComoCliente(createServer());
+  try {
+    const r = await chamarComoCliente(client, nome, args);
+    expect(r.structuredContent, `${nome} sem structuredContent`).toBeDefined();
+    return r.structuredContent as Record<string, unknown>;
+  } finally {
+    await client.close();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Payloads upstream — cheios e magros
@@ -489,22 +504,6 @@ const CASOS: Caso[] = [
 
 // ---------------------------------------------------------------------------
 
-let client: Client;
-let schemas: Map<string, unknown>;
-
-beforeAll(async () => {
-  const server = createServer();
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-  client = new Client({ name: "output-contract", version: "0.0.0" });
-  await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
-  const { tools } = await client.listTools();
-  schemas = new Map(tools.map((t) => [t.name, t.outputSchema]));
-});
-
-afterAll(async () => {
-  await client.close();
-});
-
 beforeEach(() => {
   cache.clear();
   limparIndice();
@@ -517,56 +516,57 @@ afterEach(() => {
 });
 
 describe("structuredContent obedece ao outputSchema anunciado", () => {
+  // O `Client` valida o que chega do fio (JSON) contra o schema que o
+  // `tools/list` publicou: `JSON.stringify` apaga chave cujo valor é
+  // `undefined`, e num campo obrigatório isso vira "missing required property"
+  // do lado do cliente. `chamarComoCliente` lança quando o cliente reprova e
+  // também quando a tool responde `isError`.
   it.each(CASOS.map((c) => [c.nome, c.cobre, c] as const))("%s — %s", async (nome, _cobre, caso) => {
-    const schema = schemas.get(nome);
-    expect(schema, `ferramenta ${nome} sem outputSchema em tools/list`).toBeDefined();
-
     caso.mock();
-    const resultado = await client.callTool({ name: nome, arguments: caso.args });
-
-    const texto = (resultado.content as Array<{ text?: string }> | undefined)?.[0]?.text;
-    expect(resultado.isError, `${nome} devolveu erro: ${texto}`).toBeFalsy();
-    expect(resultado.structuredContent, `${nome} sem structuredContent`).toBeDefined();
-
-    // Valida o que o CLIENTE vê: o `structuredContent` atravessa o transporte
-    // como JSON, e `JSON.stringify` apaga chave cujo valor é `undefined` — num
-    // campo obrigatório isso vira "missing required property" do outro lado.
-    // O transporte em memória não serializa, então a serialização é feita aqui.
-    const noFio = JSON.parse(JSON.stringify(resultado.structuredContent)) as unknown;
-    const veredicto = validador.getValidator(schema as never)(noFio);
-    expect(veredicto.valid, `${nome}: ${veredicto.errorMessage}`).toBe(true);
-  });
-
-  /**
-   * Um teste que não pode falhar não vale nada. Este pega uma saída REAL e a
-   * valida contra um schema deliberadamente desonesto — a mentira exata que
-   * este arquivo existe para pegar.
-   */
-  it("reprova um schema desonesto (prova de que o portão pode falhar)", async () => {
-    mockFetch.mockResolvedValue(mockResponse([estadoSP]));
-    const resultado = await client.callTool({ name: "ibge_estados", arguments: {} });
-
-    const honesto = schemas.get("ibge_estados") as Record<string, unknown>;
-    expect(validador.getValidator(honesto as never)(resultado.structuredContent).valid).toBe(true);
-
-    const desonesto = JSON.parse(JSON.stringify(honesto)) as {
-      properties: Record<string, unknown>;
-      required?: string[];
-    };
-    desonesto.properties.total = { type: "string" };
-
-    const veredicto = validador.getValidator(desonesto as never)(resultado.structuredContent);
-    expect(veredicto.valid).toBe(false);
-    expect(veredicto.errorMessage).toContain("total");
+    await chamar(nome, caso.args);
   });
 
   it("toda ferramenta anunciada declara outputSchema e tem ao menos um caso", async () => {
-    const { tools } = await client.listTools();
-    const cobertas = new Set(CASOS.map((c) => c.nome));
-    const semCaso = tools.map((t) => t.name).filter((n) => !cobertas.has(n));
-    expect(semCaso, `ferramentas sem caso de contrato: ${semCaso.join(", ")}`).toEqual([]);
-    for (const t of tools) {
-      expect(t.outputSchema, `${t.name} sem outputSchema`).toBeDefined();
+    const client = await conectarComoCliente(createServer());
+    try {
+      const { tools } = await client.listTools();
+      const cobertas = new Set(CASOS.map((c) => c.nome));
+      const semCaso = tools.map((t) => t.name).filter((n) => !cobertas.has(n));
+      expect(semCaso, `ferramentas sem caso de contrato: ${semCaso.join(", ")}`).toEqual([]);
+      for (const t of tools) {
+        expect(t.outputSchema, `${t.name} sem outputSchema`).toBeDefined();
+      }
+    } finally {
+      await client.close();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Controle negativo, no percurso do cliente
+// ---------------------------------------------------------------------------
+//
+// Um teste que não pode falhar não vale nada. Aqui o servidor responde certo e
+// o resultado é quebrado NO FIO, entre servidor e cliente — como chegaria de um
+// servidor com defeito. Cada quebra tem de fazer a chamada falhar. As quebras
+// saem do schema listado (structuredContent ausente, cada obrigatório ausente,
+// tipo trocado); a do campo a mais vale porque o nível de cima do schema
+// listado é fechado (`additionalProperties: false`, medido em 04/10/2026 nas 23
+// ferramentas). O último veredito é a armadilha: sem `tools/list` antes, o
+// Client não valida — se o SDK mudar isso, o veredito acusa.
+
+describe("o validador do cliente reprova resultado quebrado no fio", () => {
+  it("ibge_estados: toda quebra reprova, e a armadilha se confirma", async () => {
+    mockFetch.mockResolvedValue(mockResponse([estadoSP]));
+    const vs = await controlesNegativos(() => createServer(), "ibge_estados", {}, [
+      {
+        descricao: "campo que o schema fechado proíbe (intruso)",
+        adulterar: (r) => {
+          if (r.structuredContent) r.structuredContent.intruso = 1;
+        },
+      },
+    ]);
+    expect(vs.length).toBeGreaterThanOrEqual(4);
+    for (const v of vs) expect(v.obtido, `${v.descricao}: ${v.mensagem ?? ""}`).toBe(v.esperado);
   });
 });
