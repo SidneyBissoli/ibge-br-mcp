@@ -87,4 +87,6 @@ Clients then send `Authorization: Bearer <API_KEY>`. Set `ALLOWED_ORIGIN` in
   `worker/.npmrc` pins `legacy-peer-deps=true` so npm does not install a second
   copy to satisfy `agents`' peer ranges.
 - Layout mirrors `mcp-br-commons/templates/cloudflare-worker` (Fase 0 hosting
-  template); `src/server.ts` and `src/card.ts` are the ibge-specific parts.
+  template); `src/server.ts` is the ibge-specific part. The server card comes
+  from `@sbissoli/mcp-surface/card` (built from the real `buildServer()`
+  surface; `authentication` derived from `surface.lock.json`).
