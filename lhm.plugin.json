@@ -1,7 +1,7 @@
 {
   "identifier": "sidneybissoli-ibge-br-mcp",
   "name": "IBGE Brasil MCP",
-  "version": "5.5.1",
+  "version": "5.6.0",
   "description": "MCP server giving AI assistants live, sourced access to Brazilian public data — geography, census, economy and health — from the official IBGE APIs. Exact figures with provenance, not approximations.",
   "author": "Sidney Bissoli",
   "authorUrl": "https://github.com/SidneyBissoli",
@@ -83,6 +83,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -335,6 +387,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -780,6 +884,58 @@
                   "null"
                 ]
               },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
               "license": {
                 "description": "Regime legal do dado",
                 "type": [
@@ -1015,6 +1171,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -1370,6 +1578,58 @@
                   "null"
                 ]
               },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
               "license": {
                 "description": "Regime legal do dado",
                 "type": [
@@ -1620,6 +1880,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -2039,6 +2351,58 @@
                   "null"
                 ]
               },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
               "license": {
                 "description": "Regime legal do dado",
                 "type": [
@@ -2261,6 +2625,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -2517,6 +2933,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -2964,6 +3432,58 @@
                   "null"
                 ]
               },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
               "license": {
                 "description": "Regime legal do dado",
                 "type": [
@@ -3242,6 +3762,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -3545,6 +4117,58 @@
                   "null"
                 ]
               },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
               "license": {
                 "description": "Regime legal do dado",
                 "type": [
@@ -3756,6 +4380,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -3994,6 +4670,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -4249,6 +4977,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -4554,6 +5334,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -4912,6 +5744,58 @@
                   "null"
                 ]
               },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
               "license": {
                 "description": "Regime legal do dado",
                 "type": [
@@ -5174,6 +6058,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
@@ -5626,6 +6562,58 @@
                   "null"
                 ]
               },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
               "license": {
                 "description": "Regime legal do dado",
                 "type": [
@@ -5902,6 +6890,58 @@
                   "null"
                 ]
               },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
               "license": {
                 "description": "Regime legal do dado",
                 "type": [
@@ -6167,6 +7207,58 @@
                   "null"
                 ]
               },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
               "license": {
                 "description": "Regime legal do dado",
                 "type": [
@@ -6388,6 +7480,58 @@
                   "null"
                 ]
               },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
               "license": {
                 "description": "Regime legal do dado",
                 "type": [
@@ -6581,6 +7725,58 @@
                   "string",
                   "null"
                 ]
+              },
+              "field_sources": {
+                "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data_vintage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "fields": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1,
+                      "type": "array"
+                    },
+                    "retrieved_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "served_from_cache": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "source_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "fields",
+                    "source_url",
+                    "dataset_id",
+                    "data_vintage",
+                    "retrieved_at"
+                  ],
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
               },
               "license": {
                 "description": "Regime legal do dado",
