@@ -234,6 +234,8 @@ const DESCRICOES_IBGE: Record<keyof typeof ConciseBlockSchema.shape, string> = {
     "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)",
   citation: "Citação pronta para uso",
   license: "Regime legal do dado",
+  field_sources:
+    "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
 };
 
 /** The subset of JSON Schema the walker reads: descriptions, and where the children are. */

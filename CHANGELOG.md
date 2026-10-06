@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.6.0] - 2026-10-05
+
+Proveniência 0.3.0 (contrato v1.2) no tempo 1: o `outputSchema` declara a
+chave opcional `field_sources`; nenhuma resposta muda; ligar a 1.2 é o
+tempo 2. Inclui também o que estava em [Unreleased] desde a 5.5.1 (server
+card e contrato de saída com forma de cliente, abaixo).
+
+### Changed
+- **`@sbissoli/mcp-provenance` 0.2.0 → 0.3.0 e `@sbissoli/mcp-upstream`
+  0.3.0 → 0.4.0.** A 0.3.0 continua EMITINDO a versão 1.1 do contrato por
+  padrão, byte a byte o que a 0.2.0 emitia: o servidor não passa
+  `contractVersion`, então `contract_version` segue `"1.1"` e nenhum bloco
+  de proveniência, `_meta` ou rodapé muda. `retrieved_at` e
+  `served_from_cache` continuam vindo da camada de cache (`lastFetchMeta`).
+- **Superfície: o bloco `provenance` de todo `outputSchema` declara
+  `field_sources`** (8ª chave, opcional, não exigida), porque o
+  `ConciseBlockSchema` do pacote passou a aceitar a 1.2 — o esquema do bloco
+  continua sendo o do pacote, com descrições enxertadas, nunca transcrito.
+  A chave ganhou descrição em pt-BR em `DESCRICOES_IBGE` (o mapa é tipado
+  contra a forma do pacote e recusou compilar sem ela, como foi desenhado
+  para fazer). É a única diferença do `surface.lock.json` (23 blocos
+  idênticos, um por `outputSchema` com proveniência) e do `lhm.plugin.json`.
+  Nenhuma resposta emite a chave ainda.
+
 ### Worker
 
 - **Server card gerado pelo `@sbissoli/mcp-surface/card`** (0.3.0). O
