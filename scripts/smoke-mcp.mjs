@@ -247,11 +247,21 @@ if (!prov) fail("bloco de proveniência ausente em structuredContent");
 // a lista escrita à mão ("source,...,license", v1.0) derrubou o deploy da 5.4.0
 // (27/09/2026) quando o contrato ganhou `retrieval` — o mesmo defeito do
 // outputSchema transcrito, agora no smoke.
+// Desde a 0.3.0 (contrato v1.2) o schema DECLARA chave opcional (`field_sources`,
+// só presente quando a resposta funde sub-fontes): comparar com TODAS as
+// `properties` derrubou o deploy da 5.6.0 (06/10/2026). A regra é: as `required`
+// presentes, nenhuma chave fora das `properties`, e a ordem das `properties`.
 const { CONCISE_BLOCK_JSON_SCHEMA } = await import("@sbissoli/mcp-provenance");
-const chaves = Object.keys(prov).join(",");
-const esperadas = Object.keys(CONCISE_BLOCK_JSON_SCHEMA.properties).join(",");
-if (chaves !== esperadas)
-  fail(`chaves do bloco concise fora do contrato: ${chaves} (esperado ${esperadas})`);
+const chaves = Object.keys(prov);
+const ordem = Object.keys(CONCISE_BLOCK_JSON_SCHEMA.properties);
+const faltam = CONCISE_BLOCK_JSON_SCHEMA.required.filter((k) => !chaves.includes(k));
+const sobram = chaves.filter((k) => !ordem.includes(k));
+const naOrdem = ordem.filter((k) => chaves.includes(k)).join(",") === chaves.join(",");
+if (faltam.length || sobram.length || !naOrdem)
+  fail(
+    `chaves do bloco concise fora do contrato: ${chaves.join(",")} ` +
+      `(faltam: ${faltam.join(",") || "-"}; fora do schema: ${sobram.join(",") || "-"}; ordem do schema: ${naOrdem ? "ok" : ordem.join(",")})`,
+  );
 if (prov.retrieval !== null && typeof prov.retrieval?.requests !== "number")
   fail(`retrieval fora do contrato: ${JSON.stringify(prov.retrieval)}`);
 console.log("retrieval:", JSON.stringify(prov.retrieval));
