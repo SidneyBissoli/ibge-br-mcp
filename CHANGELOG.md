@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [5.6.0] - 2026-10-05
+## [5.6.1] - 2026-10-06
+
+Só dependências: SDK do MCP 2.1.0 → 2.3.0 na raiz e `agents` 0.24.0 →
+0.26.0 no Worker. Nenhuma resposta e nenhum esquema mudam (a trava de
+superfície passou sem regravar).
+
+### Security
+- **GHSA-6qxp-vccf-f47h (high) em `@modelcontextprotocol/client`
+  2.0.0–2.1.0** ("OAuth client could send credentials to an authorization
+  server chosen by the MCP server"): o `client` sobe a 2.3.0. Aqui ele é
+  devDependency, importado só pelos testes (nenhum `src/` de runtime), e os
+  testes não usam OAuth — o pacote publicado nunca o carregou. Era o alerta
+  que deixava vermelho o gate `npm audit --audit-level=high` do CI.
+- `source-map-js` 1.2.1 → 1.2.2 no Worker (GHSA-68fv-2mgg-jv7q), só de
+  desenvolvimento.
+
+### Changed
+- **`@modelcontextprotocol/server` 2.1.0 → 2.3.0** e, no Worker,
+  **`agents` 0.24.0 → 0.26.0**, `wrangler` 4.147.0. O `agents` ainda declara
+  o SDK 2.0.0 como peer exato; com `legacy-peer-deps` o Worker resolve a
+  MESMA cópia 2.3.0 da raiz — conferido em runtime, com os dois PRs juntos,
+  antes do merge. Junto: `@sbissoli/mcp-evals` 0.2.1, eslint 10.12,
+  vitest 5.0.3 (desenvolvimento).
+
 
 Proveniência 0.3.0 (contrato v1.2) no tempo 1: o `outputSchema` declara a
 chave opcional `field_sources`; nenhuma resposta muda; ligar a 1.2 é o
