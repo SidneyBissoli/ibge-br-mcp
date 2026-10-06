@@ -119,14 +119,26 @@ jobs:
       - if: steps.cf.outputs.ok == 'true'
         name: Versão hospedada bate com o package.json
         run: |
-          sleep 20
+          # Repete por até 3 min (06/10/2026). Uma leitura única após `sleep 20` dava
+          # vermelho falso quando o Worker novo demorava a chegar à borda — e o falso
+          # vermelho PULAVA o smoke e a conferência da superfície (medido no senado,
+          # run 37515023242). /status responde `no-store`: o atraso é propagação.
           ESPERADA=$(node -p "require('./package.json').version")
-          NO_AR=$(curl -sS --max-time 30 https://ibge.sidneybissoli.com/status | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
-          echo "package.json=$ESPERADA  hospedado=$NO_AR"
-          if [ "$ESPERADA" != "$NO_AR" ]; then
-            echo "::error::deriva: o endpoint serve $NO_AR e o repositório está em $ESPERADA"
-            exit 1
-          fi
+          PRAZO=180; INTERVALO=10; INICIO=$(date +%s); NO_AR="?"
+          while :; do
+            # Falha de rede ou JSON inválido não derruba o laço: vira "?" e tenta de novo.
+            NO_AR=$(curl -sS --max-time 30 https://ibge.sidneybissoli.com/status 2>/dev/null \
+              | node -e "try{console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).version)}catch{console.log('?')}" \
+              || echo "?")
+            DECORRIDO=$(( $(date +%s) - INICIO ))
+            echo "t=${DECORRIDO}s  package.json=$ESPERADA  hospedado=$NO_AR"
+            [ "$ESPERADA" = "$NO_AR" ] && exit 0
+            if [ "$DECORRIDO" -ge "$PRAZO" ]; then
+              echo "::error::deriva: após ${PRAZO}s o endpoint serve $NO_AR e o repositório está em $ESPERADA"
+              exit 1
+            fi
+            sleep "$INTERVALO"
+          done
 
       # Fecha o ciclo: se o deploy subir um worker quebrado, o job falha aqui e
       # não em silêncio na próxima vez que alguém abrir o endpoint.
