@@ -13,7 +13,10 @@
  *  - `provenienciaIbge(...)`, the per-call builder every tool uses. It pulls
  *    the REAL extraction instant (`retrieved_at`) and `served_from_cache` from
  *    the cache layer via `lastFetchMeta` (contract: cache hits keep the
- *    original fetch instant — it is the legally relevant extraction date), and
+ *    original fetch instant — it is the legally relevant extraction date) —
+ *    or, for a response that merges several reads (`partes`, since 5.8.1),
+ *    from what the call's collector saw of each one: the OLDEST instant on top,
+ *    cache only if every part was, one `field_sources` entry per part — and
  *    since 5.4.0 the `retrieval` block (v1.1) from the network collector of the
  *    call (`@sbissoli/mcp-upstream`, opened by `withMetrics` — see `retry.ts`):
  *    how many requests went to the IBGE, how many attempts they took and which
@@ -52,9 +55,10 @@ export const provenanceContext = createProvenanceContext({
   locale: "pt-BR",
   timezone: { offset: "-03:00", label: "horário de Brasília" },
   defaultMode: "concise",
-  // 1.2: `field_sources` goes out on responses that merge sub-sources (none of
-  // the IBGE tools does today, so the wire is byte-identical to 1.1). The 1.3
-  // keys are already declared by the schema; emitting them is the next step.
+  // 1.2: `field_sources` goes out on responses that merge sub-sources — since
+  // 5.8.1 the tools that read several endpoints in one answer pass them as
+  // `partes` (see `provenienciaIbge`). The 1.3 keys are already declared by the
+  // schema; emitting them is the next step.
   contractVersion: "1.2",
 });
 
@@ -198,6 +202,95 @@ export interface ProvenienciaIbgeOptions {
   dataVintage?: string | null;
   /** D2 statistics modes: the server derived aggregates from the raw records. */
   derivado?: { nota: string };
+  /**
+   * The parts of a response that MERGES several reads (endpoints, sources, or
+   * the same API at different instants) — one entry per part, the main one
+   * included. With `partes`, `chaveCache` is not read: each part's instant and
+   * cache status come from what THIS call read (the collector's accesses —
+   * network trips and cache hits alike, `cachedFetch` records both), the top
+   * `retrieved_at` is the OLDEST of them, `served_from_cache` is true only if
+   * every part came from cache, and `field_sources` carries one entry per part
+   * (contract §3). A part this call did not read is not in the response and is
+   * dropped — the block never points at data it does not carry.
+   */
+  partes?: ParteDaResposta[];
+  /**
+   * Extraction already known to the caller — for data the server holds in its
+   * own memory beyond the request cache (the deep-research index), whose
+   * instant no access of this call can tell. Wins over `chaveCache`.
+   */
+  extracao?: { retrievedAt: Date; servedFromCache: boolean | null };
+}
+
+/** One part of a merged response: the payload fields it produced and where it lives. */
+export interface ParteDaResposta {
+  /** Payload fields this part produced (what `field_sources[].fields` names). */
+  fields: string[];
+  /** The URL of this part (what it reproduces); default filter of the accesses. */
+  url: string;
+  /** Which accesses of the call belong to this part. Default: URL equal to `url`. */
+  filtro?: (url: string) => boolean;
+  /** Instant known to the caller instead of the collector (see `extracao`). */
+  extracao?: { retrievedAt: Date; servedFromCache: boolean | null };
+  /** Instant known to the caller, used only when the collector did not see this part. */
+  reserva?: { retrievedAt: Date; servedFromCache: boolean | null };
+  dataset?: string | null;
+  dataVintage?: string | null;
+}
+
+/** A part as read: its instant and cache status, or `null` when this call did not read it. */
+interface ParteLida {
+  fields: string[];
+  source_url: string;
+  dataset_id: string | null;
+  data_vintage: string | null;
+  retrieved_at: string;
+  served_from_cache: boolean | null;
+}
+
+function lerPartes(partes: ParteDaResposta[]): ParteLida[] {
+  const call = currentCall();
+  const lidas: ParteLida[] = [];
+  for (const p of partes) {
+    const base = {
+      fields: p.fields,
+      source_url: p.url,
+      dataset_id: p.dataset ?? null,
+      data_vintage: p.dataVintage ?? null,
+    };
+    const conhecida = (e: { retrievedAt: Date; servedFromCache: boolean | null }): ParteLida => ({
+      ...base,
+      retrieved_at: e.retrievedAt.toISOString(),
+      served_from_cache: e.servedFromCache,
+    });
+    if (p.extracao) {
+      lidas.push(conhecida(p.extracao));
+      continue;
+    }
+    const lida = call?.fieldSource({
+      fields: p.fields,
+      source_url: p.url,
+      filter: p.filtro ?? ((u: string) => u === p.url),
+    });
+    if (lida && lida.retrieved_at !== null) {
+      lidas.push({
+        ...base,
+        retrieved_at: lida.retrieved_at,
+        served_from_cache: lida.served_from_cache,
+      });
+    } else if (p.reserva) {
+      lidas.push(conhecida(p.reserva));
+    }
+    // Otherwise this call did not read the part: it is not in the response.
+  }
+  return lidas;
+}
+
+/** True only if every part came from cache; false if any was fetched now; null if any is unknown. */
+function cacheDasPartes(lidas: ParteLida[]): boolean | null {
+  if (lidas.some((p) => p.served_from_cache === false)) return false;
+  if (lidas.some((p) => p.served_from_cache === null)) return null;
+  return true;
 }
 
 /**
@@ -207,8 +300,25 @@ export interface ProvenienciaIbgeOptions {
  */
 export function provenienciaIbge(opts: ProvenienciaIbgeOptions): Provenance {
   const fonte = FONTES_IBGE[opts.fonte];
-  const meta = opts.chaveCache ? lastFetchMeta(opts.chaveCache) : null;
+  const lidas = opts.partes ? lerPartes(opts.partes) : [];
+  let meta: { retrievedAt: Date; servedFromCache: boolean | null } | null;
+  if (lidas.length > 0) {
+    // The OLDEST part is the top: "nothing here is older than this" (§3) — by
+    // construction, so the lib's 1.2 check (top newer than a sub-source is a
+    // `ProvenanceContractError`) can never fire.
+    meta = {
+      retrievedAt: new Date(Math.min(...lidas.map((p) => Date.parse(p.retrieved_at)))),
+      servedFromCache: cacheDasPartes(lidas),
+    };
+  } else if (opts.extracao) {
+    meta = opts.extracao;
+  } else {
+    meta = opts.chaveCache ? lastFetchMeta(opts.chaveCache) : null;
+  }
   const retrievedAt = meta?.retrievedAt ?? new Date();
+  // `field_sources` only when the response really merged sub-sources: a single
+  // part read is a single extraction, and the contract leaves the key out then.
+  const fieldSources = lidas.length > 1 ? lidas : undefined;
 
   return provenanceContext.build({
     source: { name: fonte.name, agency: "IBGE", database: null, endpoint: fonte.endpoint },
@@ -228,6 +338,7 @@ export function provenienciaIbge(opts: ProvenienciaIbgeOptions): Provenance {
     // the collector `withMetrics` opened; `null` = not measured (cache only, or
     // no collector), which the contract prefers over an invented clean block.
     retrieval: currentCall()?.retrieval() ?? null,
+    ...(fieldSources ? { field_sources: fieldSources } : {}),
   });
 }
 

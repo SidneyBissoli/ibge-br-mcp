@@ -73,6 +73,10 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<StructuredTool
       // Get municipality code
       let municipioId: string;
       let municipioNome: string;
+      // Where the name of the municipality came from: its own Localidades
+      // record (by code) or the state list (by name, the same read the
+      // neighbors come from).
+      let urlDoNome: string;
 
       if (/^\d{7}$/.test(input.municipio)) {
         // Validate IBGE code format
@@ -98,6 +102,7 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<StructuredTool
           );
         }
         municipioNome = munInfo.nome;
+        urlDoNome = `${IBGE_API.LOCALIDADES}/municipios/${municipioId}`;
       } else {
         // Search by name
         if (!input.uf) {
@@ -131,6 +136,7 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<StructuredTool
         }
         municipioId = String(munInfo.id);
         municipioNome = munInfo.nome;
+        urlDoNome = `${IBGE_API.LOCALIDADES}/estados/${ufResolved.code}/municipios`;
       }
 
       // Get state code from municipality
@@ -170,12 +176,40 @@ export async function ibgeVizinhos(input: VizinhosInput): Promise<StructuredTool
 
       // Principal data fetch: the state municipality list from which the
       // same-mesoregion neighbors are selected (selection, not derivation).
+      // The response also carries the municipality's own name (its record,
+      // cached 24 h and shared with other tools) and, with `incluir_dados`, one
+      // SIDRA population per neighbor (15 min) — reads of different ages, so
+      // each is a part and the block sits at the oldest (contract §3). The mesh
+      // request only checks that the municipality has one; it adds no field.
       const municipiosUrl = `${IBGE_API.LOCALIDADES}/estados/${ufCode}/municipios`;
       const provenance = provenienciaIbge({
         fonte: "LOCALIDADES",
         url: municipiosUrl,
         chaveCache: cacheKey(municipiosUrl),
         pesquisa: "API de Localidades (municípios vizinhos)",
+        partes: [
+          {
+            fields: [
+              "vizinhos[].codigo",
+              "vizinhos[].nome",
+              "vizinhos[].uf",
+              ...(urlDoNome === municipiosUrl ? ["municipio.nome"] : []),
+            ],
+            url: municipiosUrl,
+          },
+          ...(urlDoNome !== municipiosUrl ? [{ fields: ["municipio.nome"], url: urlDoNome }] : []),
+          ...vizinhosData.flatMap((v) =>
+            v.populacao !== undefined && v.urlPopulacao
+              ? [
+                  {
+                    fields: [`vizinhos[${v.codigo}].populacao`],
+                    url: v.urlPopulacao,
+                    dataset: "4709",
+                  },
+                ]
+              : []
+          ),
+        ],
       });
 
       const markdown = formatResponse(municipioNome, municipioId, vizinhosData, input);
@@ -212,6 +246,8 @@ interface VizinhoInfo {
   nome: string;
   uf?: string;
   populacao?: number;
+  /** The SIDRA URL the population came from (provenance part; never in the payload). */
+  urlPopulacao?: string;
   area?: number;
 }
 
@@ -323,13 +359,14 @@ async function enrichVizinhosData(vizinhos: VizinhoInfo[]): Promise<VizinhoInfo[
       // Try to get population from SIDRA
       // Pela API de Agregados v3 (ver src/sidra-agregados.ts); o `/f/n` do
       // apisidra é ignorado na tradução — a v3 já devolve o valor em `V`.
-      const { data } = await fetchSidra(
+      const { url, data } = await fetchSidra(
         `/t/4709/n6/${v.codigo}/v/93/p/last/f/n`,
         CACHE_TTL.SHORT,
         RETRY_PRESETS.QUICK
       );
       if (data && data.length > 1 && data[1].V) {
         v.populacao = parseInt(data[1].V);
+        v.urlPopulacao = url;
       }
     } catch {
       // Ignore errors, just don't add population

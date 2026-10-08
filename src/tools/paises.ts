@@ -332,8 +332,8 @@ async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
   }
 
   // Tentar buscar indicadores principais
+  const indicadoresUrl = `${IBGE_API.PAISES}/${codigoPais.toUpperCase()}/indicadores/77827|77821|77823|77830`;
   try {
-    const indicadoresUrl = `${IBGE_API.PAISES}/${codigoPais.toUpperCase()}/indicadores/77827|77821|77823|77830`;
     const indicadoresKey = cacheKey(indicadoresUrl);
     const indicadores = await cachedFetch<PaisIndicadorResultado[]>(
       indicadoresUrl,
@@ -376,11 +376,25 @@ async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
   return {
     markdown: output,
     structured: { tipo: "detalhes", pais: detalhes },
+    // The country record (24 h) and its indicators (1 h) are two reads that
+    // expire apart: when the indicators made it to the response, both are
+    // parts and the block sits at the oldest (contract §3).
     provenance: provenienciaIbge({
       fonte: "PAISES",
       url,
       chaveCache: key,
       pesquisa: "API de Países",
+      partes: [
+        {
+          fields: Object.keys(detalhes)
+            .filter((k) => k !== "indicadores")
+            .map((k) => `pais.${k}`),
+          url,
+        },
+        ...(detalhes.indicadores !== undefined
+          ? [{ fields: ["pais.indicadores"], url: indicadoresUrl }]
+          : []),
+      ],
     }),
   };
 }

@@ -229,10 +229,16 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
         };
       }
 
-      // Get locality names (helper lookup — not part of provenance)
-      const localidadeNames = await getLocalidadeNames(localidadesList, nivel);
+      // Locality names: one Localidades read per code, cached for 24 h while
+      // the SIDRA values live 15 min — the response merges reads of different
+      // ages, so each one is a part of the provenance (contract §3).
+      const { names: localidadeNames, urls: urlsDosNomes } = await getLocalidadeNames(
+        localidadesList,
+        nivel
+      );
 
       const { colunas, registros } = sidraRecords(data);
+      const dataVintage = extrairPeriodoSidra(colunas, registros);
       return {
         ...formatCompararResponse(
           data,
@@ -247,8 +253,20 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
           chaveCache: key,
           pesquisa,
           dataset: template.tabela,
-          dataVintage: extrairPeriodoSidra(colunas, registros),
+          dataVintage,
           derivado: { nota: NOTA_DERIVACAO_COMPARACAO },
+          partes: [
+            {
+              fields: ["localidades[].valor", "localidades[].valorTexto", "estatisticas"],
+              url,
+              dataset: template.tabela,
+              dataVintage,
+            },
+            ...Object.entries(urlsDosNomes).map(([codigo, urlNome]) => ({
+              fields: [`localidades[${codigo}].nome`],
+              url: urlNome,
+            })),
+          ],
         }),
       };
     } catch (error) {
@@ -278,8 +296,11 @@ function buildSidraPath(
 async function getLocalidadeNames(
   codigos: string[],
   nivel: string
-): Promise<Record<string, string>> {
+): Promise<{ names: Record<string, string>; urls: Record<string, string> }> {
   const names: Record<string, string> = {};
+  // Only the names that came from the source: a failed lookup falls back to
+  // the code, which is not a Localidades datum and gets no provenance part.
+  const urls: Record<string, string> = {};
 
   for (const codigo of codigos) {
     try {
@@ -298,12 +319,13 @@ async function getLocalidadeNames(
       );
 
       names[codigo] = data.sigla || data.nome;
+      urls[codigo] = endpoint;
     } catch {
       names[codigo] = codigo;
     }
   }
 
-  return names;
+  return { names, urls };
 }
 
 function formatCompararResponse(
