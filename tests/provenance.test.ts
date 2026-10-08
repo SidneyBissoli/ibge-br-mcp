@@ -220,6 +220,42 @@ describe("extrairPeriodoSidra", () => {
     ).toBe("1º trimestre 2023");
   });
 
+  // Until 5.7.0 the labels were sorted as text: January–December 2024 came out
+  // as "abril 2024–setembro 2024". The order is the period code's.
+  it("orders months by the period code, not by the label text", () => {
+    const meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+    const registros = meses
+      .map((m, i) => ({ "Mês (Código)": `2024${String(i + 1).padStart(2, "0")}`, Mês: `${m} 2024`, Valor: "1" }))
+      .reverse();
+    expect(extrairPeriodoSidra(["Mês (Código)", "Mês", "Valor"], registros)).toBe("janeiro 2024–dezembro 2024");
+  });
+
+  it("orders quarters across years by the code", () => {
+    expect(
+      extrairPeriodoSidra(
+        ["Trimestre (Código)", "Trimestre", "Valor"],
+        [
+          { "Trimestre (Código)": "202401", Trimestre: "1º trimestre 2024", Valor: "1" },
+          { "Trimestre (Código)": "202304", Trimestre: "4º trimestre 2023", Valor: "1" },
+          { "Trimestre (Código)": "202302", Trimestre: "2º trimestre 2023", Valor: "1" },
+        ]
+      )
+    ).toBe("2º trimestre 2023–1º trimestre 2024");
+  });
+
+  it("orders PNAD rolling quarters by the code", () => {
+    expect(
+      extrairPeriodoSidra(
+        ["Trimestre Móvel (Código)", "Trimestre Móvel", "Valor"],
+        [
+          { "Trimestre Móvel (Código)": "202608", "Trimestre Móvel": "jun-jul-ago 2026", Valor: "1" },
+          { "Trimestre Móvel (Código)": "202601", "Trimestre Móvel": "nov-dez-jan 2026", Valor: "1" },
+          { "Trimestre Móvel (Código)": "202512", "Trimestre Móvel": "out-nov-dez 2025", Valor: "1" },
+        ]
+      )
+    ).toBe("out-nov-dez 2025–jun-jul-ago 2026");
+  });
+
   it("returns null when the source exposes no period column", () => {
     expect(extrairPeriodoSidra(["Município", "Valor"], [{ Município: "X", Valor: "1" }])).toBe(
       null

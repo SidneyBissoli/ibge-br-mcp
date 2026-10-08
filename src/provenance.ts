@@ -202,6 +202,13 @@ export const NOTA_DERIVACAO_ESTATISTICAS =
  * column when the source exposes one (docs/03: "período SIDRA quando exposto;
  * null senão"). Distinct values are joined as a deterministic range
  * ("2022" or "2020–2023"); no period column → null.
+ *
+ * The range shows the readable label but is ORDERED by the period code SIDRA
+ * sends alongside it ("Mês (Código)" 202403 next to "Mês" "março 2024"). Until
+ * 5.7.0 the labels were sorted as text, which is right only for bare years:
+ * January–December 2024 came out as "abril 2024–setembro 2024", and "1º
+ * trimestre 2024" sorted before "2º trimestre 2023". Without a code column the
+ * label itself is the key (years, the only case where text order is time order).
  */
 export function extrairPeriodoSidra(
   colunas: string[],
@@ -210,14 +217,34 @@ export function extrairPeriodoSidra(
   const candidatas = colunas.filter((c) =>
     /^(ano|trimestre|m[eê]s|semestre|per[ií]odo)\b/i.test(c)
   );
-  // SIDRA exposes "(Código)"/plain column pairs — prefer the readable label.
-  const idx = candidatas.find((c) => !/\(c[oó]digo\)/i.test(c)) ?? candidatas[0];
-  if (!idx) return null;
-  const valores = [
-    ...new Set(registros.map((r) => r[idx]).filter((v): v is string => Boolean(v))),
-  ].sort();
-  if (valores.length === 0) return null;
-  return valores.length === 1 ? valores[0] : `${valores[0]}–${valores[valores.length - 1]}`;
+  // SIDRA exposes "(Código)"/plain column pairs — show the readable label,
+  // order by its code.
+  const rotulo = candidatas.find((c) => !/\(c[oó]digo\)/i.test(c)) ?? candidatas[0];
+  if (!rotulo) return null;
+  const base = rotulo.replace(/\s*\(c[oó]digo\)\s*$/i, "");
+  const colunaCodigo = candidatas.find(
+    (c) => c !== rotulo && /\(c[oó]digo\)/i.test(c) && c.replace(/\s*\(c[oó]digo\)\s*$/i, "") === base
+  );
+
+  const porRotulo = new Map<string, string>();
+  for (const r of registros) {
+    const v = r[rotulo];
+    if (!v || porRotulo.has(v)) continue;
+    porRotulo.set(v, colunaCodigo ? (r[colunaCodigo] ?? v) : v);
+  }
+  if (porRotulo.size === 0) return null;
+
+  const chave = (codigo: string): number | string => (/^\d+$/.test(codigo) ? Number(codigo) : codigo);
+  const ordenados = [...porRotulo.entries()].sort(([, a], [, b]) => {
+    const ka = chave(a);
+    const kb = chave(b);
+    if (typeof ka === "number" && typeof kb === "number") return ka - kb;
+    return String(ka).localeCompare(String(kb));
+  });
+  const primeiro = ordenados[0]?.[0] ?? null;
+  const ultimo = ordenados[ordenados.length - 1]?.[0] ?? null;
+  if (primeiro === null || ultimo === null) return null;
+  return primeiro === ultimo ? primeiro : `${primeiro}–${ultimo}`;
 }
 
 /**

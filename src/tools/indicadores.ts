@@ -37,12 +37,31 @@ import {
 // These aggregates are published down to UF level (no municipal breakdown).
 const INDICADORES_NIVEIS = ["1", "2", "3"];
 
-// Common indicators with their SIDRA tables
+/**
+ * Common indicators with their SIDRA tables — each one pinned to the ONE
+ * variable (and classification category) its label promises.
+ *
+ * Until 5.7.0 nine entries had no `variavel` and queried `allxp`: "IPCA -
+ * Variação Mensal" came back with four variables (monthly, year-to-date,
+ * 12-month and the weight, 100), "Produção Industrial" with the index next to
+ * its own year-to-date and 12-month changes, "Pessoas Ocupadas" with 36
+ * variables — and the statistics mode averaged them together. Two more were
+ * worse: `comercio`, `servicos` and `pib_variacao` returned only ".." (no
+ * classification category = the nonexistent category 0 of "Tipos de índice" /
+ * "Setores e subsetores"; 90707 is "PIB a preços de mercado"), and
+ * `pib_per_capita` read table 5938, municipal GDP, not per capita. Measured
+ * against the Aggregates API on 2026-10-08; each choice below returns exactly
+ * one series per locality, of what the label says. `tests/indicadores-catalogo.test.ts`
+ * refuses an entry without `variavel`; the live check is
+ * `tests/catalog-contract.integration.test.ts`.
+ */
 export const INDICADORES_CONHECIDOS: Record<
   string,
   {
     tabela: string;
-    variavel?: string;
+    variavel: string;
+    /** SIDRA path segment(s) for classifications, e.g. "c11046/56734". */
+    classificacao?: string;
     nome: string;
     descricao: string;
     periodicidade: string;
@@ -51,52 +70,65 @@ export const INDICADORES_CONHECIDOS: Record<
 > = {
   // Econômicos
   pib: {
-    tabela: "6784",
+    tabela: "1846",
+    variavel: "585",
+    classificacao: "c11255/90707",
     nome: "PIB - Produto Interno Bruto",
-    descricao: "Valor do PIB a preços correntes",
+    descricao: "PIB a preços correntes, em R$ milhões, por trimestre (Contas Nacionais Trimestrais; só Brasil)",
     periodicidade: "Trimestral",
     categoria: "economico",
   },
   pib_variacao: {
     tabela: "5932",
+    variavel: "6561",
+    classificacao: "c11255/90707",
     nome: "PIB - Variação",
-    descricao: "Taxa de variação do PIB (% em relação ao mesmo trimestre do ano anterior)",
+    descricao:
+      "Taxa de variação do volume do PIB no trimestre, em % sobre o mesmo trimestre do ano anterior (só Brasil)",
     periodicidade: "Trimestral",
     categoria: "economico",
   },
   pib_per_capita: {
-    tabela: "5938",
+    tabela: "6784",
+    variavel: "9812",
     nome: "PIB per capita",
-    descricao: "PIB per capita a preços correntes",
+    descricao: "PIB per capita a preços correntes, em R$ (Contas Nacionais Anuais; só Brasil)",
     periodicidade: "Anual",
     categoria: "economico",
   },
   industria: {
     tabela: "8888",
+    variavel: "12606",
+    classificacao: "c544/129314",
     nome: "Produção Industrial",
-    descricao: "Índice de produção física industrial",
+    descricao: "Índice de produção física da indústria geral, sem ajuste sazonal (2022 = 100)",
     periodicidade: "Mensal",
     categoria: "economico",
   },
   comercio: {
     tabela: "8880",
+    variavel: "7169",
+    classificacao: "c11046/56734",
     nome: "Volume de Vendas do Comércio",
-    descricao: "Índice de volume de vendas no comércio varejista",
+    descricao: "Índice de volume de vendas no comércio varejista, sem ajuste sazonal (2022 = 100)",
     periodicidade: "Mensal",
     categoria: "economico",
   },
   servicos: {
     tabela: "8688",
+    variavel: "7167",
+    classificacao: "c11046/56726/c12355/107071",
     nome: "Volume de Serviços",
-    descricao: "Índice de volume de serviços",
+    descricao: "Índice de volume de serviços, total, sem ajuste sazonal (2022 = 100; só Brasil)",
     periodicidade: "Mensal",
     categoria: "economico",
   },
   // Preços
   ipca: {
     tabela: "7060",
+    variavel: "63",
     nome: "IPCA - Variação Mensal",
-    descricao: "Índice Nacional de Preços ao Consumidor Amplo",
+    descricao: "IPCA, índice geral: variação no mês, em % (para 12 meses use ipca_acumulado)",
     periodicidade: "Mensal",
     categoria: "precos",
   },
@@ -110,8 +142,9 @@ export const INDICADORES_CONHECIDOS: Record<
   },
   inpc: {
     tabela: "7063",
+    variavel: "44",
     nome: "INPC - Variação Mensal",
-    descricao: "Índice Nacional de Preços ao Consumidor",
+    descricao: "INPC, índice geral: variação no mês, em %",
     periodicidade: "Mensal",
     categoria: "precos",
   },
@@ -126,16 +159,20 @@ export const INDICADORES_CONHECIDOS: Record<
   },
   ocupacao: {
     tabela: "4093",
+    variavel: "4090",
     nome: "Pessoas Ocupadas",
-    descricao: "Pessoas de 14 anos ou mais ocupadas",
+    descricao: "Pessoas de 14 anos ou mais ocupadas na semana de referência, em mil pessoas",
     periodicidade: "Trimestral",
     categoria: "trabalho",
   },
   rendimento: {
     tabela: "6387",
+    variavel: "5935",
     nome: "Rendimento Médio",
-    descricao: "Rendimento médio real habitual do trabalho principal",
-    periodicidade: "Trimestral",
+    descricao:
+      "Rendimento médio mensal real efetivamente recebido em todos os trabalhos, em R$; cada período é um " +
+      "trimestre MÓVEL (ex.: jun-jul-ago 2026), não o trimestre do calendário (só Brasil)",
+    periodicidade: "Trimestre móvel (mensal)",
     categoria: "trabalho",
   },
   informalidade: {
@@ -149,6 +186,7 @@ export const INDICADORES_CONHECIDOS: Record<
   // População
   populacao: {
     tabela: "6579",
+    variavel: "9324",
     nome: "Estimativa de População",
     descricao: "Estimativa da população residente",
     periodicidade: "Anual",
@@ -165,15 +203,20 @@ export const INDICADORES_CONHECIDOS: Record<
   // Agropecuária
   agricultura: {
     tabela: "5457",
+    variavel: "215",
     nome: "Produção Agrícola",
-    descricao: "Produção agrícola municipal",
+    descricao: "Valor da produção das lavouras temporárias e permanentes, total, em R$ mil (PAM)",
     periodicidade: "Anual",
     categoria: "agropecuaria",
   },
   pecuaria: {
     tabela: "3939",
+    variavel: "105",
+    // Uma linha por tipo; matrizes de suínos e galinhas ficam fora por serem
+    // SUBCONJUNTOS de "Suíno - total" e "Galináceos - total" (somariam duas vezes).
+    classificacao: "c79/2670,2675,2672,32794,2681,2677,32796,2680",
     nome: "Efetivo de Rebanhos",
-    descricao: "Efetivo dos rebanhos",
+    descricao: "Efetivo dos rebanhos em cabeças, uma linha por tipo de rebanho (PPM)",
     periodicidade: "Anual",
     categoria: "agropecuaria",
   },
@@ -308,7 +351,8 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
         nivel,
         input.localidades ?? "all",
         input.periodos ?? "last",
-        indicador.variavel
+        indicador.variavel,
+        indicador.classificacao
       );
 
       // Pela API de Agregados v3 (ver src/sidra-agregados.ts); a chave de
@@ -436,12 +480,14 @@ function buildSidraPath(
   nivel: string,
   localidades: string,
   periodos: string,
-  variavel?: string
+  variavel: string,
+  classificacao?: string
 ): string {
   let path = `/t/${tabela}`;
   path += `/n${nivel}/${localidades}`;
-  path += `/v/${variavel || "allxp"}`;
+  path += `/v/${variavel}`;
   path += `/p/${periodos}`;
+  if (classificacao) path += `/${classificacao}`;
 
   return path;
 }

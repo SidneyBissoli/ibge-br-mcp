@@ -78,6 +78,16 @@ em modo estatístico (`estatisticas=true`) e `ibge_comparar` vêm marcadas como
 `derived`, com nota explicativa no bloco canônico, porque os agregados são
 calculados no servidor a partir dos valores brutos do IBGE.
 
+**O que cada número é, e em que versão.** Um valor do SIDRA não diz seu
+período nem se é variação no mês, acumulado no ano ou em 12 meses, número-índice
+ou nível — quem diz é a coluna de período do registro e o rótulo `Variável`, e
+cada entrada do `ibge_indicadores` está presa à única variável que o nome dela
+promete (desde a 5.7.0; antes, nove delas misturavam todas as variáveis da
+tabela). O `data_vintage` é ordenado pelo código de período do SIDRA, então um
+pedido de janeiro a dezembro sai "janeiro 2024–dezembro 2024". Todo valor é a
+versão que o SIDRA publica no `retrieved_at`: o IBGE revisa números já divulgados
+(PIB trimestral, reponderação da PNAD, PIM/PMC/PMS) e não guarda a versão anterior.
+
 ## Ferramentas Disponíveis
 
 ### Localidades e Geografia
@@ -401,8 +411,11 @@ ibge_sidra(tabela="9514", nivel_territorial="6", localidades="3550308")
 |-------:|:----------|
 | 6579 | Estimativas populacionais (anual) |
 | 9514 | População Censo 2022 |
-| 4714 | Taxa de desemprego (PNAD) |
-| 6706 | PIB a preços correntes |
+| 4714 | População, área territorial e densidade (Censo 2022) |
+| 4099 | Taxa de desocupação (PNAD Contínua, trimestral) |
+| 1846 | PIB trimestral a preços correntes (Brasil) |
+| 5938 | PIB dos municípios a preços correntes (anual) |
+| 6784 | PIB anual e PIB per capita (Brasil) |
 
 **Níveis territoriais:**
 | Código | Nível |

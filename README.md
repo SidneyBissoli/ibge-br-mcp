@@ -81,6 +81,16 @@ Statistics-mode responses (`estatisticas=true`) and `ibge_comparar` are marked
 `derived` with an explanatory note in the canonical block, since the
 aggregates are computed server-side from the raw IBGE values.
 
+**What each number is, and which version of it.** A SIDRA value says neither
+its period nor whether it is a monthly change, a year-to-date or 12-month
+accumulation, an index or a level — the record's period column and its
+`Variável` label do, and each `ibge_indicadores` entry is pinned to the one
+variable its name promises (since 5.7.0; before, nine of them mixed every
+variable of the table). `data_vintage` is ordered by the SIDRA period code, so
+a January–December request reads "janeiro 2024–dezembro 2024". Every value is
+the version SIDRA publishes at `retrieved_at`: IBGE revises published figures
+(quarterly GDP, PNAD reweighting, PIM/PMC/PMS) and keeps no earlier version.
+
 ## Available Tools
 
 ### Localities & Geography
@@ -404,8 +414,11 @@ ibge_sidra(tabela="9514", nivel_territorial="6", localidades="3550308")
 |-----:|:------------|
 | 6579 | Population estimates (annual) |
 | 9514 | Census 2022 population |
-| 4714 | Unemployment rate (PNAD) |
-| 6706 | GDP at current prices |
+| 4714 | Population, territorial area and density (Census 2022) |
+| 4099 | Unemployment rate (PNAD Contínua, quarterly) |
+| 1846 | Quarterly GDP at current prices (Brazil) |
+| 5938 | Municipal GDP at current prices (annual) |
+| 6784 | Annual GDP and GDP per capita (Brazil) |
 
 **Territorial levels:**
 | Code | Level |

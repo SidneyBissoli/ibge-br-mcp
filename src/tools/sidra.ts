@@ -127,7 +127,8 @@ export const TABELAS_COMUNS: Record<string, string> = {
   "4099": "PNAD Contínua - Taxa de desocupação (trimestral)",
   "5436": "PNAD Contínua - Rendimento médio real habitual (trimestral)",
   "1846": "Contas Nacionais Trimestrais - PIB a preços correntes",
-  "5938": "Produto Interno Bruto per capita",
+  "5938": "PIB dos Municípios - PIB a preços correntes (anual, até município)",
+  "6784": "Contas Nacionais Anuais - PIB e PIB per capita (Brasil)",
 };
 
 /**
