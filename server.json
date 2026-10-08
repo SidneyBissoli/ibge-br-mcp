@@ -17,13 +17,13 @@
     "url": "https://github.com/SidneyBissoli/ibge-br-mcp",
     "source": "github"
   },
-  "version": "5.7.0",
+  "version": "5.8.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "ibge-br-mcp",
-      "version": "5.7.0",
+      "version": "5.8.0",
       "transport": {
         "type": "stdio"
       }
@@ -42,8 +42,8 @@
         "spec": "https://github.com/SidneyBissoli/mcp-br-commons/blob/main/packages/mcp-surface/SPEC.md",
         "endpoint": "https://ibge.sidneybissoli.com/mcp",
         "declared": {
-          "sha256": "ea89c228d993b3bc25aad6660c47194223605241ddd5469c986279acddee1779",
-          "lockedAt": "5.7.0"
+          "sha256": "631975575d4372d81e9a266b2ad254cc4e1e27b041efbff2cd89980ddf4654df",
+          "lockedAt": "5.8.0"
         },
         "anonymous": {
           "sha256": "ade1bd429bdfc63453a924614520010bb782ffd8d24fdd6483aa17d5b36b61a4",
