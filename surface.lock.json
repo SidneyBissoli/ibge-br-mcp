@@ -1,8 +1,8 @@
 {
   "$comentario": "Impressão digital da superfície (@sbissoli/mcp-surface). Não editar à mão: `npm run surface:lock` regrava, e só aceita superfície nova sob versão nova.",
   "declarada": {
-    "versao": "5.7.0",
-    "sha256": "ea89c228d993b3bc25aad6660c47194223605241ddd5469c986279acddee1779",
+    "versao": "5.8.0",
+    "sha256": "631975575d4372d81e9a266b2ad254cc4e1e27b041efbff2cd89980ddf4654df",
     "conteudo": {
       "initialize": {
         "capabilities": {
@@ -152,7 +152,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -165,24 +165,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -190,18 +202,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -223,6 +238,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -290,11 +313,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -456,7 +506,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -469,24 +519,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -494,18 +556,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -527,6 +592,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -594,11 +667,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -952,7 +1052,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -965,24 +1065,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -990,18 +1102,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -1023,6 +1138,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -1090,11 +1213,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -1240,7 +1390,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -1253,24 +1403,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -1278,18 +1440,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -1311,6 +1476,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -1378,11 +1551,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -1646,7 +1846,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -1659,24 +1859,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -1684,18 +1896,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -1717,6 +1932,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -1784,11 +2007,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -1949,7 +2199,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -1962,24 +2212,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -1987,18 +2249,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -2020,6 +2285,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -2087,11 +2360,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -2419,7 +2719,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -2432,24 +2732,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -2457,18 +2769,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -2490,6 +2805,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -2557,11 +2880,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -2694,7 +3044,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -2707,24 +3057,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -2732,18 +3094,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -2765,6 +3130,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -2832,11 +3205,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -3002,7 +3402,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -3015,24 +3415,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -3040,18 +3452,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -3073,6 +3488,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -3140,11 +3563,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -3500,7 +3950,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -3513,24 +3963,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -3538,18 +4000,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -3571,6 +4036,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -3638,11 +4111,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -3831,7 +4331,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -3844,24 +4344,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -3869,18 +4381,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -3902,6 +4417,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -3969,11 +4492,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -4185,7 +4735,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -4198,24 +4748,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -4223,18 +4785,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -4256,6 +4821,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -4323,11 +4896,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -4449,7 +5049,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -4462,24 +5062,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -4487,18 +5099,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -4520,6 +5135,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -4587,11 +5210,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -4739,7 +5389,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -4752,24 +5402,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -4777,18 +5439,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -4810,6 +5475,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -4877,11 +5550,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -5046,7 +5746,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -5059,24 +5759,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -5084,18 +5796,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -5117,6 +5832,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -5184,11 +5907,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -5403,7 +6153,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -5416,24 +6166,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -5441,18 +6203,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -5474,6 +6239,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -5541,11 +6314,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -5812,7 +6612,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -5825,24 +6625,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -5850,18 +6662,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -5883,6 +6698,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -5950,11 +6773,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -6127,7 +6977,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -6140,24 +6990,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -6165,18 +7027,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -6198,6 +7063,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -6265,11 +7138,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -6630,7 +7530,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -6643,24 +7543,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -6668,18 +7580,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -6701,6 +7616,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -6768,11 +7691,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -6958,7 +7908,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -6971,24 +7921,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -6996,18 +7958,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -7029,6 +7994,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -7096,11 +8069,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -7275,7 +8275,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -7288,24 +8288,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -7313,18 +8325,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -7346,6 +8361,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -7413,11 +8436,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -7548,7 +8598,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -7561,24 +8611,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -7586,18 +8648,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -7619,6 +8684,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -7686,11 +8759,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",
@@ -7794,7 +8894,7 @@
               },
               "provenance": {
                 "additionalProperties": false,
-                "description": "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença",
+                "description": "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença",
                 "properties": {
                   "citation": {
                     "description": "Citação pronta para uso",
@@ -7807,24 +8907,36 @@
                       "null"
                     ]
                   },
+                  "derivation_note": {
+                    "description": "O que o servidor calculou; presente junto com derived",
+                    "type": "string"
+                  },
+                  "derived": {
+                    "description": "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+                    "type": "boolean"
+                  },
                   "field_sources": {
-                    "description": "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+                    "description": "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
                     "items": {
                       "additionalProperties": false,
+                      "description": "Proveniência de um grupo de campos da resposta: de onde veio e quando foi extraído",
                       "properties": {
                         "data_vintage": {
+                          "description": "Vintage/competência da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "dataset_id": {
+                          "description": "Identificador do conjunto da sub-fonte",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "fields": {
+                          "description": "Campos do payload atribuídos a esta sub-fonte",
                           "items": {
                             "type": "string"
                           },
@@ -7832,18 +8944,21 @@
                           "type": "array"
                         },
                         "retrieved_at": {
+                          "description": "ISO-8601 da extração desta sub-fonte na origem",
                           "type": [
                             "string",
                             "null"
                           ]
                         },
                         "served_from_cache": {
+                          "description": "true se esta sub-fonte veio do cache do servidor (retrieved_at é o da extração original); false se foi buscada nesta chamada; null se o servidor não distingue",
                           "type": [
                             "boolean",
                             "null"
                           ]
                         },
                         "source_url": {
+                          "description": "URL canônica da sub-fonte que originou estes campos",
                           "type": "string"
                         }
                       },
@@ -7865,6 +8980,14 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "notices": {
+                    "description": "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "retrieval": {
                     "anyOf": [
@@ -7932,11 +9055,38 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
+                    "description": "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)"
                   },
                   "retrieved_at": {
                     "description": "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
                     "type": "string"
+                  },
+                  "revision": {
+                    "additionalProperties": false,
+                    "description": "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
+                    "properties": {
+                      "note": {
+                        "description": "O específico da fonte: o que revisa, quando, por quê",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "description": "current = versão vigente, a fonte pode revisá-la; provisional = preliminar, incompleta ou sujeita a mudança (não compare como se fosse fechada); final = não muda mais, declarado pela fonte",
+                        "enum": [
+                          "current",
+                          "provisional",
+                          "final"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status",
+                      "note"
+                    ],
+                    "type": "object"
                   },
                   "source": {
                     "description": "Fonte oficial do dado (API do IBGE consultada)",

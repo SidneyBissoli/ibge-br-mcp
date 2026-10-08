@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.8.0] - 2026-10-08
+
+Contrato de proveniência 1.2 no fio e 1.3 declarado no esquema (`@sbissoli/mcp-provenance`
+0.4.0). **Nenhuma resposta de tool muda um byte**: nenhuma tool do IBGE junta sub-fontes,
+então a 1.2 emite exatamente o que a 1.1 emitia; o que muda é o esquema publicado.
+
+### Changed
+
+- **O servidor emite o contrato 1.2** (`contractVersion: "1.2"`). Uma resposta que juntasse
+  sub-fontes passaria a levar `field_sources`, com o `retrieved_at` do bloco igual ao mais
+  antigo delas; hoje nenhuma junta.
+- **`tools/list`: o bloco `provenance` declara as quatro chaves da v1.3** — `notices`,
+  `derived`, `derivation_note`, `revision` —, todas opcionais (nenhuma em `required`), com
+  descrição em pt-BR de linguagem simples. O enxerto de descrições passou a entrar nas
+  chaves opcionais: o texto do pacote chega também aos filhos de `field_sources` e de
+  `revision`, e os arrays mantêm o `minItems`. O resto da superfície é byte-idêntico
+  (`baselines/surface-stdio-5.8.0.json`).
+- **Os builders informam `revision`** (decisão do dono): `current` para todas as fontes do
+  IBGE; as duas fontes do SIDRA (SIDRA e Agregados) levam como `note` a frase que as
+  instructions do servidor já publicam sobre o IBGE revisar números divulgados; as demais,
+  `null`. Só chega ao fio quando o servidor emitir a 1.3.
+- As descrições deixam de citar número de versão do contrato ("contrato v1.1"/"v1.2"
+  envelhecia a cada minor): o bloco é "Bloco de proveniência do portfólio".
+- `@sbissoli/mcp-provenance` ^0.4.0, `@sbissoli/mcp-upstream` ^0.4.2.
+
 ## [5.7.0] - 2026-10-08
 
 O que cada número é, e em que versão. Começou por duas lacunas apontadas por um leitor
