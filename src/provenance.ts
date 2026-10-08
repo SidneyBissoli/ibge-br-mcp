@@ -1,5 +1,5 @@
 /**
- * Provenance block (portfolio contract v1.1) — pt-BR adapter over
+ * Provenance block (portfolio contract; version in `provenanceContext`) — pt-BR adapter over
  * `@sbissoli/mcp-provenance`. The canonical model, the `concise`/`detailed`
  * projections, serialization determinism, timezone handling and the footer
  * wording live in the package; this module binds them to the IBGE server:
@@ -52,9 +52,13 @@ export const provenanceContext = createProvenanceContext({
   locale: "pt-BR",
   timezone: { offset: "-03:00", label: "horário de Brasília" },
   defaultMode: "concise",
+  // 1.2: `field_sources` goes out on responses that merge sub-sources (none of
+  // the IBGE tools does today, so the wire is byte-identical to 1.1). The 1.3
+  // keys are already declared by the schema; emitting them is the next step.
+  contractVersion: "1.2",
 });
 
-/** Canonical envelope v1.0 (post-validation). */
+/** Canonical envelope (post-validation); its `contract_version` is `provenanceContext.contractVersion`. */
 export type Provenance = CanonicalProvenance;
 
 /** Namespaced `_meta` keys (stable — audit/UI consumers read by these keys). */
@@ -76,58 +80,89 @@ export const IBGE_LICENSE = {
 } as const;
 
 /**
+ * What the SIDRA does to numbers already published — the same sentence the
+ * server instructions carry (`SERVER_INSTRUCTIONS` in `server.ts`; a test keeps
+ * the two together). It is the `revision.note` of the two SIDRA-backed sources.
+ */
+export const NOTA_REVISAO_SIDRA =
+  "O IBGE revisa números já divulgados (PIB trimestral a cada divulgação, reponderação da PNAD, revisões anuais de PIM, PMC e PMS) e a API não guarda a versão anterior.";
+
+/**
+ * Revision status of the IBGE sources (contract v1.3, owner's decision of
+ * 08/10/2026): `current` for every one — the value is the version in force at
+ * the extraction instant and the source may revise it. `final` needs proof from
+ * the source and nobody uses it yet. The note is the source's own story when the
+ * server already tells it (SIDRA), `null` otherwise — never a new claim.
+ */
+const REVISAO_VIGENTE = { status: "current", note: null } as const;
+const REVISAO_SIDRA = { status: "current", note: NOTA_REVISAO_SIDRA } as const;
+
+/**
  * Source registry — one entry per IBGE API this server consumes. `name` is
  * what the concise projection shows as `source`; `endpoint` is the base URL
- * actually queried. Text only, never the IBGE logo/brand (docs/01).
+ * actually queried; `revision` is fixed per source (see `REVISAO_VIGENTE`).
+ * Text only, never the IBGE logo/brand (docs/01).
  */
 export const FONTES_IBGE = {
   LOCALIDADES: {
     name: "IBGE — API de Localidades",
     endpoint: API_ENDPOINTS.IBGE.LOCALIDADES,
+    revision: REVISAO_VIGENTE,
   },
   SIDRA: {
     name: "IBGE — SIDRA (Banco de Tabelas Estatísticas)",
     endpoint: API_ENDPOINTS.SIDRA,
+    revision: REVISAO_SIDRA,
   },
   AGREGADOS: {
     name: "IBGE — API de Agregados (SIDRA)",
     endpoint: API_ENDPOINTS.IBGE.AGREGADOS,
+    revision: REVISAO_SIDRA,
   },
   NOMES: {
     name: "IBGE — API de Nomes (Censo Demográfico 2010)",
     endpoint: API_ENDPOINTS.IBGE.NOMES,
+    revision: REVISAO_VIGENTE,
   },
   MALHAS: {
     name: "IBGE — API de Malhas Geográficas",
     endpoint: API_ENDPOINTS.IBGE.MALHAS,
+    revision: REVISAO_VIGENTE,
   },
   GEOSERVICOS: {
     name: "IBGE — Geosserviços (WFS, IBGE Geociências)",
     endpoint: API_ENDPOINTS.IBGE.GEOSERVICOS,
+    revision: REVISAO_VIGENTE,
   },
   NOTICIAS: {
     name: "IBGE — API de Notícias",
     endpoint: API_ENDPOINTS.IBGE.NOTICIAS,
+    revision: REVISAO_VIGENTE,
   },
   POPULACAO: {
     name: "IBGE — API de Projeções de População",
     endpoint: API_ENDPOINTS.IBGE.POPULACAO,
+    revision: REVISAO_VIGENTE,
   },
   CNAE: {
     name: "IBGE — API CNAE",
     endpoint: API_ENDPOINTS.IBGE.CNAE,
+    revision: REVISAO_VIGENTE,
   },
   CALENDARIO: {
     name: "IBGE — API de Calendário de Divulgações",
     endpoint: API_ENDPOINTS.IBGE.CALENDARIO,
+    revision: REVISAO_VIGENTE,
   },
   PAISES: {
     name: "IBGE — API de Países",
     endpoint: API_ENDPOINTS.IBGE.PAISES,
+    revision: REVISAO_VIGENTE,
   },
   PESQUISAS: {
     name: "IBGE — API de Pesquisas (Cidades@)",
     endpoint: API_ENDPOINTS.IBGE.PESQUISAS,
+    revision: REVISAO_VIGENTE,
   },
 } as const;
 
@@ -185,6 +220,9 @@ export function provenienciaIbge(opts: ProvenienciaIbgeOptions): Provenance {
     license: IBGE_LICENSE,
     derived: opts.derivado !== undefined,
     ...(opts.derivado !== undefined ? { derivation_note: opts.derivado.nota } : {}),
+    // Informed now, on the wire only once the context emits 1.3 (the lib drops
+    // it from 1.1/1.2 blocks).
+    revision: fonte.revision,
     served_from_cache: meta ? meta.servedFromCache : null,
     // The REAL count of this call (requests, attempts, anomalies), measured by
     // the collector `withMetrics` opened; `null` = not measured (cache only, or
@@ -260,11 +298,18 @@ const DESCRICOES_IBGE: Record<keyof typeof ConciseBlockSchema.shape, string> = {
   data_vintage: "Período de referência do dado segundo a fonte; null se a fonte não expõe",
   retrieved_at: "Instante real da extração no upstream (ISO-8601, horário de Brasília)",
   retrieval:
-    "Diagnóstico de origem desta chamada (contrato v1.1): idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)",
+    "Diagnóstico de origem desta chamada: idas à API do IBGE, tentativas somadas e anomalias contornadas; unstable=true quando houve anomalia. null quando nada foi medido (resposta servida só do cache)",
   citation: "Citação pronta para uso",
   license: "Regime legal do dado",
   field_sources:
-    "Proveniência por sub-fonte (contrato v1.2): presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+    "Proveniência por sub-fonte: presente só quando a resposta junta partes extraídas de origens ou em momentos distintos, uma entrada por grupo de campos; ausente quando a resposta vem de uma única extração",
+  notices:
+    "Avisos que o IBGE publica junto com o dado (quebra de série, unidade, atualização), copiados como vieram; ausente quando não há aviso",
+  derived:
+    "Presente (true) só quando o servidor calculou o valor — estatísticas, rankings, comparações — em vez de repassá-lo como veio do IBGE",
+  derivation_note: "O que o servidor calculou; presente junto com derived",
+  revision:
+    "Se o dado ainda pode mudar no IBGE: current = versão vigente na extração, que o IBGE pode revisar depois; provisional = preliminar; final = não muda mais. note traz o específico da fonte quando há",
 };
 
 /** The subset of JSON Schema the walker reads: descriptions, and where the children are. */
@@ -293,8 +338,18 @@ function descreverPeloJsonSchema(
     // `x | null` is `oneOf: [x, null]` (retrieval) or `type: [x, "null"]` (vintage).
     const interno = no?.oneOf ? no.oneOf.find((n) => n.type !== "null") : no;
     saida = descreverPeloJsonSchema(schema.unwrap() as z.ZodType, interno, {}, "").nullable();
+  } else if (schema instanceof z.ZodOptional) {
+    // The keys added after v1.1 (`field_sources`, and the four of v1.3) are
+    // optional: walk into them so the package's text reaches their children,
+    // and keep them optional — out of `required` in the listed schema.
+    saida = descreverPeloJsonSchema(schema.unwrap() as z.ZodType, no, {}, "").optional();
   } else if (schema instanceof z.ZodArray) {
-    saida = z.array(descreverPeloJsonSchema(schema.element as z.ZodType, no?.items));
+    // `clone` keeps the array's checks (`.min(1)` of field_sources/notices);
+    // rebuilding it with `z.array(...)` would drop them.
+    saida = schema.clone({
+      ...schema.def,
+      element: descreverPeloJsonSchema(schema.element as z.ZodType, no?.items),
+    });
   } else if (schema instanceof z.ZodObject) {
     saida = z.strictObject(
       Object.fromEntries(
@@ -335,14 +390,14 @@ export const provenanceBlockSchema = descreverPeloJsonSchema(
 ) as typeof ConciseBlockSchema;
 
 /**
- * Extends a tool's output schema with the provenance channel of the contract
- * v1.1: the concise block + the `attribution` URL list (MCP RFC #711). Every
+ * Extends a tool's output schema with the provenance channel of the contract:
+ * the concise block + the `attribution` URL list (MCP RFC #711). Every
  * successful response carries both (wired in `toMcpResult`).
  */
 export function comProveniencia<T extends z.ZodObject<z.ZodRawShape>>(schema: T) {
   return schema.extend({
     provenance: provenanceBlockSchema.describe(
-      "Bloco de proveniência (contrato v1.1): fonte, URL, período, extração, diagnóstico de origem e licença"
+      "Bloco de proveniência do portfólio: fonte, URL, período, extração, diagnóstico de origem e licença"
     ),
     attribution: z
       .array(z.string())
@@ -358,7 +413,7 @@ export function projetarProveniencia(p: Provenance): {
   return { provenance: renderConcise(p), attribution: attributionList([p]) };
 }
 
-/** Compact text footer for the Markdown channel (fixed wording, contract v1.0). */
+/** Compact text footer for the Markdown channel (wording owned by the package). */
 export function rodapeProveniencia(p: Provenance): string {
   return provenanceContext.footer(p);
 }

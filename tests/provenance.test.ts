@@ -1,5 +1,5 @@
 /**
- * pt-BR provenance adapter (contract v1.1) — the canonical block every tool
+ * pt-BR provenance adapter — the canonical block every tool
  * attaches and the three emission channels wired in `toMcpResult`.
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
@@ -13,6 +13,7 @@ import {
   NOTA_DERIVACAO_ESTATISTICAS,
   PROVENANCE_META_KEY,
   provenanceBlockSchema,
+  provenanceContext,
   provenienciaIbge,
 } from "../src/provenance.js";
 import { comColetorDeRede } from "../src/retry.js";
@@ -32,14 +33,14 @@ describe("provenienciaIbge", () => {
     vi.unstubAllGlobals();
   });
 
-  it("builds a canonical v1.1 block with the normative license and IBGE source", () => {
+  it("builds a canonical block with the normative license and IBGE source", () => {
     const p = provenienciaIbge({
       fonte: "LOCALIDADES",
       url: URL_EXEMPLO,
       pesquisa: "API de Localidades (estados)",
     });
 
-    expect(p.contract_version).toBe("1.1");
+    expect(p.contract_version).toBe(provenanceContext.contractVersion);
     expect(p.source.name).toBe("IBGE — API de Localidades");
     expect(p.source.agency).toBe("IBGE");
     expect(p.source_url).toBe(URL_EXEMPLO);
