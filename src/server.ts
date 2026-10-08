@@ -135,7 +135,7 @@ const NOTE_WHAT_EACH_NUMBER_IS =
   "What each number is: every record carries the SIDRA period column (code and label, e.g. " +
   '"Mês (Código)" 202403 / "Mês" "março 2024") and the "Variável" label — the only place that says ' +
   "whether a value is a monthly change, a year-to-date or 12-month accumulation, an index number or a level; " +
-  "read it before adding, subtracting or comparing values. A PNAD rolling quarter (\"jun-jul-ago 2026\") is a " +
+  'read it before adding, subtracting or comparing values. A PNAD rolling quarter ("jun-jul-ago 2026") is a ' +
   "three-month window that moves every month, not a calendar quarter. Revisions: values are what SIDRA " +
   "publishes at the extraction instant (retrieved_at); IBGE revises published figures (quarterly GDP at each " +
   "release, PNAD reweighting, annual revisions of PIM/PMC/PMS) and the API keeps no earlier version.";

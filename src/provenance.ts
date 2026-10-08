@@ -223,7 +223,8 @@ export function extrairPeriodoSidra(
   if (!rotulo) return null;
   const base = rotulo.replace(/\s*\(c[oó]digo\)\s*$/i, "");
   const colunaCodigo = candidatas.find(
-    (c) => c !== rotulo && /\(c[oó]digo\)/i.test(c) && c.replace(/\s*\(c[oó]digo\)\s*$/i, "") === base
+    (c) =>
+      c !== rotulo && /\(c[oó]digo\)/i.test(c) && c.replace(/\s*\(c[oó]digo\)\s*$/i, "") === base
   );
 
   const porRotulo = new Map<string, string>();
@@ -234,7 +235,8 @@ export function extrairPeriodoSidra(
   }
   if (porRotulo.size === 0) return null;
 
-  const chave = (codigo: string): number | string => (/^\d+$/.test(codigo) ? Number(codigo) : codigo);
+  const chave = (codigo: string): number | string =>
+    /^\d+$/.test(codigo) ? Number(codigo) : codigo;
   const ordenados = [...porRotulo.entries()].sort(([, a], [, b]) => {
     const ka = chave(a);
     const kb = chave(b);

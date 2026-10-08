@@ -74,7 +74,8 @@ export const INDICADORES_CONHECIDOS: Record<
     variavel: "585",
     classificacao: "c11255/90707",
     nome: "PIB - Produto Interno Bruto",
-    descricao: "PIB a preços correntes, em R$ milhões, por trimestre (Contas Nacionais Trimestrais; só Brasil)",
+    descricao:
+      "PIB a preços correntes, em R$ milhões, por trimestre (Contas Nacionais Trimestrais; só Brasil)",
     periodicidade: "Trimestral",
     categoria: "economico",
   },
