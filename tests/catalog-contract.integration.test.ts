@@ -25,7 +25,7 @@
 import { describe, expect, it } from "vitest";
 import { SIDRA_TABLES } from "../src/config.js";
 import { INDICADORES_SAUDE } from "../src/tools/datasaude.js";
-import { INDICADORES_CONHECIDOS } from "../src/tools/indicadores.js";
+import { INDICADORES_CONHECIDOS, ibgeIndicadores } from "../src/tools/indicadores.js";
 import { TEMPLATES_COMPARACAO } from "../src/tools/comparar.js";
 import { TABELAS_COMUNS } from "../src/tools/sidra.js";
 import { fetchIntegracao, FalhaDeTransporte } from "./integration-fetch.js";
@@ -184,6 +184,77 @@ describe.runIf(LIVE)("contrato do catálogo SIDRA (API real)", () => {
       // Prazo por teste: 3 tentativas de 20 s mais 1 s + 2 s de espera = 63 s
       // no pior caso. Era 180 s, herdado de um orçamento de 45 s por
       // requisição que já não existe.
+    }, 90_000);
+  }
+});
+
+/**
+ * Variável de cada indicador nomeado. O contrato acima confere a TABELA por
+ * código, e por isso não via o erro que importava: até a 5.7.0 a 5938 passava
+ * ("PIB a preços correntes" bate com a tabela) enquanto `pib_per_capita` a
+ * vendia como per capita, e nove indicadores pediam `allxp` — o "IPCA mensal"
+ * vinha com acumulado no ano, em 12 meses e o peso. Aqui a expectativa é por
+ * INDICADOR e descreve o que o NOME dele promete, nunca copia o rótulo da
+ * fonte; a variável fixada tem de existir na tabela e casar com ela.
+ */
+const EXPECTED_VARIAVEL: Record<string, RegExp> = {
+  pib: /^valores a precos correntes$/,
+  pib_variacao: /^taxa trimestral \(em relacao ao mesmo periodo do ano anterior\)$/,
+  pib_per_capita: /^pib per capita - valores correntes$/,
+  industria: /numero-indice \(2022=100\)$/,
+  comercio: /numero-indice \(2022=100\)$/,
+  servicos: /numero-indice \(2022=100\)$/,
+  ipca: /^ipca - variacao mensal$/,
+  ipca_acumulado: /^ipca - variacao acumulada em 12 meses$/,
+  inpc: /^inpc - variacao mensal$/,
+  desemprego: /^taxa de desocupacao/,
+  ocupacao: /^pessoas de 14 anos ou mais de idade ocupadas/,
+  rendimento: /^rendimento medio mensal real/,
+  informalidade: /^taxa de informalidade/,
+  populacao: /^populacao residente estimada$/,
+  densidade: /densidade demografica/,
+  agricultura: /^valor da producao$/,
+  pecuaria: /^efetivo dos rebanhos$/,
+};
+
+describe.runIf(LIVE)("variável de cada indicador nomeado (API real)", () => {
+  it("todo indicador tem expectativa de variável", () => {
+    const faltam = Object.keys(INDICADORES_CONHECIDOS).filter((k) => !(k in EXPECTED_VARIAVEL));
+    expect(faltam, `indicadores sem EXPECTED_VARIAVEL: ${faltam.join(", ")}`).toEqual([]);
+  });
+
+  for (const [chave, ind] of Object.entries(INDICADORES_CONHECIDOS)) {
+    it(`${chave}: tabela ${ind.tabela}, variável ${ind.variavel}`, async () => {
+      const res = await fetchIntegracao(
+        `https://servicodados.ibge.gov.br/api/v3/agregados/${ind.tabela}/metadados`
+      );
+      expect(res.ok, `metadados da tabela ${ind.tabela}: HTTP ${res.status}`).toBe(true);
+      const meta = (await res.json()) as { variaveis?: Array<{ id: number; nome: string }> };
+      const v = meta.variaveis?.find((x) => String(x.id) === ind.variavel);
+      expect(v, `variável ${ind.variavel} não existe na tabela ${ind.tabela}`).toBeDefined();
+      const esperado = EXPECTED_VARIAVEL[chave];
+      if (!esperado) return; // já reportado na completude
+      expect(
+        esperado.test(normalize(v!.nome)),
+        `${chave}: a variável ${ind.variavel} é "${v!.nome}" — não bate com ${esperado}`
+      ).toBe(true);
+    }, 90_000);
+  }
+
+  // Prova ATIVA: a tool, chamada como um cliente chamaria, devolve número. Os
+  // metadados não pegam o defeito que mais custou: `comercio`, `servicos` e
+  // `pib_variacao` tinham tabela e variável certas e respondiam só ".." — a
+  // classificação sem categoria cai na categoria 0, que não existe.
+  for (const chave of Object.keys(INDICADORES_CONHECIDOS)) {
+    it(`${chave}: a tool devolve ao menos um valor numérico nos últimos períodos`, async () => {
+      const r = await ibgeIndicadores({ indicador: chave, periodos: "last 4", formato: "json" });
+      expect(r.isError, r.markdown.slice(0, 300)).toBeFalsy();
+      const registros = (r.structured as { registros?: Array<Record<string, string>> } | undefined)?.registros ?? [];
+      const numericos = registros.filter((x) => /^-?\d+(\.\d+)?$/.test(x["Valor"] ?? ""));
+      expect(
+        numericos.length,
+        `${chave}: ${registros.length} registros e nenhum valor — ${registros.map((x) => x["Valor"]).join(",")}`
+      ).toBeGreaterThan(0);
     }, 90_000);
   }
 });

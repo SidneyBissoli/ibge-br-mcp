@@ -309,7 +309,9 @@ export const SIDRA_TABLES = {
   POPULACAO_CENSOS_HISTORICO: "200",
   // Economy
   PIB_CORRENTE: "1846",
-  PIB_PER_CAPITA: "5938",
+  // 6784 (Contas Nacionais Anuais, Brasil). Until 5.7.0 this said 5938, which
+  // is municipal GDP at current prices and has no per-capita variable.
+  PIB_PER_CAPITA: "6784",
   AREA_TERRITORIAL: "4714",
   DENSIDADE_DEMOGRAFICA: "4714",
   // Labor

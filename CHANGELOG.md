@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.7.0] - 2026-10-08
+
+O que cada número é, e em que versão. Começou por duas lacunas apontadas por um leitor
+(Daniel Oliveira, dev.to, 08/10/2026, sobre os dados XBRL da SEC): período e acumulação
+precisam vir com o número, e o servidor tem de dizer se ele é a versão revista. Medir
+isso aqui, contra a API de Agregados, achou defeitos de dado no catálogo de indicadores.
+
+### Fixed
+
+- **`ibge_indicadores`: cada indicador agora devolve a variável que o nome promete.**
+  Nove entradas não fixavam variável e pediam `allxp`. O "IPCA - Variação Mensal" vinha
+  com acumulado no ano, em 12 meses e o peso (100); `industria` e `pib_variacao`, com o
+  índice ao lado das próprias variações acumuladas; `ocupacao`, com 36 variáveis; e o modo
+  estatístico tirava a média de tudo junto. Variável fixada em todas: `ipca` 63, `inpc`
+  44, `pib_variacao` 6561, `industria` 12606, `comercio` 7169, `servicos` 7167, `ocupacao`
+  4090, `rendimento` 5935, `agricultura` 215, `populacao` 9324, `pecuaria` 105.
+- **Cinco indicadores não devolviam número nenhum — só ".."**: `pib_variacao`,
+  `industria`, `comercio`, `servicos` e `pecuaria`. Sem categoria na classificação da
+  tabela ("Setores e subsetores", "Seções industriais", "Tipos de índice", "Tipo de
+  rebanho"), a API responde a categoria 0, que não existe. Agora pedem o PIB a preços de
+  mercado (90707), a indústria geral, o índice de volume (nos serviços, o total das
+  atividades) e os tipos de rebanho. Medido com o teste novo contra o catálogo anterior:
+  os cinco falham; com este, os 17 indicadores devolvem valor.
+- **`pib_per_capita` lia a tabela 5938, que é o PIB dos municípios a preços correntes —
+  não per capita.** Passa a ler a 6784 (Contas Nacionais Anuais, variável 9812, só
+  Brasil). `pib` passa à 1846 (PIB trimestral a preços correntes, variável 585, só
+  Brasil), que é o que o catálogo já dizia ("Trimestral"); antes lia a 6784 anual, com as 8
+  variáveis dela. O mesmo rótulo errado da 5938 estava em `TABELAS_COMUNS`,
+  `SIDRA_TABLES.PIB_PER_CAPITA` e na descrição do `ibge_sidra`, que ainda chamava a 6706
+  (pirâmide etária da PNAD) de "GDP at current prices" — os três corrigidos.
+- `pecuaria` pede uma linha por tipo de rebanho, sem os subconjuntos (matrizes de suínos,
+  galinhas) que somariam duas vezes.
+- **`data_vintage` em ordem cronológica.** O intervalo ordenava os rótulos como texto: um
+  pedido de janeiro a dezembro de 2024 saía "abril 2024–setembro 2024", e "1º trimestre
+  2024" vinha antes de "2º trimestre 2023". Agora ordena pelo código de período que o SIDRA
+  manda ao lado do rótulo (mês, trimestre e trimestre móvel cobertos por teste).
+
+### Changed
+
+- `ibge_sidra`, `ibge_indicadores` e as `instructions` dizem o que cada número é: a coluna
+  `Variável` é a única que diz se o valor é variação no mês, acumulado ou nível; trimestre
+  móvel da PNAD não é trimestre do calendário; e todo valor é a versão vigente no
+  `retrieved_at` — o IBGE revisa números já divulgados e a API não guarda a anterior. As
+  descrições dos indicadores dizem a unidade e o nível territorial de cada um.
+- README/LEIA-ME: tabela "Common tables" corrigida (também chamava a 4714 de "taxa de
+  desemprego") e nota sobre período, acumulação e revisão na seção de proveniência.
+
+### Tests
+
+- O contrato do catálogo ao vivo (`INTEGRATION_TESTS=1`) passa a conferir a VARIÁVEL de
+  cada indicador contra o que o nome dele promete — o contrato por tabela não via o erro
+  da 5938, porque a expectativa descrevia a tabela e não o rótulo. `variavel` virou campo
+  obrigatório do tipo do catálogo. E uma prova ATIVA: cada indicador é chamado pela tool
+  e tem de devolver ao menos um valor numérico — os metadados estavam certos nos cinco que
+  respondiam "..". Três testes novos do intervalo de período, que falham no código anterior.
+
 ## [5.6.2] - 2026-10-07
 
 A impressão digital da superfície passa a ir **na entrada do MCP Registry**, para o
