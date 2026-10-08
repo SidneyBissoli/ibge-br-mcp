@@ -138,6 +138,19 @@ jobs:
         run: ./mcp-publisher login github-oidc
       - name: Publish to MCP Registry
         run: ./mcp-publisher publish
+      # A conferência que um CLIENTE faria: lê a entrada desta versão no
+      # registro (o _meta publisher-provided que o server.json levou) e a compara
+      # com o endpoint no ar, sem ler o surface.lock.json. Prova que o que o
+      # registro promete ao host é o que ele vai encontrar. Versão do pacote
+      # tirada do lock, para o npx não pegar outra e sem `npm ci` neste job.
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Registry entry = live endpoint (as a client would check)
+        run: |
+          V=$(node -p "require('./package-lock.json').packages['node_modules/@sbissoli/mcp-surface'].version")
+          npx --yes "@sbissoli/mcp-surface@$V" conferir-registro
 
   create-release:
     needs: publish
