@@ -8,20 +8,22 @@
     {
       "src": "https://ibge.sidneybissoli.com/icon.png",
       "mimeType": "image/png",
-      "sizes": ["512x512"]
+      "sizes": [
+        "512x512"
+      ]
     }
   ],
   "repository": {
     "url": "https://github.com/SidneyBissoli/ibge-br-mcp",
     "source": "github"
   },
-  "version": "5.6.1",
+  "version": "5.6.2",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "ibge-br-mcp",
-      "version": "5.6.1",
+      "version": "5.6.2",
       "transport": {
         "type": "stdio"
       }
@@ -32,5 +34,36 @@
       "type": "streamable-http",
       "url": "https://ibge.sidneybissoli.com/mcp"
     }
-  ]
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "io.github.sidneybissoli/mcp-surface": {
+        "form": "mcp-surface/1",
+        "spec": "https://github.com/SidneyBissoli/mcp-br-commons/blob/main/packages/mcp-surface/SPEC.md",
+        "endpoint": "https://ibge.sidneybissoli.com/mcp",
+        "declared": {
+          "sha256": "25b044c8671d1c93be2f744108df98613ebcbddc1477555b5e1060179fd40fae",
+          "lockedAt": "5.6.0"
+        },
+        "anonymous": {
+          "sha256": "ade1bd429bdfc63453a924614520010bb782ffd8d24fdd6483aa17d5b36b61a4",
+          "answers": {
+            "initialize": true,
+            "ping": true,
+            "tools/list": true,
+            "resources/list": true,
+            "resources/templates/list": true,
+            "prompts/list": true,
+            "tools/call": true
+          },
+          "call": {
+            "name": "ibge_indicadores",
+            "arguments": {
+              "indicador": "listar"
+            }
+          }
+        }
+      }
+    }
+  }
 }

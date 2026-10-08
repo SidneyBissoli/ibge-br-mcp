@@ -662,6 +662,20 @@ npm run test:coverage
 npm run lint
 ```
 
+### Surface fingerprint, checkable from the registry
+
+Every release publishes, in its [MCP Registry](https://registry.modelcontextprotocol.io) entry,
+the sha256 of the surface this version serves (`initialize`, tools, resources, prompts) and which
+methods answer without a credential. A surface change without a version bump fails the build;
+the fingerprint in the registry lets a client check the same thing on its own side. Canonical
+form and procedure: [SPEC.md of `@sbissoli/mcp-surface`](https://github.com/SidneyBissoli/mcp-br-commons/blob/main/packages/mcp-surface/SPEC.md).
+To check it yourself (Node 18+, no dependencies):
+
+```sh
+curl -sO https://raw.githubusercontent.com/SidneyBissoli/mcp-br-commons/main/packages/mcp-surface/exemplos/verify.mjs
+node verify.mjs io.github.SidneyBissoli/ibge-br-mcp
+```
+
 ## License
 
 MIT

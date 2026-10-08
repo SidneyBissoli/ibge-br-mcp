@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.6.2] - 2026-10-07
+
+A impressão digital da superfície passa a ir **na entrada do MCP Registry**, para o
+cliente conferir. **Nenhuma tool, resource, prompt ou resposta muda** — o sha da
+superfície declarada é o mesmo travado em 5.6.0 (`25b044c8671d`).
+
+### Added
+
+- `server.json` publica, sob `_meta["io.modelcontextprotocol.registry/publisher-provided"]`,
+  o sha256 da superfície declarada e quem responde sem credencial no endpoint
+  publicado (forma `mcp-surface/1`, SPEC.md do `@sbissoli/mcp-surface` 0.5.0). Um host
+  pode recalcular na primeira conexão e recusar, ou pedir nova aprovação, se divergir.
+  Ideia de dois leitores do artigo do replay (Mike Dabydeen e Valentina Koniukhova, dev.to).
+- `npm run surface:lock` grava o bloco (`mcp-surface registro`, com a mesma chamada
+  `ibge_indicadores {"indicador":"listar"}` do deploy); o teste da trava reprova
+  `server.json` que publique outra coisa que a trava.
+- `publish.yml`: depois do `mcp-publisher publish`, `mcp-surface conferir-registro` lê
+  a entrada desta versão no registro e a compara com o endpoint no ar, como um cliente
+  faria, sem ler a trava.
+- README / LEIA-ME: como conferir por conta própria (`verify.mjs`, sem dependência).
+
 ## [5.6.1] - 2026-10-06
 
 Só dependências: SDK do MCP 2.1.0 → 2.3.0 na raiz e `agents` 0.24.0 →

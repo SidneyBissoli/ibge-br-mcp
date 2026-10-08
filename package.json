@@ -1,6 +1,6 @@
 {
   "name": "ibge-br-mcp",
-  "version": "5.6.1",
+  "version": "5.6.2",
   "mcpName": "io.github.SidneyBissoli/ibge-br-mcp",
   "description": "MCP server giving AI assistants live, sourced access to Brazilian public data — geography, census, economy and health — from the official IBGE APIs. Exact figures with provenance, not approximations.",
   "type": "module",
@@ -24,7 +24,7 @@
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
     "test": "vitest run",
-    "surface:lock": "npm run build && mcp-surface travar --cmd \"vitest run tests/surface-lock.test.ts\" --cmd \"cd worker && npx vitest run tests/surface-lock.test.ts\"",
+    "surface:lock": "npm run build && mcp-surface travar --cmd \"vitest run tests/surface-lock.test.ts\" --cmd \"cd worker && npx vitest run tests/surface-lock.test.ts\" && mcp-surface registro --tool ibge_indicadores --args \"{\\\"indicador\\\":\\\"listar\\\"}\"",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "manifest:lhm": "node scripts/gen-lhm-manifest.mjs"
@@ -71,7 +71,7 @@
     "@eslint/js": "^10.0.1",
     "@modelcontextprotocol/client": "^2.0.0",
     "@sbissoli/mcp-evals": "^0.2.1",
-    "@sbissoli/mcp-surface": "^0.3.0",
+    "@sbissoli/mcp-surface": "^0.5.0",
     "@types/node": "^26.5.1",
     "@vitest/coverage-v8": "^5.0.0",
     "eslint": "^10.9.1",
