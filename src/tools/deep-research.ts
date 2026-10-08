@@ -42,7 +42,7 @@ import {
   type SearchReply,
 } from "@sbissoli/mcp-search";
 import { IBGE_API } from "../types.js";
-import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
+import { cacheKey, CACHE_TTL, cachedFetch, lastFetchMeta } from "../cache.js";
 import { normalizeText } from "../config.js";
 import { palavrasPerguntadas } from "../vocabulario.js";
 import { withMetrics } from "../metrics.js";
@@ -168,10 +168,17 @@ export function entradasMunicipios(municipios: MunicipioNivelado[]): IndexEntry[
 interface IndiceCarregado {
   index: SearchIndex;
   porId: Map<string, IndexEntry>;
-  /** Cache key of the SIDRA catalog GET — anchors the provenance of `search`. */
-  chaveCache: string;
   url: string;
   criadoEm: number;
+  /**
+   * The extractions the index was built from, frozen at build time. The index
+   * outlives the request cache (it is kept 24 h from its creation, and may be
+   * created from cache hits up to 24 h old), so re-reading the cache record of
+   * `/agregados` at search time dated the index by whatever refetched that key
+   * last — `ibge_sidra_tabelas` shares it — and reported a `retrieved_at` NEWER
+   * than the content searched (measured 08/10/2026: 25 h).
+   */
+  extracoes: Array<{ fields: string[]; url: string; retrievedAt: Date }>;
 }
 
 /** `CACHE_TTL` is in minutes (cache.ts); the index age is compared in ms. */
@@ -184,10 +191,17 @@ async function construirIndice(): Promise<IndiceCarregado> {
   const urlAgregados = IBGE_API.AGREGADOS;
   const chaveAgregados = cacheKey(urlAgregados);
   const urlMunicipios = `${IBGE_API.LOCALIDADES}/municipios?orderBy=nome&view=nivelado`;
+  const chaveMunicipios = cacheKey(urlMunicipios);
   const [pesquisas, municipios] = await Promise.all([
     cachedFetch<PesquisaComAgregados[]>(urlAgregados, chaveAgregados, CACHE_TTL.STATIC),
-    cachedFetch<MunicipioNivelado[]>(urlMunicipios, cacheKey(urlMunicipios), CACHE_TTL.STATIC),
+    cachedFetch<MunicipioNivelado[]>(urlMunicipios, chaveMunicipios, CACHE_TTL.STATIC),
   ]);
+  // Read right after the reads, before anything else can refetch the keys.
+  const instante = (chave: string): Date => lastFetchMeta(chave)?.retrievedAt ?? new Date();
+  const extracoes = [
+    { fields: ["results[sidra:*]"], url: urlAgregados, retrievedAt: instante(chaveAgregados) },
+    { fields: ["results[mun:*]"], url: urlMunicipios, retrievedAt: instante(chaveMunicipios) },
+  ];
   // Order matters for ties: official catalog first, then places, then the
   // static dictionary.
   const entradas = [
@@ -198,9 +212,9 @@ async function construirIndice(): Promise<IndiceCarregado> {
   return {
     index: createIndex(entradas),
     porId: new Map(entradas.map((e) => [e.id, e])),
-    chaveCache: chaveAgregados,
     url: urlAgregados,
     criadoEm: Date.now(),
+    extracoes,
   };
 }
 
@@ -258,13 +272,28 @@ export interface DeepResearchFetch {
  */
 export async function deepResearchSearch(query: string): Promise<DeepResearchSearch> {
   return withMetrics("search", "agregados", async () => {
+    const anterior = indiceAtual;
     const indice = await obterIndice();
+    // A new index → its reads are this call's (fresh trips or cache hits, as
+    // the collector saw them). The same index as before → served from the
+    // server's memory, dated by the instants frozen when it was built.
+    const reaproveitado = indice === anterior;
     return {
       results: indice.index.search(query, { limit: DEEP_RESEARCH_LIMIT }),
       provenance: provenienciaIbge({
         fonte: "AGREGADOS",
         url: indice.url,
-        chaveCache: indice.chaveCache,
+        partes: indice.extracoes.map((e) => ({
+          fields: e.fields,
+          url: e.url,
+          // A concurrent call may have built the shared index: then this
+          // call's collector saw none of its reads and the frozen instant is
+          // the only one there is.
+          [reaproveitado ? "extracao" : "reserva"]: {
+            retrievedAt: e.retrievedAt,
+            servedFromCache: true,
+          },
+        })),
         pesquisa:
           "índice de busca (tabelas SIDRA pela API de Agregados, municípios pela API de Localidades, indicadores conhecidos)",
       }),
@@ -360,7 +389,10 @@ export async function deepResearchFetch(id: string): Promise<DeepResearchFetch |
             consultar_com: "ibge_cidades",
           },
         },
-        provenance: populacao.provenance as Provenance,
+        provenance: provenienciaMunicipio(
+          hierarquia.provenance as Provenance,
+          populacao.provenance as Provenance
+        ),
       };
     }
 
@@ -385,6 +417,34 @@ export async function deepResearchFetch(id: string): Promise<DeepResearchFetch |
       },
       provenance: r.provenance as Provenance,
     };
+  });
+}
+
+/**
+ * The municipality document merges two reads of different ages — the hierarchy
+ * (Localidades, cached 24 h) and the latest population (SIDRA, 15 min). The
+ * headline stays the SIDRA block (the dated datum: its URL, table and period),
+ * but the instant is the OLDEST of the two and each read is a part (contract
+ * §3). Until 5.8.0 the document carried the SIDRA block alone, so a hierarchy
+ * cached since yesterday went out dated by a population fetched now.
+ */
+function provenienciaMunicipio(hierarquia: Provenance, populacao: Provenance): Provenance {
+  const dataset = populacao.dataset.id ?? undefined;
+  return provenienciaIbge({
+    fonte: "SIDRA",
+    url: populacao.source_url,
+    pesquisa: `SIDRA, Tabela ${POPULACAO_ESTIMADA.tabela} (população residente estimada) e API de Localidades (hierarquia)`,
+    ...(dataset !== undefined ? { dataset } : {}),
+    dataVintage: populacao.data_vintage,
+    partes: [
+      {
+        fields: ["text.populacao", "metadata.populacao_tabela"],
+        url: populacao.source_url,
+        dataset: dataset ?? null,
+        dataVintage: populacao.data_vintage,
+      },
+      { fields: ["text.hierarquia"], url: hierarquia.source_url },
+    ],
   });
 }
 

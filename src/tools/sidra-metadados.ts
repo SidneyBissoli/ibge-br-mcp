@@ -168,9 +168,9 @@ export async function ibgeSidraMetadados(
 
       // Fetch periods if requested with cache
       let periodos: Periodo[] = [];
+      const periodosUrl = `${IBGE_API.AGREGADOS}/${input.tabela}/periodos`;
       if (input.incluir_periodos) {
         try {
-          const periodosUrl = `${IBGE_API.AGREGADOS}/${input.tabela}/periodos`;
           const periodosKey = cacheKey(periodosUrl);
           periodos = await cachedFetch<Periodo[]>(periodosUrl, periodosKey, CACHE_TTL.STATIC);
         } catch {
@@ -187,6 +187,29 @@ export async function ibgeSidraMetadados(
           chaveCache: metadadosKey,
           pesquisa: `API de Agregados (metadados da Tabela ${input.tabela})`,
           dataset: input.tabela,
+          // Two endpoints, cached apart (the period list is shared with the
+          // empty-result diagnosis of ibge_sidra): each part with its own
+          // instant, the block at the oldest. A period list that failed or was
+          // not asked for is not in the response and drops out.
+          partes: [
+            {
+              fields: [
+                "codigo",
+                "nome",
+                "url",
+                "pesquisa",
+                "assunto",
+                "periodicidade",
+                "niveisTerritoriais",
+                "variaveis",
+              ],
+              url: metadadosUrl,
+              dataset: input.tabela,
+            },
+            ...(periodos.length > 0
+              ? [{ fields: ["periodos"], url: periodosUrl, dataset: input.tabela }]
+              : []),
+          ],
         }),
       };
     } catch (error) {

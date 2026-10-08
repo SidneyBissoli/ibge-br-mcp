@@ -144,8 +144,9 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
 
   // Buscar nome do município
   let nomeMunicipio = codigoMunicipio;
+  const localidadeUrl = `${IBGE_API.LOCALIDADES}/municipios/${codigoMunicipio}`;
+  let nomeDaFonte = false;
   try {
-    const localidadeUrl = `${IBGE_API.LOCALIDADES}/municipios/${codigoMunicipio}`;
     const localidadeKey = cacheKey(localidadeUrl);
     const localidade = await cachedFetchOne<{
       nome: string;
@@ -154,6 +155,7 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
     if (localidade?.nome) {
       const uf = localidade.microrregiao?.mesorregiao?.UF?.sigla || "";
       nomeMunicipio = `${localidade.nome}${uf ? ` (${uf})` : ""}`;
+      nomeDaFonte = true;
     }
   } catch {
     // Usar código como fallback
@@ -187,6 +189,7 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
   type BuscaPanorama = {
     indKey: string;
     indInfo: (typeof INDICADORES_PANORAMA)[string];
+    url: string;
     data: PesquisaResultado[] | null;
   };
 
@@ -204,15 +207,20 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
             CACHE_TTL.MEDIUM,
             RETRY_PRESETS.QUICK
           );
-          return { indKey, indInfo, data };
+          return { indKey, indInfo, url, data };
         } catch {
           // Indicador indisponível sai do painel; não leva os outros junto.
-          return { indKey, indInfo, data: null };
+          return { indKey, indInfo, url, data: null };
         }
       })
   );
 
-  for (const { indKey, indInfo, data } of respostas) {
+  // The indicators that actually produced a row of the panel — the only ones
+  // the provenance may point at (one that failed or came empty is not here).
+  const noPainel: BuscaPanorama[] = [];
+
+  for (const resposta of respostas) {
+    const { indKey, indInfo, data } = resposta;
     try {
       if (data && data.length > 0 && data[0].res && data[0].res.length > 0) {
         const resultado = data[0].res[0].res;
@@ -255,6 +263,7 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
               valor: valorFormatado,
               ano,
             });
+            noPainel.push(resposta);
             break;
           }
         }
@@ -264,15 +273,27 @@ async function panoramaMunicipio(codigoMunicipio: string): Promise<StructuredToo
     }
   }
 
-  // Provenance: keyed to the first/principal indicator fetch of the panorama
-  // (populacao) — the response merges several fetches of the same API.
-  const principal = INDICADORES_PANORAMA["populacao"];
-  const principalUrl = `${IBGE_API.PESQUISAS}/${principal.pesquisa}/indicadores/${principal.id}/resultados/${codigoMunicipio}`;
+  // Provenance: the panorama merges up to nine reads — the name (Localidades,
+  // cached 24 h) and one per indicator (Pesquisas, 1 h) — so each one that is
+  // IN the response is a part, and the block sits at the oldest (contract §3).
+  // The headline URL is the first indicator that made it to the panel
+  // (populacao when it did): until 5.8.0 it was always populacao, and when
+  // populacao failed the block named — and dated, from an older call's cache
+  // record — a datum the response did not carry. No `chaveCache` on purpose:
+  // with nothing read, the fallback is "now", never a stale record.
+  const principal = noPainel[0]?.url ?? respostas[0]?.url ?? localidadeUrl;
   const provenance = provenienciaIbge({
     fonte: "PESQUISAS",
-    url: principalUrl,
-    chaveCache: cacheKey(principalUrl),
+    url: principal,
     pesquisa: "Cidades@ — panorama municipal",
+    partes: [
+      ...noPainel.map((r) => ({
+        fields: [`indicadores[${r.indInfo.nome}]`],
+        url: r.url,
+        dataset: String(r.indInfo.id),
+      })),
+      ...(nomeDaFonte ? [{ fields: ["nome"], url: localidadeUrl }] : []),
+    ],
   });
 
   if (resultados.length === 0) {

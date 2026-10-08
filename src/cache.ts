@@ -2,6 +2,7 @@
  * Simple in-memory cache with TTL support for IBGE API requests
  */
 
+import { currentCall } from "@sbissoli/mcp-upstream/als";
 import { fetchJson, RecursoAusenteError, type RetryOptions } from "./retry.js";
 
 interface CacheEntry<T> {
@@ -169,6 +170,12 @@ export async function cachedFetch<T>(
   const cached = cache.get<T>(cacheKeyStr);
   if (cached !== null) {
     cache.recordHit(cacheKeyStr);
+    // The hit is part of what this call read: the collector keeps it, with the
+    // ORIGINAL extraction instant, so a response that merges several reads can
+    // report the oldest one (contract §3). `recordCache` stays out of
+    // `retrieval` — a cache hit is not a trip to the source.
+    const meta = cache.meta(cacheKeyStr);
+    if (meta) currentCall()?.recordCache(url, meta.retrievedAt);
     return cached;
   }
 
@@ -179,9 +186,24 @@ export async function cachedFetch<T>(
 
   // Store in cache
   cache.set(cacheKeyStr, data, ttlMinutes);
-  cache.recordFetch(cacheKeyStr, Date.now());
+  cache.recordFetch(cacheKeyStr, instanteDaIda(url));
 
   return data;
+}
+
+/**
+ * The instant the collector recorded for the trip that just brought `url` — the
+ * same number later hits replay through `recordCache`, so a fresh read and a
+ * cached read of the same extraction never disagree by the milliseconds between
+ * the collector's clock and this line. Outside a collector, now.
+ */
+function instanteDaIda(url: string): number {
+  const acessos = currentCall()?.accesses() ?? [];
+  for (let i = acessos.length - 1; i >= 0; i--) {
+    const a = acessos[i];
+    if (a.url === url && !a.fromCache) return a.retrievedAt.getTime();
+  }
+  return Date.now();
 }
 
 /**

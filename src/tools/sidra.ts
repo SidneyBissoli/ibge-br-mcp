@@ -236,13 +236,31 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
         const motivo = await porQueVazio(input.tabela, input.periodos ?? "last");
         return {
           markdown:
-            motivo ??
+            motivo?.texto ??
             ValidationErrors.emptyResult(
               "ibge_sidra",
               "Verifique se a tabela e parâmetros estão corretos. Use ibge_sidra_metadados para consultar os níveis e períodos disponíveis."
             ),
           structured: emptyStructured(input.tabela, semDados.colunas),
-          provenance: proveniencia(),
+          // The explanation quotes the table's period list — a second read,
+          // cached 24 h against the data's 15 min: both are parts.
+          provenance: motivo
+            ? provenienciaIbge({
+                fonte: "SIDRA",
+                url,
+                chaveCache: key,
+                pesquisa,
+                dataset: input.tabela,
+                partes: [
+                  {
+                    fields: ["colunas", "registros", "totalRegistros"],
+                    url,
+                    dataset: input.tabela,
+                  },
+                  { fields: ["periodos_disponiveis"], url: motivo.url, dataset: input.tabela },
+                ],
+              })
+            : proveniencia(),
         };
       }
 
@@ -297,7 +315,10 @@ interface SidraRecord {
  * se cala em vez de chutar. Palavras do SIDRA (`last`, `all`, `last 4`) também
  * não são julgadas aqui.
  */
-async function porQueVazio(tabela: string, periodosPedidos: string): Promise<string | undefined> {
+async function porQueVazio(
+  tabela: string,
+  periodosPedidos: string
+): Promise<{ texto: string; url: string } | undefined> {
   const anos = periodosPedidos
     .split(",")
     .map((p) => p.trim())
@@ -305,8 +326,8 @@ async function porQueVazio(tabela: string, periodosPedidos: string): Promise<str
   if (anos.length === 0) return undefined;
 
   let disponiveis: string[];
+  const url = `${IBGE_API.AGREGADOS}/${tabela}/periodos`;
   try {
-    const url = `${IBGE_API.AGREGADOS}/${tabela}/periodos`;
     const periodos = await cachedFetch<Array<{ id?: string }>>(
       url,
       cacheKey(url),
@@ -323,13 +344,13 @@ async function porQueVazio(tabela: string, periodosPedidos: string): Promise<str
   if (faltando.length === 0 || faltando.length < anos.length) return undefined;
 
   const plural = faltando.length > 1;
-  return (
+  const texto =
     `A tabela ${tabela} não publica ${plural ? "os períodos" : "o período"} ` +
     `${faltando.join(", ")} — por isso a consulta veio vazia.\n\n` +
     `Períodos que ela tem: ${emFaixas(disponiveis)}.\n\n` +
     `Séries do IBGE costumam pular anos de Censo e de Contagem; ` +
-    `use ibge_sidra_metadados (incluir_periodos) para ver a lista completa de outra tabela.`
-  );
+    `use ibge_sidra_metadados (incluir_periodos) para ver a lista completa de outra tabela.`;
+  return { texto, url };
 }
 
 /** "2001, 2002, 2003, 2005" → "2001-2003, 2005" — lista longa cabe numa linha. */

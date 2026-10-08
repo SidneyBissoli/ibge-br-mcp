@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.8.1] - 2026-10-08
+
+O `retrieved_at` de uma resposta que junta leituras de idades diferentes passa a ser o da
+leitura MAIS ANTIGA (contrato de proveniência, §3). Até a 5.8.0 cada tool datava o bloco por
+UMA chave de cache — a da leitura "principal" —, e uma resposta com uma parte em cache desde
+ontem e outra buscada agora saía dizendo "extraído agora". Medido em 08/10/2026 com relógio e
+fetch simulados: 2 h no `ibge_comparar` e no panorama do `ibge_cidades`, 20 h no
+`ibge_sidra_metadados`, 25 h no `search`. A nota da 5.8.0 ("nenhuma tool do IBGE junta
+sub-fontes") estava errada: sete juntam. Nenhuma tool, resource ou prompt muda no
+`tools/list` (byte-idêntico a `baselines/surface-stdio-5.8.0.json`); muda o bloco de
+proveniência dessas respostas.
+
+### Fixed
+
+- **`provenienciaIbge` aceita as partes da resposta** (`partes`): cada uma com os campos do
+  payload que produziu e a sua URL. O instante e o `served_from_cache` de cada parte vêm do
+  que ESTA chamada leu (o coletor de rede do `@sbissoli/mcp-upstream`, que agora também
+  registra os acertos de cache do `cachedFetch` com o instante da extração original — sem
+  contar como ida à origem no `retrieval`). O topo é o mais antigo entre as partes;
+  `served_from_cache` é `true` só se todas vieram do cache; `field_sources` sai no fio com
+  uma entrada por parte. Parte que a chamada não leu não está na resposta e não entra.
+- Passam as partes: `ibge_comparar` (valores do SIDRA + nome de cada localidade),
+  `ibge_cidades` panorama (nome + cada indicador que entrou no painel), `ibge_sidra_metadados`
+  (metadados + lista de períodos), `ibge_sidra` no ramo vazio (dados + a lista de períodos
+  que explica o vazio), `ibge_paises` detalhes (cadastro do país + indicadores),
+  `ibge_vizinhos` (lista da UF + nome do município + população de cada vizinho, com
+  `incluir_dados`) e o `fetch` de município (hierarquia + população).
+- **Panorama do `ibge_cidades` sem população:** a proveniência apontava para o indicador de
+  população mesmo quando ele falhou e não estava na resposta, e o datava por um registro de
+  cache de uma chamada antiga. Agora aponta para o primeiro indicador que entrou no painel.
+- **`search`:** o índice vive 24 h a partir de quando é montado, mais do que o cache das
+  leituras que o montam; reler o registro de cache de `/agregados` na hora da busca datava o
+  índice por quem buscou essa chave por último (o `ibge_sidra_tabelas` a compartilha). O
+  índice agora guarda o instante das extrações que o montaram.
+
 ## [5.8.0] - 2026-10-08
 
 Contrato de proveniência 1.2 no fio e 1.3 declarado no esquema (`@sbissoli/mcp-provenance`
