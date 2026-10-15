@@ -55,11 +55,13 @@ export const provenanceContext = createProvenanceContext({
   locale: "pt-BR",
   timezone: { offset: "-03:00", label: "horário de Brasília" },
   defaultMode: "concise",
-  // 1.2: `field_sources` goes out on responses that merge sub-sources — since
-  // 5.8.1 the tools that read several endpoints in one answer pass them as
-  // `partes` (see `provenienciaIbge`). The 1.3 keys are already declared by the
-  // schema; emitting them is the next step.
-  contractVersion: "1.2",
+  // 1.3 since 5.8.2 (the imported schema accepted it since 5.8.0, 08/10/2026):
+  // the concise block carries `revision` always (from `FONTES_IBGE[*].revision`)
+  // and `derived` + `derivation_note` when the server computed (statistics
+  // modes, `ibge_comparar`) — absent, not empty, otherwise. No IBGE source has
+  // notices. From 1.2, `field_sources` still goes out on responses that merge
+  // sub-sources (`partes`, see `provenienciaIbge`).
+  contractVersion: "1.3",
 });
 
 /** Canonical envelope (post-validation); its `contract_version` is `provenanceContext.contractVersion`. */

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.8.2] - 2026-10-15
+
+Tempo 2 do contrato de proveniência 1.3: o que a 5.8.0 passou a ACEITAR no esquema passa a
+SAIR nas respostas, sete dias depois, como manda o rollout em dois tempos. Nenhuma tool,
+resource ou prompt muda no `tools/list` (trava de superfície idêntica); muda o bloco de
+proveniência e, onde o servidor calcula, o rodapé.
+
+### Changed
+
+- **O servidor emite o contrato 1.3** (`contractVersion: "1.3"`). O bloco `concise` leva
+  `revision` em toda resposta (`current` em todas as fontes do IBGE; as do SIDRA e da API de
+  Agregados com a nota de que o IBGE revisa números já divulgados e a API não guarda a versão
+  anterior) e `derived` + `derivation_note` quando o servidor calculou: os modos de
+  estatística (`estatisticas`/`agruparPor`/`topN`) de `ibge_sidra`, `ibge_censo`,
+  `ibge_indicadores` e `ibge_datasaude`, e o `ibge_comparar`. Nessas respostas o rodapé ganha
+  a linha "Valores calculados pelo servidor a partir dos dados da fonte: …". Sem cálculo, as
+  chaves ficam ausentes, não vazias. Nenhuma fonte do IBGE tem aviso próprio, então `notices`
+  não aparece. O `field_sources` (1.2) segue saindo nas respostas que juntam leituras.
+- O que cada número mede (variação no mês, acumulado no ano, acumulado em 12 meses, índice ou
+  nível) já vem na coluna `Variável` de cada registro do SIDRA, dita pelas instruções do
+  servidor; o contrato 1.3 não precisou de campo novo para isso.
+
 ## [5.8.1] - 2026-10-08
 
 O `retrieved_at` de uma resposta que junta leituras de idades diferentes passa a ser o da

@@ -287,7 +287,8 @@ describe("toMcpResult with provenance (three channels)", () => {
       "A referência completa desta informação pode ser solicitada nesta própria conversa."
     );
 
-    // Channel 1: concise projection (7 keys, v1.1) + attribution, visible to the model.
+    // Channel 1: concise projection (7 keys of v1.1 + `revision` of v1.3; no
+    // notice, no derivation → those keys stay absent) + attribution.
     const sc = result.structuredContent as Record<string, unknown>;
     expect(sc.total).toBe(27);
     expect(Object.keys(sc.provenance as object)).toEqual([
@@ -298,6 +299,7 @@ describe("toMcpResult with provenance (three channels)", () => {
       "retrieval",
       "citation",
       "license",
+      "revision",
     ]);
     expect(sc.attribution).toEqual([URL_EXEMPLO]);
 

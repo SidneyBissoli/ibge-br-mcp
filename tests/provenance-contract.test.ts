@@ -1,10 +1,11 @@
 /**
- * Contract 1.2 on the wire, 1.3 in the schema (08/10/2026): the context emits
- * 1.2 (`field_sources` when a response merges sub-sources), the builders already
- * inform `revision` (dropped by the lib until the context emits 1.3), and the
- * schema `tools/list` publishes accepts a complete 1.3 block — so turning 1.3 on
- * later changes no schema. Tested against the SERVED schema, the client's view,
- * not only against the zod object.
+ * Contract 1.3 on the wire since 5.8.2 (15/10/2026; accepted by the schema since
+ * 5.8.0): the concise block carries `revision` always, `derived` +
+ * `derivation_note` when the server computed, and still `field_sources` (1.2)
+ * when a response merges sub-sources. The schema `tools/list` publishes did not
+ * change to turn it on. Tested against the SERVED schema, the client's view,
+ * not only against the zod object; the per-tool wire cases are in
+ * `provenance-wiring.test.ts`.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Client } from "@modelcontextprotocol/client";
@@ -14,6 +15,7 @@ import { ProvenanceContractError, renderConcise } from "@sbissoli/mcp-provenance
 import {
   FONTES_IBGE,
   IBGE_LICENSE,
+  NOTA_DERIVACAO_ESTATISTICAS,
   NOTA_REVISAO_SIDRA,
   provenanceContext,
   provenienciaIbge,
@@ -23,14 +25,14 @@ import { createServer, SERVER_INSTRUCTIONS } from "../src/server.js";
 const URL_SIDRA = "https://apisidra.ibge.gov.br/values/t/6579/n1/all/v/all/p/last";
 
 describe("contract version", () => {
-  it("the server emits contract 1.2", () => {
-    expect(provenanceContext.contractVersion).toBe("1.2");
+  it("the server emits contract 1.3", () => {
+    expect(provenanceContext.contractVersion).toBe("1.3");
     const p = provenienciaIbge({
       fonte: "LOCALIDADES",
       url: "https://x",
       pesquisa: "API de Localidades",
     });
-    expect(p.contract_version).toBe("1.2");
+    expect(p.contract_version).toBe("1.3");
   });
 });
 
@@ -58,7 +60,7 @@ describe("revision — informed by the builder (owner's decision: `current` for 
     expect(loc.revision).toEqual({ status: "current", note: null });
   });
 
-  it("does not reach the wire while the server emits 1.2 (same concise keys as before)", () => {
+  it("reaches the wire under 1.3: the common case gains only `revision`", () => {
     const concise = renderConcise(
       provenienciaIbge({ fonte: "SIDRA", url: URL_SIDRA, pesquisa: "SIDRA, Tabela 6579" })
     );
@@ -70,7 +72,28 @@ describe("revision — informed by the builder (owner's decision: `current` for 
       "retrieval",
       "citation",
       "license",
+      "revision",
     ]);
+    expect(concise.revision).toEqual({ status: "current", note: NOTA_REVISAO_SIDRA });
+  });
+
+  it("a derived block carries derived + derivation_note; a raw one carries neither", () => {
+    const derivado = renderConcise(
+      provenienciaIbge({
+        fonte: "SIDRA",
+        url: URL_SIDRA,
+        pesquisa: "SIDRA, Tabela 6579",
+        derivado: { nota: NOTA_DERIVACAO_ESTATISTICAS },
+      })
+    );
+    expect(derivado.derived).toBe(true);
+    expect(derivado.derivation_note).toBe(NOTA_DERIVACAO_ESTATISTICAS);
+    const bruto = renderConcise(
+      provenienciaIbge({ fonte: "SIDRA", url: URL_SIDRA, pesquisa: "SIDRA, Tabela 6579" })
+    );
+    expect(bruto).not.toHaveProperty("derived");
+    expect(bruto).not.toHaveProperty("derivation_note");
+    expect(bruto).not.toHaveProperty("notices");
   });
 
   it("the note is the sentence the server instructions already publish, not a new claim", () => {
@@ -79,7 +102,7 @@ describe("revision — informed by the builder (owner's decision: `current` for 
   });
 });
 
-describe("field_sources under 1.2 (no IBGE tool merges sub-sources yet; the rule is armed)", () => {
+describe("field_sources (from 1.2, still emitted under 1.3)", () => {
   const base = {
     source: {
       name: FONTES_IBGE.SIDRA.name,
