@@ -62,7 +62,12 @@ import { createServer } from "../src/server.js";
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { cache } from "../src/cache.js";
-import type { StructuredToolResult } from "../src/structured.js";
+import { toMcpResult, type StructuredToolResult } from "../src/structured.js";
+import {
+  NOTA_DERIVACAO_ESTATISTICAS,
+  NOTA_REVISAO_SIDRA,
+  provenanceContext,
+} from "../src/provenance.js";
 import { mockResponse, sidraResponse } from "./helpers.js";
 
 const mockFetch = vi.fn();
@@ -519,5 +524,80 @@ describe("proveniência — caminho derivado (ibge_sidra com estatísticas D2)",
 
     expect(result.isError).toBeFalsy();
     expect(result.provenance?.derived).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Contrato 1.3 no fio: o que o concise e o rodapé passam a dizer
+// ---------------------------------------------------------------------------
+
+describe("contrato 1.3 no fio — revision sempre; derived só quando o servidor calculou", () => {
+  const LINHA_CALCULO = "Valores calculados pelo servidor a partir dos dados da fonte:";
+
+  beforeEach(() => {
+    cache.clear();
+    mockFetch.mockReset();
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function fio(result: StructuredToolResult) {
+    const mcp = toMcpResult(result);
+    const bloco = (mcp.structuredContent as { provenance: Record<string, unknown> }).provenance;
+    const rodape = (mcp.content.at(-1) as { text: string }).text;
+    return { bloco, rodape };
+  }
+
+  it("o servidor emite a 1.3", () => {
+    expect(provenanceContext.contractVersion).toBe("1.3");
+  });
+
+  it("caso comum (ibge_sidra sem estatísticas): só `revision` é nova; nada de notices nem derived", async () => {
+    mockFetch.mockResolvedValue(mockResponse(sidraPop));
+    const { bloco, rodape } = fio(
+      await ibgeSidra(sidraSchema.parse({ tabela: "6579", nivel_territorial: "3" }))
+    );
+    expect(bloco.revision).toEqual({ status: "current", note: NOTA_REVISAO_SIDRA });
+    expect(bloco).not.toHaveProperty("notices");
+    expect(bloco).not.toHaveProperty("derived");
+    expect(bloco).not.toHaveProperty("derivation_note");
+    expect(rodape).not.toContain(LINHA_CALCULO);
+  });
+
+  it("modo de estatística: derived + derivation_note no bloco e a linha de cálculo no rodapé", async () => {
+    mockFetch.mockResolvedValue(mockResponse(sidraPop));
+    const { bloco, rodape } = fio(
+      await ibgeSidra(
+        sidraSchema.parse({ tabela: "6579", nivel_territorial: "3", estatisticas: true })
+      )
+    );
+    expect(bloco.derived).toBe(true);
+    expect(bloco.derivation_note).toBe(NOTA_DERIVACAO_ESTATISTICAS);
+    expect(bloco.revision).toEqual({ status: "current", note: NOTA_REVISAO_SIDRA });
+    expect(rodape).toContain(LINHA_CALCULO);
+  });
+
+  it("ibge_comparar: derived + derivation_note e a linha de cálculo no rodapé", async () => {
+    mockFetch
+      .mockResolvedValueOnce(mockResponse(sidraComparar))
+      .mockResolvedValueOnce(mockResponse({ nome: "São Paulo" }))
+      .mockResolvedValueOnce(mockResponse({ nome: "Rio de Janeiro" }));
+    const { bloco, rodape } = fio(
+      await ibgeComparar(compararSchema.parse({ localidades: "3550308,3304557" }))
+    );
+    expect(bloco.derived).toBe(true);
+    expect(String(bloco.derivation_note)).toMatch(/computados pelo servidor/);
+    expect(bloco).toHaveProperty("revision");
+    expect(bloco).not.toHaveProperty("notices");
+    expect(rodape).toContain(LINHA_CALCULO);
+  });
+
+  it("fonte sem nota de revisão (Localidades): revision com note null", async () => {
+    mockFetch.mockResolvedValue(mockResponse([estadoSP]));
+    const { bloco } = fio(await ibgeEstados(estadosSchema.parse({})));
+    expect(bloco.revision).toEqual({ status: "current", note: null });
   });
 });
