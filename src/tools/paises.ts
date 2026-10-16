@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IBGE_API, Pais, PaisIndicadorResultado } from "../types.js";
+import { IBGE_API, Pais, PaisIndicador, PaisIndicadorResultado } from "../types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "../cache.js";
 import { withMetrics } from "../metrics.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
@@ -25,7 +25,11 @@ export const paisesSchema = z.object({
   indicadores: z
     .string()
     .optional()
-    .describe("IDs dos indicadores separados por | (ex: 77819|77820)"),
+    .describe(
+      "Indicadores a trazer no modo detalhes, separados por | — IDs ou apelidos " +
+        "(ex: 77819|77820 ou idh|populacao). Lista completa: tipo='indicadores'. " +
+        "Sem este parâmetro: população, PIB, PIB per capita, IDH e esperança de vida"
+    ),
   regiao: z
     .string()
     .optional()
@@ -81,13 +85,41 @@ export const paisesOutputSchema = z.object({
       indicadores: z
         .array(
           z.object({
-            indicador: z.string().describe("Nome do indicador"),
-            valor: z.string().describe("Valor mais recente do indicador"),
-            ano: z.string().describe("Ano de referência do valor"),
+            id: z.number().describe("ID do indicador na API do IBGE"),
+            indicador: z.string().describe("Nome do indicador, como a fonte o publica"),
+            valor: z
+              .string()
+              .describe(
+                "Valor mais recente publicado, como texto da fonte (pode ser não numérico, ex.: '<2.5')"
+              ),
+            ano: z.string().describe("Ano ou período (ex.: '2021-2023') do valor"),
+            unidade: z
+              .string()
+              .nullable()
+              .describe("Unidade do valor (ex.: 'US$', '% do PIB'); null se a fonte não informa"),
+            multiplicador: z
+              .number()
+              .nullable()
+              .describe(
+                "Escala do valor (ex.: 1000000000 = valor em bilhões da unidade); " +
+                  "null se a fonte não informa"
+              ),
           })
         )
         .optional()
-        .describe("Indicadores principais com o valor mais recente disponível"),
+        .describe("Indicadores pedidos, cada um com o valor mais recente publicado"),
+      indicadoresSemValor: z
+        .array(
+          z.object({
+            id: z.number().describe("ID do indicador na API do IBGE"),
+            indicador: z.string().describe("Nome do indicador, como a fonte o publica"),
+          })
+        )
+        .optional()
+        .describe(
+          "Indicadores pedidos para os quais a fonte não publica valor algum para o país " +
+            "(série inteira em branco) — ausência na fonte, não zero"
+        ),
     })
     .optional()
     .describe("Detalhes de um país específico (modo detalhes)"),
@@ -97,12 +129,25 @@ export const paisesOutputSchema = z.object({
     .array(
       z.object({
         id: z.number().describe("ID do indicador na API do IBGE"),
-        nome: z.string().describe("Nome do indicador"),
-        alias: z.string().describe("Apelido amigável do indicador"),
+        nome: z.string().describe("Nome do indicador, como a fonte o publica"),
+        alias: z
+          .string()
+          .describe(
+            "O que passar no parâmetro `indicadores`: o apelido (ex.: 'idh'), ou o próprio ID " +
+              "quando o indicador não tem apelido"
+          ),
+        unidade: z
+          .string()
+          .nullable()
+          .describe("Unidade do indicador; null se a fonte não informa"),
+        multiplicador: z
+          .number()
+          .nullable()
+          .describe("Escala dos valores; null se a fonte não informa"),
       })
     )
     .optional()
-    .describe("Indicadores disponíveis para consulta de países (modo indicadores)"),
+    .describe("Catálogo de indicadores de países publicado pelo IBGE (modo indicadores)"),
 });
 
 // Mapeamento de regiões M49
@@ -114,17 +159,76 @@ const REGIOES_M49: Record<string, number> = {
   oceania: 9,
 };
 
-// Indicadores comuns de países
-const INDICADORES_PAISES: Record<string, { id: number; nome: string }> = {
-  populacao: { id: 77827, nome: "População total" },
-  area: { id: 77819, nome: "Área territorial" },
-  densidade: { id: 77828, nome: "Densidade demográfica" },
-  pib: { id: 77821, nome: "PIB" },
-  pib_per_capita: { id: 77823, nome: "PIB per capita" },
-  idh: { id: 77830, nome: "IDH" },
-  expectativa_vida: { id: 77831, nome: "Expectativa de vida" },
-  mortalidade_infantil: { id: 77832, nome: "Mortalidade infantil" },
+/**
+ * Aliases accepted in `indicadores`. Only the id is written by hand: names,
+ * units and scale come from the source (`/paises/indicadores/`). Each id is
+ * checked against the published catalog in tests/paises.tool.test.ts — until
+ * 5.9.0 this map carried hand-written labels on the wrong ids (77827 "População
+ * total" is the GDP) and two ids the API does not have.
+ */
+export const ALIASES_INDICADORES_PAISES: Record<string, number> = {
+  populacao: 77849,
+  densidade: 77844,
+  pib: 77827,
+  pib_per_capita: 77823,
+  idh: 77831,
+  expectativa_vida: 77830,
 };
+
+/** What `detalhes` brings when `indicadores` is not given. */
+const INDICADORES_PADRAO = ["populacao", "pib", "pib_per_capita", "idh", "expectativa_vida"].map(
+  (alias) => ALIASES_INDICADORES_PAISES[alias]
+);
+
+const URL_CATALOGO_INDICADORES = `${IBGE_API.PAISES}/indicadores/`;
+
+/** Fields of `pais` read from the indicators endpoint (a provenance part of its own). */
+const CAMPOS_DOS_INDICADORES = ["indicadores", "indicadoresSemValor"];
+
+/** Ids and/or aliases separated by `|` (or comma) → ids; unknown alias → its name. */
+function resolverIndicadores(texto: string): { ids: number[] } | { desconhecido: string } {
+  const ids: number[] = [];
+  for (const parte of texto
+    .split(/[|,]/)
+    .map((p) => p.trim())
+    .filter(Boolean)) {
+    const id = /^\d+$/.test(parte)
+      ? Number(parte)
+      : ALIASES_INDICADORES_PAISES[parte.toLowerCase()];
+    if (id === undefined) return { desconhecido: parte };
+    if (!ids.includes(id)) ids.push(id);
+  }
+  return { ids };
+}
+
+/**
+ * Latest published point of a series: the last item, in the source's own
+ * (chronological) order, whose value is not null — skipping the {"-": null}
+ * opener. A 5-year range ("2021-2023") is a valid period.
+ */
+function ultimoValor(
+  serie: Array<Record<string, string | null>>
+): { ano: string; valor: string } | null {
+  for (let i = serie.length - 1; i >= 0; i--) {
+    const [ano, valor] = Object.entries(serie[i] ?? {})[0] ?? [];
+    if (ano !== undefined && ano !== "-" && valor !== null && valor !== undefined && valor !== "") {
+      return { ano, valor: String(valor) };
+    }
+  }
+  return null;
+}
+
+/** "8509360,850" (decimal comma, the country record's format) → 8509360.85. */
+function numeroDaFonte(texto: string): number {
+  return parseFloat(texto.includes(",") ? texto.replace(/\./g, "").replace(",", ".") : texto);
+}
+
+function unidadeLegivel(unidade: string | null, multiplicador: number | null): string {
+  if (!unidade) return "";
+  return multiplicador !== null && multiplicador !== 1
+    ? `${unidade} (multiplicador ${formatNumber(multiplicador)})`
+    : unidade;
+}
 
 /**
  * Consulta dados de países via IBGE API
@@ -145,9 +249,23 @@ export async function ibgePaises(input: PaisesInput): Promise<StructuredToolResu
               )
             );
           }
-          return await detalhesPais(input.pais);
+          {
+            const pedidos = input.indicadores ? resolverIndicadores(input.indicadores) : null;
+            if (pedidos && "desconhecido" in pedidos) {
+              return erroContrato(
+                ValidationErrors.invalidCode(
+                  pedidos.desconhecido,
+                  "ibge_paises",
+                  `Indicador "${pedidos.desconhecido}" desconhecido: use IDs numéricos ou os ` +
+                    `apelidos ${Object.keys(ALIASES_INDICADORES_PAISES).join(", ")} ` +
+                    "(lista completa: ibge_paises tipo='indicadores')"
+                )
+              );
+            }
+            return await detalhesPais(input.pais, pedidos?.ids);
+          }
         case "indicadores":
-          return listarIndicadores();
+          return await listarIndicadores();
         case "buscar":
           if (!input.busca) {
             // Falta parâmetro: é `contrato`, embora o texto (de sempre) diga
@@ -249,7 +367,10 @@ async function listarPaises(busca?: string, regiao?: string): Promise<Structured
   };
 }
 
-async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
+async function detalhesPais(
+  codigoPais: string,
+  idsPedidos?: number[]
+): Promise<StructuredToolResult> {
   const url = `${IBGE_API.PAISES}/${codigoPais.toUpperCase()}`;
   const key = cacheKey(url);
 
@@ -300,8 +421,9 @@ async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
 
   if (pais.area?.total) {
     output += "### Área\n\n";
-    output += `- **Área total:** ${formatNumber(parseFloat(pais.area.total))} km²\n\n`;
-    detalhes.areaTotalKm2 = parseFloat(pais.area.total);
+    const area = numeroDaFonte(pais.area.total);
+    output += `- **Área total:** ${formatNumber(area)} km²\n\n`;
+    detalhes.areaTotalKm2 = area;
   }
 
   if (pais.linguas && pais.linguas.length > 0) {
@@ -331,8 +453,9 @@ async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
     detalhes.historico = pais.historico;
   }
 
-  // Tentar buscar indicadores principais
-  const indicadoresUrl = `${IBGE_API.PAISES}/${codigoPais.toUpperCase()}/indicadores/77827|77821|77823|77830`;
+  // Indicadores: os pedidos em `indicadores`, ou os principais
+  const ids = idsPedidos ?? INDICADORES_PADRAO;
+  const indicadoresUrl = `${IBGE_API.PAISES}/${codigoPais.toUpperCase()}/indicadores/${ids.join("|")}`;
   try {
     const indicadoresKey = cacheKey(indicadoresUrl);
     const indicadores = await cachedFetch<PaisIndicadorResultado[]>(
@@ -343,30 +466,50 @@ async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
 
     if (indicadores && indicadores.length > 0) {
       output += "### Indicadores\n\n";
-      const indicadoresEstruturados: Array<{ indicador: string; valor: string; ano: string }> = [];
-      for (const ind of indicadores) {
-        if (ind.series && ind.series.length > 0) {
-          const serie = ind.series[0].serie;
-          const anos = Object.keys(serie).sort().reverse();
-          const ultimoAno = anos[0];
-          const valor = serie[ultimoAno];
-          if (valor !== null && valor !== undefined && valor !== "-") {
-            output += `- **${ind.indicador}:** ${valor} (${ultimoAno})\n`;
-            indicadoresEstruturados.push({
-              indicador: ind.indicador,
-              valor: String(valor),
-              ano: ultimoAno,
-            });
-          }
+      const porId = new Map(indicadores.map((ind) => [ind.id, ind] as const));
+      const indicadoresEstruturados = [];
+      const semValor: Array<{ id: number; indicador: string }> = [];
+      const semResposta: number[] = [];
+      // In the order asked for; the source answers sorted by id.
+      for (const id of ids) {
+        const ind = porId.get(id);
+        if (!ind) {
+          semResposta.push(id);
+          continue;
         }
+        const ponto = ultimoValor(ind.series?.[0]?.serie ?? []);
+        if (!ponto) {
+          output += `- **${ind.indicador}:** sem valor publicado para o país\n`;
+          semValor.push({ id: ind.id, indicador: ind.indicador });
+          continue;
+        }
+        const unidade = ind.unidade?.id ?? null;
+        const multiplicador = ind.unidade?.multiplicador ?? null;
+        output += `- **${ind.indicador}:** ${[ponto.valor, unidadeLegivel(unidade, multiplicador)].filter(Boolean).join(" ")} (${ponto.ano})\n`;
+        indicadoresEstruturados.push({
+          id: ind.id,
+          indicador: ind.indicador,
+          valor: ponto.valor,
+          ano: ponto.ano,
+          unidade,
+          multiplicador,
+        });
+      }
+      if (semResposta.length > 0) {
+        output += `\n_A fonte não respondeu pelos IDs ${semResposta.join(", ")} — confira em ibge_paises tipo='indicadores'._\n`;
       }
       output += "\n";
       if (indicadoresEstruturados.length > 0) {
         detalhes.indicadores = indicadoresEstruturados;
       }
+      if (semValor.length > 0) {
+        detalhes.indicadoresSemValor = semValor;
+      }
     }
-  } catch {
-    // Ignorar erro ao buscar indicadores
+  } catch (error) {
+    // The main indicators are an extra: the country record stands without
+    // them. Indicators the caller asked for are the answer — fail loudly.
+    if (idsPedidos) throw error;
   }
 
   output += "### Ferramentas Relacionadas\n\n";
@@ -387,37 +530,64 @@ async function detalhesPais(codigoPais: string): Promise<StructuredToolResult> {
       partes: [
         {
           fields: Object.keys(detalhes)
-            .filter((k) => k !== "indicadores")
+            .filter((k) => !CAMPOS_DOS_INDICADORES.includes(k))
             .map((k) => `pais.${k}`),
           url,
         },
-        ...(detalhes.indicadores !== undefined
-          ? [{ fields: ["pais.indicadores"], url: indicadoresUrl }]
+        ...(CAMPOS_DOS_INDICADORES.some((k) => detalhes[k] !== undefined)
+          ? [
+              {
+                fields: CAMPOS_DOS_INDICADORES.filter((k) => detalhes[k] !== undefined).map(
+                  (k) => `pais.${k}`
+                ),
+                url: indicadoresUrl,
+              },
+            ]
           : []),
       ],
     }),
   };
 }
 
-function listarIndicadores(): StructuredToolResult {
-  let output = "## Indicadores de Países Disponíveis\n\n";
-  output += "Os seguintes indicadores podem ser consultados para qualquer país:\n\n";
+async function listarIndicadores(): Promise<StructuredToolResult> {
+  const url = URL_CATALOGO_INDICADORES;
+  const key = cacheKey(url);
+  const catalogo = await cachedFetch<PaisIndicador[]>(url, key, CACHE_TTL.STATIC);
 
-  const indicadoresEstruturados = Object.entries(INDICADORES_PAISES).map(([key, info]) => ({
-    id: info.id,
-    nome: info.nome,
-    alias: key,
+  if (!catalogo || catalogo.length === 0) {
+    return erroFonte(ValidationErrors.emptyResult("ibge_paises"));
+  }
+
+  const aliasPorId = new Map(
+    Object.entries(ALIASES_INDICADORES_PAISES).map(([alias, id]) => [id, alias] as const)
+  );
+  const indicadoresEstruturados = catalogo.map((ind) => ({
+    id: ind.id,
+    nome: ind.indicador,
+    alias: aliasPorId.get(ind.id) ?? String(ind.id),
+    unidade: ind.unidade?.id ?? null,
+    multiplicador: ind.unidade?.multiplicador ?? null,
   }));
 
-  const rows = indicadoresEstruturados.map((info) => [String(info.id), info.nome, info.alias]);
+  let output = "## Indicadores de Países Disponíveis\n\n";
+  output += `Catálogo publicado pelo IBGE: ${catalogo.length} indicadores, consultáveis para qualquer país `;
+  output += "com `tipo='detalhes'` e o parâmetro `indicadores` (IDs ou apelidos).\n\n";
 
-  output += createMarkdownTable(["ID", "Indicador", "Alias"], rows, {
-    alignment: ["center", "left", "left"],
+  const rows = indicadoresEstruturados.map((info) => [
+    String(info.id),
+    info.nome,
+    unidadeLegivel(info.unidade, info.multiplicador) || "-",
+    aliasPorId.get(info.id) ?? "-",
+  ]);
+
+  output += createMarkdownTable(["ID", "Indicador", "Unidade", "Apelido"], rows, {
+    alignment: ["center", "left", "left", "left"],
   });
 
   output += "\n### Exemplo de Uso\n\n";
   output += "```\n";
   output += 'ibge_paises tipo="detalhes" pais="BR"\n';
+  output += 'ibge_paises tipo="detalhes" pais="AR" indicadores="idh|77852"\n';
   output += 'ibge_paises tipo="listar" regiao="americas"\n';
   output += 'ibge_paises tipo="buscar" busca="Argentina"\n';
   output += "```\n";
@@ -427,8 +597,9 @@ function listarIndicadores(): StructuredToolResult {
     structured: { tipo: "indicadores", indicadores: indicadoresEstruturados },
     provenance: provenienciaIbge({
       fonte: "PAISES",
-      url: IBGE_API.PAISES,
-      pesquisa: "catálogo de indicadores de países mantido pelo servidor",
+      url,
+      chaveCache: key,
+      pesquisa: "API de Países — catálogo de indicadores",
     }),
   };
 }

@@ -228,10 +228,11 @@ export interface Pais {
     "abreviado-ES"?: string;
   };
   area?: {
+    /** Decimal comma, e.g. "8509360,850". */
     total?: string;
     unidade?: {
-      id: string;
-      classe: string;
+      nome: string;
+      símbolo: string;
       multiplicador: number;
     };
   };
@@ -262,9 +263,20 @@ export interface PaisIndicador {
 export interface PaisIndicadorResultado {
   id: number;
   indicador: string;
+  /** Absent for some indicators (the HDI, 77831). */
+  unidade?: {
+    id: string;
+    classe: string;
+    multiplicador: number;
+  };
   series: Array<{
-    pais: string;
-    serie: Record<string, string | number>;
+    pais: { id: string; nome: string };
+    /**
+     * A LIST of one-key objects, chronological, opened by {"-": null}, with
+     * 5-year ranges ("1990-1995") interleaved and nulls where nothing was
+     * published. Values are text and may be non-numeric ("<2.5").
+     */
+    serie: Array<Record<string, string | null>>;
   }>;
 }
 

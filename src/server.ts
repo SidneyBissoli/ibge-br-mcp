@@ -988,9 +988,17 @@ Behavior: read-only and idempotent — a live GET against the public IBGE SIDRA 
 
 Features:
 - List all countries (following UN M49 methodology)
-- Country details (area, languages, currency, location)
+- Country details (area, languages, currency, location) with the latest published value of
+  country indicators — by default population, GDP, GDP per capita, HDI and life expectancy
+- Pick other indicators with indicadores="<ids or aliases separated by |>"
+- Indicator catalog as published by IBGE (34 indicators: economy, population, health,
+  environment, networks), with unit and scale
 - Search countries by name
 - Filter by region/continent
+
+Each indicator value is the most recent one the source publishes for that country, with its year
+or period (some are 3- or 5-year ranges like "2021-2023"), as text (it can be "<2.5"), plus unit
+and scale (multiplicador) — null when the source has none.
 
 Available regions: americas, europa, africa, asia, oceania
 
@@ -999,9 +1007,10 @@ Country codes: Use ISO-ALPHA-2 (e.g., BR, US, AR, PT, JP)
 Examples:
 - List all: tipo="listar"
 - Brazil details: tipo="detalhes", pais="BR"
+- Chosen indicators: tipo="detalhes", pais="AR", indicadores="idh|77852"
 - Search: tipo="buscar", busca="Argentina"
 - Americas countries: tipo="listar", regiao="americas"
-- Available indicators: tipo="indicadores"
+- Indicator catalog: tipo="indicadores"
 
 Behavior: read-only and idempotent — a live GET against the public IBGE Países API. Returns Markdown.`,
       inputSchema: paisesSchema.strict(),

@@ -1,8 +1,8 @@
 {
   "$comentario": "Impressão digital da superfície (@sbissoli/mcp-surface). Não editar à mão: `npm run surface:lock` regrava, e só aceita superfície nova sob versão nova.",
   "declarada": {
-    "versao": "5.9.0",
-    "sha256": "733c67cf39757990f3b584b3a109c7fd5ec007b91f6f3a3ad7980088508a0cdc",
+    "versao": "5.10.0",
+    "sha256": "5398d5e46a0cea0a343b51b8e1cf1aa23421197d19be262acb7cf913bb08049a",
     "conteudo": {
       "initialize": {
         "capabilities": {
@@ -6575,7 +6575,7 @@
             "openWorldHint": true,
             "readOnlyHint": true
           },
-          "description": "Queries international country data via IBGE.\n\nFeatures:\n- List all countries (following UN M49 methodology)\n- Country details (area, languages, currency, location)\n- Search countries by name\n- Filter by region/continent\n\nAvailable regions: americas, europa, africa, asia, oceania\n\nCountry codes: Use ISO-ALPHA-2 (e.g., BR, US, AR, PT, JP)\n\nExamples:\n- List all: tipo=\"listar\"\n- Brazil details: tipo=\"detalhes\", pais=\"BR\"\n- Search: tipo=\"buscar\", busca=\"Argentina\"\n- Americas countries: tipo=\"listar\", regiao=\"americas\"\n- Available indicators: tipo=\"indicadores\"\n\nBehavior: read-only and idempotent — a live GET against the public IBGE Países API. Returns Markdown.",
+          "description": "Queries international country data via IBGE.\n\nFeatures:\n- List all countries (following UN M49 methodology)\n- Country details (area, languages, currency, location) with the latest published value of\n  country indicators — by default population, GDP, GDP per capita, HDI and life expectancy\n- Pick other indicators with indicadores=\"<ids or aliases separated by |>\"\n- Indicator catalog as published by IBGE (34 indicators: economy, population, health,\n  environment, networks), with unit and scale\n- Search countries by name\n- Filter by region/continent\n\nEach indicator value is the most recent one the source publishes for that country, with its year\nor period (some are 3- or 5-year ranges like \"2021-2023\"), as text (it can be \"<2.5\"), plus unit\nand scale (multiplicador) — null when the source has none.\n\nAvailable regions: americas, europa, africa, asia, oceania\n\nCountry codes: Use ISO-ALPHA-2 (e.g., BR, US, AR, PT, JP)\n\nExamples:\n- List all: tipo=\"listar\"\n- Brazil details: tipo=\"detalhes\", pais=\"BR\"\n- Chosen indicators: tipo=\"detalhes\", pais=\"AR\", indicadores=\"idh|77852\"\n- Search: tipo=\"buscar\", busca=\"Argentina\"\n- Americas countries: tipo=\"listar\", regiao=\"americas\"\n- Indicator catalog: tipo=\"indicadores\"\n\nBehavior: read-only and idempotent — a live GET against the public IBGE Países API. Returns Markdown.",
           "inputSchema": {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "additionalProperties": false,
@@ -6585,7 +6585,7 @@
                 "type": "string"
               },
               "indicadores": {
-                "description": "IDs dos indicadores separados por | (ex: 77819|77820)",
+                "description": "Indicadores a trazer no modo detalhes, separados por | — IDs ou apelidos (ex: 77819|77820 ou idh|populacao). Lista completa: tipo='indicadores'. Sem este parâmetro: população, PIB, PIB per capita, IDH e esperança de vida",
                 "type": "string"
               },
               "pais": {
@@ -6627,27 +6627,43 @@
                 "type": "string"
               },
               "indicadores": {
-                "description": "Indicadores disponíveis para consulta de países (modo indicadores)",
+                "description": "Catálogo de indicadores de países publicado pelo IBGE (modo indicadores)",
                 "items": {
                   "additionalProperties": false,
                   "properties": {
                     "alias": {
-                      "description": "Apelido amigável do indicador",
+                      "description": "O que passar no parâmetro `indicadores`: o apelido (ex.: 'idh'), ou o próprio ID quando o indicador não tem apelido",
                       "type": "string"
                     },
                     "id": {
                       "description": "ID do indicador na API do IBGE",
                       "type": "number"
                     },
+                    "multiplicador": {
+                      "description": "Escala dos valores; null se a fonte não informa",
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
                     "nome": {
-                      "description": "Nome do indicador",
+                      "description": "Nome do indicador, como a fonte o publica",
                       "type": "string"
+                    },
+                    "unidade": {
+                      "description": "Unidade do indicador; null se a fonte não informa",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
                     "id",
                     "nome",
-                    "alias"
+                    "alias",
+                    "unidade",
+                    "multiplicador"
                   ],
                   "type": "object"
                 },
@@ -6666,27 +6682,70 @@
                     "type": "string"
                   },
                   "indicadores": {
-                    "description": "Indicadores principais com o valor mais recente disponível",
+                    "description": "Indicadores pedidos, cada um com o valor mais recente publicado",
                     "items": {
                       "additionalProperties": false,
                       "properties": {
                         "ano": {
-                          "description": "Ano de referência do valor",
+                          "description": "Ano ou período (ex.: '2021-2023') do valor",
                           "type": "string"
+                        },
+                        "id": {
+                          "description": "ID do indicador na API do IBGE",
+                          "type": "number"
                         },
                         "indicador": {
-                          "description": "Nome do indicador",
+                          "description": "Nome do indicador, como a fonte o publica",
                           "type": "string"
                         },
+                        "multiplicador": {
+                          "description": "Escala do valor (ex.: 1000000000 = valor em bilhões da unidade); null se a fonte não informa",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "unidade": {
+                          "description": "Unidade do valor (ex.: 'US$', '% do PIB'); null se a fonte não informa",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "valor": {
-                          "description": "Valor mais recente do indicador",
+                          "description": "Valor mais recente publicado, como texto da fonte (pode ser não numérico, ex.: '<2.5')",
                           "type": "string"
                         }
                       },
                       "required": [
+                        "id",
                         "indicador",
                         "valor",
-                        "ano"
+                        "ano",
+                        "unidade",
+                        "multiplicador"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "indicadoresSemValor": {
+                    "description": "Indicadores pedidos para os quais a fonte não publica valor algum para o país (série inteira em branco) — ausência na fonte, não zero",
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "description": "ID do indicador na API do IBGE",
+                          "type": "number"
+                        },
+                        "indicador": {
+                          "description": "Nome do indicador, como a fonte o publica",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "indicador"
                       ],
                       "type": "object"
                     },

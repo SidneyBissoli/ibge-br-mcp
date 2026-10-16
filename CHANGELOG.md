@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.10.0] - 2026-10-15
+
+`ibge_paises` volta a dar os indicadores do país. Desde a primeira versão, o modo `detalhes`
+publicava `valor: "[object Object]"` e `ano: "9"` em todos eles, e o catálogo do modo
+`indicadores` atribuía significados errados aos IDs (achado de 15/10/2026, medido ao vivo
+no Brasil com a 5.9.0).
+
+### Fixed
+
+- **`ibge_paises tipo='detalhes'`: valor e ano dos indicadores.** A API de Países devolve a
+  série como LISTA de objetos de uma chave (`[{"-": null}, {"1990": "3117.74"},
+  {"1990-1995": null}, …, {"2023": "10294.87"}]`) e o código a lia como objeto: o "último
+  ano" era o índice "9" e o valor, o objeto inteiro. Agora vale o último ponto publicado, na
+  ordem da fonte, ignorando nulos e a abertura `"-"`; um período em faixa ("2021-2023") vale
+  como período, e o valor fica como texto da fonte (há `"<2.5"`). Indicador sem valor algum
+  para o país não some mais calado: vai para `pais.indicadoresSemValor` (campo novo) e o
+  texto diz "sem valor publicado para o país" (caso real, medido em 15/10/2026: a fonte
+  devolve `series: []` em todos os indicadores da Argentina).
+- **IDs trocados.** Os indicadores principais eram pedidos pelos IDs 77827, 77821, 77823 e
+  77830, rotulados no catálogo como população, PIB, PIB per capita e IDH; na fonte são PIB
+  total, investimento em P&D, PIB per capita e esperança de vida. O `detalhes` passa a pedir
+  população (77849), PIB (77827), PIB per capita (77823), IDH (77831) e esperança de vida
+  (77830).
+- **Catálogo do modo `indicadores` derivado da fonte** (`/paises/indicadores/`, 34
+  indicadores, com unidade e escala) em vez da lista escrita à mão, que tinha rótulos errados
+  e dois IDs inexistentes (77828 não existe; 77832 é acesso à água potável, não mortalidade
+  infantil). Os apelidos `area` e `mortalidade_infantil` saem: a área vem do registro do país
+  e a fonte não publica mortalidade infantil (77850 é a taxa BRUTA de mortalidade).
+- **Parâmetro `indicadores` passa a funcionar.** Era aceito e nunca lido. Agora escolhe os
+  indicadores do `detalhes`, por ID ou apelido (`populacao`, `densidade`, `pib`,
+  `pib_per_capita`, `idh`, `expectativa_vida`), separados por `|`; apelido desconhecido é
+  erro de contrato antes de consultar a fonte, e falha da fonte ao buscar indicadores PEDIDOS
+  vira erro em vez de ser engolida.
+- **Área do país:** a fonte escreve vírgula decimal ("8509360,850") e o `parseFloat`
+  truncava a fração; agora 8509360.85.
+
+### Added
+
+- `id`, `unidade` e `multiplicador` em cada item de `pais.indicadores`, e `unidade` e
+  `multiplicador` em cada item do modo `indicadores` (como na 5.9.0 para o SIDRA: o servidor
+  não converte). `unidade` é `null` onde a fonte não informa (o IDH); a escala é diferente de
+  1 em dois indicadores (gás natural, × 10⁹ m³; petróleo, × 1.000 barris/dia).
+
+- `pais.indicadoresSemValor` (`{id, indicador}`): indicadores pedidos cuja série a fonte
+  publica inteira em branco para o país.
+
+### Changed
+
+- Modo `indicadores`: `alias` é o que se passa no parâmetro `indicadores` — o apelido, ou o
+  próprio ID quando o indicador não tem apelido (28 dos 34). A tabela em texto mostra "-"
+  nesses casos.
+- Testes com as respostas REAIS da API (`tests/fixtures/paises-*.json`, gravadas por curl) no
+  lugar do mock escrito a partir do tipo, que tinha a mesma forma errada do código; cada
+  apelido é conferido contra o catálogo publicado.
+
 ## [5.9.0] - 2026-10-15
 
 A unidade de medida passa a ter campo próprio. Até a 5.8.2 ela só chegava como a coluna
