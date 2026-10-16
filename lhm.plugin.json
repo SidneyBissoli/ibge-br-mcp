@@ -1,7 +1,7 @@
 {
   "identifier": "sidneybissoli-ibge-br-mcp",
   "name": "IBGE Brasil MCP",
-  "version": "5.8.2",
+  "version": "5.9.0",
   "description": "MCP server giving AI assistants live, sourced access to Brazilian public data — geography, census, economy and health — from the official IBGE APIs. Exact figures with provenance, not approximations.",
   "author": "Sidney da Silva Pereira Bissoli",
   "authorUrl": "https://github.com/SidneyBissoli",
@@ -1209,12 +1209,57 @@
           "totalRegistros": {
             "description": "Total de registros de dados",
             "type": "number"
+          },
+          "unidades": {
+            "description": "Unidade de medida de cada variável da resposta, FORA de `registros`: não some com `campos` nem com a paginação. Leia antes de citar um valor — 'Mil pessoas' significa que 1.234 são 1,234 milhão de pessoas",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "multiplicador": {
+                  "description": "Multiplicador de escala publicado à parte; o SIDRA não publica — sempre null, a escala está no texto da unidade",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "nomeVariavel": {
+                  "description": "Nome da variável",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "unidade": {
+                  "description": "Unidade de medida como a fonte publica, com a escala no texto (ex.: 'Mil pessoas', 'Milhões de Reais'); null se a fonte não diz",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "variavel": {
+                  "description": "Código da variável SIDRA (null se a resposta não tem a dimensão Variável)",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "variavel",
+                "nomeVariavel",
+                "unidade",
+                "multiplicador"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "required": [
           "totalRegistros",
           "colunas",
           "registros",
+          "unidades",
           "provenance",
           "attribution"
         ],
@@ -2335,10 +2380,55 @@
           "tabela": {
             "description": "Tabela SIDRA de origem",
             "type": "string"
+          },
+          "unidades": {
+            "description": "Unidade de medida de cada variável da resposta, FORA de `registros`: não some com `campos` nem com a paginação. Leia antes de citar um valor — 'Mil pessoas' significa que 1.234 são 1,234 milhão de pessoas",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "multiplicador": {
+                  "description": "Multiplicador de escala publicado à parte; o SIDRA não publica — sempre null, a escala está no texto da unidade",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "nomeVariavel": {
+                  "description": "Nome da variável",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "unidade": {
+                  "description": "Unidade de medida como a fonte publica, com a escala no texto (ex.: 'Mil pessoas', 'Milhões de Reais'); null se a fonte não diz",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "variavel": {
+                  "description": "Código da variável SIDRA (null se a resposta não tem a dimensão Variável)",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "variavel",
+                "nomeVariavel",
+                "unidade",
+                "multiplicador"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "required": [
           "localidades",
+          "unidades",
           "provenance",
           "attribution"
         ],
@@ -2868,12 +2958,57 @@
           "totalRegistros": {
             "description": "Total de registros de dados",
             "type": "number"
+          },
+          "unidades": {
+            "description": "Unidade de medida de cada variável da resposta, FORA de `registros`: não some com `campos` nem com a paginação. Leia antes de citar um valor — 'Mil pessoas' significa que 1.234 são 1,234 milhão de pessoas",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "multiplicador": {
+                  "description": "Multiplicador de escala publicado à parte; o SIDRA não publica — sempre null, a escala está no texto da unidade",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "nomeVariavel": {
+                  "description": "Nome da variável",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "unidade": {
+                  "description": "Unidade de medida como a fonte publica, com a escala no texto (ex.: 'Mil pessoas', 'Milhões de Reais'); null se a fonte não diz",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "variavel": {
+                  "description": "Código da variável SIDRA (null se a resposta não tem a dimensão Variável)",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "variavel",
+                "nomeVariavel",
+                "unidade",
+                "multiplicador"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "required": [
           "totalRegistros",
           "colunas",
           "registros",
+          "unidades",
           "provenance",
           "attribution"
         ],
@@ -4103,12 +4238,57 @@
           "totalRegistros": {
             "description": "Total de registros de dados",
             "type": "number"
+          },
+          "unidades": {
+            "description": "Unidade de medida de cada variável da resposta, FORA de `registros`: não some com `campos` nem com a paginação. Leia antes de citar um valor — 'Mil pessoas' significa que 1.234 são 1,234 milhão de pessoas",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "multiplicador": {
+                  "description": "Multiplicador de escala publicado à parte; o SIDRA não publica — sempre null, a escala está no texto da unidade",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "nomeVariavel": {
+                  "description": "Nome da variável",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "unidade": {
+                  "description": "Unidade de medida como a fonte publica, com a escala no texto (ex.: 'Mil pessoas', 'Milhões de Reais'); null se a fonte não diz",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "variavel": {
+                  "description": "Código da variável SIDRA (null se a resposta não tem a dimensão Variável)",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "variavel",
+                "nomeVariavel",
+                "unidade",
+                "multiplicador"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "required": [
           "totalRegistros",
           "colunas",
           "registros",
+          "unidades",
           "provenance",
           "attribution"
         ],
@@ -7683,6 +7863,50 @@
           "totalRegistros": {
             "description": "Total de registros de dados disponíveis (todas as páginas)",
             "type": "number"
+          },
+          "unidades": {
+            "description": "Unidade de medida de cada variável da resposta, FORA de `registros`: não some com `campos` nem com a paginação. Leia antes de citar um valor — 'Mil pessoas' significa que 1.234 são 1,234 milhão de pessoas",
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "multiplicador": {
+                  "description": "Multiplicador de escala publicado à parte; o SIDRA não publica — sempre null, a escala está no texto da unidade",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "nomeVariavel": {
+                  "description": "Nome da variável",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "unidade": {
+                  "description": "Unidade de medida como a fonte publica, com a escala no texto (ex.: 'Mil pessoas', 'Milhões de Reais'); null se a fonte não diz",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "variavel": {
+                  "description": "Código da variável SIDRA (null se a resposta não tem a dimensão Variável)",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "variavel",
+                "nomeVariavel",
+                "unidade",
+                "multiplicador"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "required": [
@@ -7691,6 +7915,7 @@
           "totalRegistros",
           "colunas",
           "registros",
+          "unidades",
           "paginacao",
           "provenance",
           "attribution"

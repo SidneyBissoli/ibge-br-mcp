@@ -16,6 +16,9 @@ import { territorialLevelHint, territorialLevelList } from "../config.js";
 import {
   type StructuredToolResult,
   sidraRecords,
+  sidraUnidades,
+  notaUnidadesRemovidas,
+  unidadesSidraSchema,
   selectSidraColumns,
   formatarCelulaSidra,
 } from "../structured.js";
@@ -275,12 +278,13 @@ export const indicadoresOutputSchema = z.object({
   registros: z
     .array(z.record(z.string(), z.string()))
     .describe("Registros: cada um mapeia rótulo da coluna -> valor"),
+  unidades: unidadesSidraSchema,
   estatisticas: estatisticasBlocoSchema.optional(),
 });
 
 /** Minimal valid payload for non-data success responses (e.g. the indicator catalog). */
 function emptyMeta(): Record<string, unknown> {
-  return { totalRegistros: 0, colunas: [], registros: [] };
+  return { totalRegistros: 0, colunas: [], registros: [], unidades: [] };
 }
 
 /** Provenance for the static indicator catalog maintained in code (no upstream fetch). */
@@ -403,7 +407,7 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
             indicadorKey,
             "Tente ajustar os períodos ou localidades."
           ),
-          structured: { ...meta, ...sidraRecords(data) },
+          structured: { ...meta, ...sidraRecords(data), unidades: sidraUnidades(data) },
           provenance: proveniencia(),
         };
       }
@@ -436,6 +440,7 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
             totalRegistros: dados.totalRegistros,
             colunas: dados.colunas,
             registros: [],
+            unidades: sidraUnidades(data),
             estatisticas: resultado.bloco,
           },
           provenance: proveniencia({
@@ -447,7 +452,9 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
 
       // Apply optional field selection (1.2) to both channels.
       const filtered = selectSidraColumns(data, input.campos);
-      const structured = { ...meta, ...sidraRecords(filtered) };
+      const unidades = sidraUnidades(data);
+      const registrosFiltrados = sidraRecords(filtered);
+      const structured = { ...meta, ...registrosFiltrados, unidades };
 
       if (input.formato === "json") {
         return {
@@ -457,6 +464,7 @@ export async function ibgeIndicadores(input: IndicadoresInput): Promise<Structur
         };
       }
 
+      output += notaUnidadesRemovidas(unidades, registrosFiltrados.colunas);
       output += formatIndicadorTable(filtered);
       return { markdown: output, structured, provenance: proveniencia({ dataVintage }) };
     } catch (error) {

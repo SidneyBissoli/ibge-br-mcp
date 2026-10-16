@@ -85,6 +85,28 @@ const sidraPop = sidraResponse(
   { D1N: "Rio de Janeiro", D2N: "2022", V: "16055174" }
 );
 
+/**
+ * SIDRA CHEIO de unidade: a forma real da v3 (`view=flat`), com "Unidade de
+ * Medida" e a dimensão "Variável" — o `unidades` sai preenchido. O `sidraPop`
+ * acima é o caso MAGRO (sem essas colunas → `unidades: []`), e a última linha
+ * daqui traz a unidade em branco (→ `unidade: null`).
+ */
+const sidraComUnidade = sidraResponse(
+  {
+    MC: "Unidade de Medida (Código)",
+    MN: "Unidade de Medida",
+    V: "Valor",
+    D1C: "Unidade da Federação (Código)",
+    D1N: "Unidade da Federação",
+    D2N: "Ano",
+    D3C: "Variável (Código)",
+    D3N: "Variável",
+  },
+  { MC: "1594", MN: "Mil pessoas", V: "44411", D1C: "35", D1N: "São Paulo", D2N: "2022", D3C: "4090", D3N: "Pessoas ocupadas" },
+  { MC: "1594", MN: "Mil pessoas", V: "16055", D1C: "33", D1N: "Rio de Janeiro", D2N: "2022", D3C: "4090", D3N: "Pessoas ocupadas" },
+  { MC: "", MN: "", V: "7,9", D1C: "35", D1N: "São Paulo", D2N: "2022", D3C: "4099", D3N: "Taxa de desocupação" }
+);
+
 /** SIDRA sem linha de dado: consulta válida cujo recorte não tem valor publicado. */
 const sidraVazio = sidraResponse({ D1N: "Unidade da Federação", D2N: "Ano", V: "Valor" });
 
@@ -347,6 +369,9 @@ const CASOS: Caso[] = [
 
 
   { nome: "ibge_sidra", cobre: "série com valores", mock: um(sidraPop), args: { tabela: "6579", nivel_territorial: "3" } },
+  { nome: "ibge_sidra", cobre: "com unidade e variável (cheio de `unidades`)", mock: um(sidraComUnidade), args: { tabela: "6579", nivel_territorial: "3" } },
+  { nome: "ibge_sidra", cobre: "`campos` sem a unidade (`unidades` resiste)", mock: um(sidraComUnidade), args: { tabela: "6579", nivel_territorial: "3", campos: "Valor" } },
+  { nome: "ibge_sidra", cobre: "estatísticas com unidade", mock: um(sidraComUnidade), args: { tabela: "6579", nivel_territorial: "3", estatisticas: true } },
   { nome: "ibge_sidra", cobre: "recorte sem linha de dado", mock: um(sidraVazio), args: { tabela: "6579", nivel_territorial: "3" } },
 
   { nome: "ibge_nomes", cobre: "ranking", mock: um(rankingNomes), args: { tipo: "ranking" } },
@@ -385,9 +410,11 @@ const CASOS: Caso[] = [
   { nome: "ibge_pesquisas", cobre: "catálogo de pesquisas", mock: um(agregadosPesquisas), args: {} },
 
   { nome: "ibge_censo", cobre: "série do censo", mock: um(sidraPop), args: {} },
+  { nome: "ibge_censo", cobre: "com unidade e variável", mock: um(sidraComUnidade), args: { campos: "Valor" } },
   { nome: "ibge_censo", cobre: "recorte sem linha de dado", mock: um(sidraVazio), args: {} },
 
   { nome: "ibge_indicadores", cobre: "indicador conjuntural", mock: um(sidraPop), args: { indicador: "desemprego" } },
+  { nome: "ibge_indicadores", cobre: "com unidade e variável", mock: um(sidraComUnidade), args: { indicador: "desemprego", campos: "Valor" } },
 
   { nome: "ibge_cnae", cobre: "seção com observações", mock: um(secaoCnae), args: { codigo: "J" } },
   { nome: "ibge_cnae", cobre: "seção sem observações", mock: um(secaoCnaeMagra), args: { codigo: "K" } },
@@ -422,6 +449,25 @@ const CASOS: Caso[] = [
     },
     args: { localidades: "3550308,3304557" },
   },
+  {
+    nome: "ibge_comparar",
+    cobre: "duas localidades com unidade",
+    mock: () => {
+      mockFetch
+        .mockResolvedValueOnce(
+          mockResponse(
+            sidraResponse(
+              { MN: "Unidade de Medida", D1C: "Código do Município", D1N: "Município", V: "Valor" },
+              { MN: "Pessoas", D1C: "3550308", D1N: "São Paulo", V: "12300000" },
+              { MN: "Pessoas", D1C: "3304557", D1N: "Rio de Janeiro", V: "6700000" }
+            )
+          )
+        )
+        .mockResolvedValueOnce(mockResponse({ nome: "São Paulo" }))
+        .mockResolvedValueOnce(mockResponse({ nome: "Rio de Janeiro" }));
+    },
+    args: { localidades: "3550308,3304557" },
+  },
 
   { nome: "ibge_malhas_tema", cobre: "recorte com total, crs e bbox", mock: um(wfsBiomas), args: { tema: "biomas" } },
   { nome: "ibge_malhas_tema", cobre: "recorte sem crs, bbox nem total", mock: um(wfsBiomasMagro), args: { tema: "biomas" } },
@@ -440,6 +486,7 @@ const CASOS: Caso[] = [
   },
 
   { nome: "ibge_datasaude", cobre: "indicador de saúde", mock: um(sidraPop), args: { indicador: "esperanca_vida" } },
+  { nome: "ibge_datasaude", cobre: "com unidade e variável", mock: um(sidraComUnidade), args: { indicador: "esperanca_vida", campos: "Valor" } },
 
   { nome: "ibge_paises", cobre: "país completo", mock: um([paisBrasil]), args: {} },
   { nome: "ibge_paises", cobre: "país sem localizacao", mock: um([paisMagro]), args: {} },

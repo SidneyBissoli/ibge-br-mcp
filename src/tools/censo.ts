@@ -10,6 +10,9 @@ import { territorialLevelHint, territorialLevelList } from "../config.js";
 import {
   type StructuredToolResult,
   sidraRecords,
+  sidraUnidades,
+  notaUnidadesRemovidas,
+  unidadesSidraSchema,
   selectSidraColumns,
   formatarCelulaSidra,
 } from "../structured.js";
@@ -332,12 +335,13 @@ export const censoOutputSchema = z.object({
   registros: z
     .array(z.record(z.string(), z.string()))
     .describe("Registros: cada um mapeia rótulo da coluna -> valor"),
+  unidades: unidadesSidraSchema,
   estatisticas: estatisticasBlocoSchema.optional(),
 });
 
 /** Minimal valid payload for non-data success responses (e.g. the table catalog). */
 function emptyMeta(): Record<string, unknown> {
-  return { totalRegistros: 0, colunas: [], registros: [] };
+  return { totalRegistros: 0, colunas: [], registros: [], unidades: [] };
 }
 
 /**
@@ -458,7 +462,7 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
       if (!data || data.length === 0) {
         return {
           markdown: "Nenhum dado encontrado para os parâmetros informados.",
-          structured: { ...meta, ...sidraRecords(data) },
+          structured: { ...meta, ...sidraRecords(data), unidades: sidraUnidades(data) },
           provenance: proveniencia(),
         };
       }
@@ -491,6 +495,7 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
             totalRegistros: dados.totalRegistros,
             colunas: dados.colunas,
             registros: [],
+            unidades: sidraUnidades(data),
             estatisticas: resultado.bloco,
           },
           provenance: proveniencia({
@@ -503,7 +508,9 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
       // Apply optional field selection (1.2) to both channels.
       const filtered = selectSidraColumns(data, input.campos);
 
-      const structured = { ...meta, ...sidraRecords(filtered) };
+      const unidades = sidraUnidades(data);
+      const registrosFiltrados = sidraRecords(filtered);
+      const structured = { ...meta, ...registrosFiltrados, unidades };
 
       if (input.formato === "json") {
         return {
@@ -514,6 +521,7 @@ export async function ibgeCenso(input: CensoInput): Promise<StructuredToolResult
       }
 
       // Format as table
+      output += notaUnidadesRemovidas(unidades, registrosFiltrados.colunas);
       output += formatCensoTable(filtered);
 
       return { markdown: output, structured, provenance: proveniencia({ dataVintage }) };

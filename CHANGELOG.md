@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.9.0] - 2026-10-15
+
+A unidade de medida passa a ter campo próprio. Até a 5.8.2 ela só chegava como a coluna
+"Unidade de Medida" de cada registro do SIDRA, e o filtro `campos` podia tirá-la: o número
+saía sem unidade nem escala, e o servidor não pode normalizá-las (achado da varredura de
+29/09/2026, a partir da pergunta de um leitor sobre `unit` + `scale`).
+
+### Added
+
+- **`unidades` no `structuredContent` de `ibge_sidra`, `ibge_censo`, `ibge_indicadores`,
+  `ibge_datasaude` e `ibge_comparar`** (obrigatório no `outputSchema`): um item por par
+  (variável, unidade) — `variavel`, `nomeVariavel`, `unidade` e `multiplicador` —, lido da
+  resposta INTEIRA antes de `campos`, da paginação e do modo estatística. `unidade` é o texto
+  como a fonte publica, com a escala dentro ("Mil pessoas", "Milhões de Reais"); `null`
+  quando vem em branco; lista vazia quando a resposta não tem unidade nem variável. Uma
+  variável cuja unidade muda no período (moedas antigas) dá um item por unidade.
+- `multiplicador` é sempre `null` no SIDRA, e o esquema diz por quê: medido em 15/10/2026 nos
+  metadados das 63 tabelas que as tools usam (279 variáveis), a API de Agregados v3 não
+  publica multiplicador à parte — a escala está no texto da unidade ("Mil pessoas" em 13
+  variáveis, "Mil Reais" em 7, "Milhões de Reais" em 3). O servidor não converte esse texto
+  em número.
+- Quando `campos` tira a coluna da tabela, o texto ganha a linha "_Unidade de medida: …_"; o
+  `ibge_comparar`, cuja tabela nunca teve coluna de unidade, passa a trazê-la sempre.
+
+### Fixed
+
+- **`ibge_cidades`, listagem de indicadores de uma pesquisa:** a coluna Unidade mostra o
+  multiplicador da fonte quando ele não é 1 ("R$ (× 1.000)"). A API de Pesquisas é a única do
+  IBGE usada aqui que publica multiplicador; medido em 15/10/2026, a pesquisa 38 (PIB dos
+  Municípios) tem 19 indicadores em R$ × 1.000, e a coluna dizia só "R$". Os valores do
+  panorama não mudam: dos 14 indicadores dele, os 5 que a fonte descreve com unidade têm
+  multiplicador 1 (os outros 9 vêm sem unidade, ou nem aparecem, na árvore da pesquisa que o
+  catálogo aponta — e o servidor não inventa unidade para eles).
+
+### Surface
+
+- `tools/list`: `outputSchema` das cinco tools acima ganha `unidades`; descrições e entradas
+  iguais. Trava de superfície, `lhm.plugin.json`, `server.json` e baseline
+  `baselines/surface-stdio-5.9.0.json` regenerados.
+
 ## [5.8.2] - 2026-10-15
 
 Tempo 2 do contrato de proveniência 1.3: o que a 5.8.0 passou a ACEITAR no esquema passa a

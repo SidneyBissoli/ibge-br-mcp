@@ -5,7 +5,13 @@ import { fetchSidra } from "../sidra-agregados.js";
 import { withMetrics } from "../metrics.js";
 import { erroDaExcecao, erroContrato, erroDefeito } from "../errors.js";
 import { createMarkdownTable, formatNumber } from "../utils/index.js";
-import { type StructuredToolResult, sidraRecords } from "../structured.js";
+import {
+  type StructuredToolResult,
+  sidraRecords,
+  sidraUnidades,
+  notaUnidadesRemovidas,
+  unidadesSidraSchema,
+} from "../structured.js";
 import { valorSidra } from "../stats.js";
 import { extrairPeriodoSidra, provenienciaIbge } from "../provenance.js";
 
@@ -137,6 +143,7 @@ export const compararOutputSchema = z.object({
       })
     )
     .describe("Localidades comparadas, com o valor do indicador"),
+  unidades: unidadesSidraSchema,
   estatisticas: z
     .object({
       maior: z.number(),
@@ -157,7 +164,7 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
     if (input.indicador === "listar") {
       return {
         markdown: listIndicadoresComparacao(),
-        structured: { localidades: [] },
+        structured: { localidades: [], unidades: [] },
         provenance: provenienciaIbge({
           fonte: "SIDRA",
           url: IBGE_API.AGREGADOS,
@@ -218,6 +225,7 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
             nome: template.nome,
             tabela: template.tabela,
             localidades: [],
+            unidades: [],
           },
           provenance: provenienciaIbge({
             fonte: "SIDRA",
@@ -257,7 +265,12 @@ export async function ibgeComparar(input: CompararInput): Promise<StructuredTool
           derivado: { nota: NOTA_DERIVACAO_COMPARACAO },
           partes: [
             {
-              fields: ["localidades[].valor", "localidades[].valorTexto", "estatisticas"],
+              fields: [
+                "localidades[].valor",
+                "localidades[].valorTexto",
+                "unidades",
+                "estatisticas",
+              ],
               url,
               dataset: template.tabela,
               dataVintage,
@@ -437,12 +450,14 @@ function formatCompararResponse(
     };
   }
 
+  const unidades = sidraUnidades(data);
   const structured: Record<string, unknown> = {
     indicador: indicadorKey,
     nome: template.nome,
     tabela: template.tabela,
     formato,
     localidades,
+    unidades,
     ...(estatisticas ? { estatisticas } : {}),
   };
 
@@ -469,6 +484,8 @@ function formatCompararResponse(
     return [String(index + 1), item.nome, valorFormatado];
   });
 
+  // The table has no unit column: the unit line is the text channel's only carrier.
+  output += notaUnidadesRemovidas(unidades, []);
   output += createMarkdownTable(["#", "Localidade", "Valor"], rows, {
     alignment: ["right", "left", "right"],
   });

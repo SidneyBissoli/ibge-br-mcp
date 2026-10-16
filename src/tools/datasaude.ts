@@ -9,6 +9,9 @@ import { territorialLevelHint, territorialLevelList } from "../config.js";
 import {
   type StructuredToolResult,
   sidraRecords,
+  sidraUnidades,
+  notaUnidadesRemovidas,
+  unidadesSidraSchema,
   selectSidraColumns,
   formatarCelulaSidra,
 } from "../structured.js";
@@ -144,12 +147,13 @@ export const datasaudeOutputSchema = z.object({
   registros: z
     .array(z.record(z.string(), z.string()))
     .describe("Registros: cada um mapeia rótulo da coluna -> valor"),
+  unidades: unidadesSidraSchema,
   estatisticas: estatisticasBlocoSchema.optional(),
 });
 
 /** Minimal valid payload for non-data success responses (e.g. the indicator catalog). */
 function emptyMeta(): Record<string, unknown> {
-  return { totalRegistros: 0, colunas: [], registros: [] };
+  return { totalRegistros: 0, colunas: [], registros: [], unidades: [] };
 }
 
 /**
@@ -234,7 +238,7 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
       if (!data || data.length === 0) {
         return {
           markdown: `Nenhum dado encontrado para ${indicadorInfo.nome}.`,
-          structured: { ...meta, ...sidraRecords(data) },
+          structured: { ...meta, ...sidraRecords(data), unidades: sidraUnidades(data) },
           provenance: proveniencia(),
         };
       }
@@ -265,6 +269,7 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
             totalRegistros: dados.totalRegistros,
             colunas: dados.colunas,
             registros: [],
+            unidades: sidraUnidades(data),
             estatisticas: resultado.bloco,
           },
           provenance: proveniencia({
@@ -276,9 +281,16 @@ export async function ibgeDatasaude(input: DatasaudeInput): Promise<StructuredTo
 
       // Apply optional field selection (1.2) to both channels.
       const filtered = selectSidraColumns(data, input.campos);
+      const unidades = sidraUnidades(data);
+      const registrosFiltrados = sidraRecords(filtered);
       return {
-        markdown: formatResponse(filtered, indicadorInfo, input),
-        structured: { ...meta, ...sidraRecords(filtered) },
+        markdown: formatResponse(
+          filtered,
+          indicadorInfo,
+          input,
+          notaUnidadesRemovidas(unidades, registrosFiltrados.colunas)
+        ),
+        structured: { ...meta, ...registrosFiltrados, unidades },
         provenance: proveniencia({ dataVintage }),
       };
     } catch (error) {
@@ -414,7 +426,8 @@ function listHealthIndicators(): string {
 function formatResponse(
   data: SidraData[],
   indicadorInfo: (typeof INDICADORES_SAUDE)[string],
-  input: DatasaudeInput
+  input: DatasaudeInput,
+  notaUnidades = ""
 ): string {
   let output = `## ${indicadorInfo.nome}\n\n`;
   output += `**Descrição:** ${indicadorInfo.descricao}\n`;
@@ -437,6 +450,7 @@ function formatResponse(
 
   // Table format
   output += "### Dados\n\n";
+  output += notaUnidades;
 
   const columns = Object.keys(headerRow);
   const headers = columns.map((col) => headerRow[col] || col);
