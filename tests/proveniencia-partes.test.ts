@@ -107,7 +107,15 @@ function corpo(url: string): unknown {
     ];
   }
   if (url.includes("/paises/BR/indicadores/")) {
-    return [{ id: 77827, indicador: "Área total", series: [{ serie: { "2020": "8510000" } }] }];
+    // Real shape: `serie` is a list of one-key objects (tests/fixtures/paises-br-indicadores.json).
+    return [
+      {
+        id: 77849,
+        indicador: "População - População total",
+        unidade: { id: "habitantes", classe: "N", multiplicador: 1 },
+        series: [{ pais: { id: "BR", nome: "Brasil" }, serie: [{ "-": null }, { "2023": "211140729" }] }],
+      },
+    ];
   }
   if (url.endsWith("/paises/BR")) {
     return [
@@ -314,7 +322,7 @@ describe("ibge_paises — country record (24 h) + indicators (1 h)", () => {
     const urlPais = `${API}/v1/paises/BR`;
     await comColetorDeRede(() => cachedFetch(urlPais, cacheKey(urlPais), CACHE_TTL.STATIC));
     em(T0 + 23.5 * HORA);
-    const urlInd = `${API}/v1/paises/BR/indicadores/77827|77821|77823|77830`;
+    const urlInd = `${API}/v1/paises/BR/indicadores/77849|77827|77823|77831|77830`;
     await comColetorDeRede(() => cachedFetch(urlInd, cacheKey(urlInd), CACHE_TTL.MEDIUM));
     em(T0 + 24 * HORA + 60_000);
     const r = await ibgePaises({ tipo: "detalhes", pais: "BR" });

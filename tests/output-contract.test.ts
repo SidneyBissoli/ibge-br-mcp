@@ -31,6 +31,9 @@ import { createServer } from "../src/server.js";
 import { cache } from "../src/cache.js";
 import { limparIndice } from "../src/tools/deep-research.js";
 import { mockResponse, sidraResponse } from "./helpers.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 const mockFetch = vi.fn();
 
@@ -320,6 +323,22 @@ const paisMagro = {
   nome: { abreviado: "Antártida" },
 };
 
+/** Respostas REAIS da API de Países (gravadas por curl em 15/10/2026). */
+function fixturePaises(nome: string): unknown {
+  return JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", nome), "utf8"));
+}
+const paisBR = fixturePaises("paises-br.json");
+const indicadoresPaisBR = fixturePaises("paises-br-indicadores.json");
+const catalogoIndicadoresPaises = fixturePaises("paises-indicadores-catalogo.json");
+/** Indicador sem `unidade` (como o IDH na fonte) e sem valor publicado algum. */
+const indicadorPaisMagro = [
+  {
+    id: 77831,
+    indicador: "Indicadores sociais - Índice de desenvolvimento humano",
+    series: [{ pais: { id: "AQ", nome: "Antártida" }, serie: [{ "-": null }, { "2022": null }] }],
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Casos: nome da ferramenta, o que o caso cobre, mock e argumentos
 // ---------------------------------------------------------------------------
@@ -490,6 +509,30 @@ const CASOS: Caso[] = [
 
   { nome: "ibge_paises", cobre: "país completo", mock: um([paisBrasil]), args: {} },
   { nome: "ibge_paises", cobre: "país sem localizacao", mock: um([paisMagro]), args: {} },
+  {
+    nome: "ibge_paises",
+    cobre: "detalhes com indicadores (forma real)",
+    mock: porUrl({ "/paises/BR/indicadores/": indicadoresPaisBR, "/paises/BR$": paisBR }),
+    args: { tipo: "detalhes", pais: "BR" },
+  },
+  {
+    nome: "ibge_paises",
+    cobre: "detalhes com indicador sem unidade nem valor",
+    mock: porUrl({ "/paises/AQ/indicadores/": indicadorPaisMagro, "/paises/AQ$": [paisMagro] }),
+    args: { tipo: "detalhes", pais: "AQ", indicadores: "idh" },
+  },
+  {
+    nome: "ibge_paises",
+    cobre: "catálogo de indicadores (da fonte)",
+    mock: um(catalogoIndicadoresPaises),
+    args: { tipo: "indicadores" },
+  },
+  {
+    nome: "ibge_paises",
+    cobre: "catálogo magro (sem unidade, sem apelido)",
+    mock: um([{ id: 77999, indicador: "Indicador sem unidade" }]),
+    args: { tipo: "indicadores" },
+  },
 
   {
     nome: "ibge_cidades",
