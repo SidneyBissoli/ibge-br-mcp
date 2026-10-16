@@ -15,7 +15,11 @@ import { isValidPeriod, isValidTerritorialLevel, formatValidationError } from ".
 import { territorialLevelHint, territorialLevelList, ALL_TERRITORIAL_LEVELS } from "../config.js";
 import {
   type StructuredToolResult,
+  type UnidadeSidra,
   sidraRecords,
+  sidraUnidades,
+  notaUnidadesRemovidas,
+  unidadesSidraSchema,
   selectSidraColumns,
   formatarCelulaSidra,
 } from "../structured.js";
@@ -107,6 +111,7 @@ export const sidraOutputSchema = z.object({
   registros: z
     .array(z.record(z.string(), z.string()))
     .describe("Registros da página atual: cada um mapeia rótulo da coluna -> valor"),
+  unidades: unidadesSidraSchema,
   paginacao: z
     .object({
       pagina: z.number(),
@@ -280,6 +285,7 @@ export async function ibgeSidra(input: SidraInput): Promise<StructuredToolResult
 
       return buildSidraResult(
         selectSidraColumns(data, input.campos),
+        sidraUnidades(data),
         input.tabela,
         input.pagina ?? 1,
         input.formato ?? "tabela",
@@ -390,6 +396,7 @@ function emptyStructured(tabela: string, colunas: string[] = []): Record<string,
     totalRegistros: 0,
     colunas,
     registros: [],
+    unidades: [],
     paginacao: { pagina: 1, porPagina: PAGE_SIZE, totalPaginas: 0, temMais: false },
   };
 }
@@ -401,6 +408,7 @@ function emptyStructured(tabela: string, colunas: string[] = []): Record<string,
  */
 function buildSidraResult(
   data: SidraRecord[],
+  unidades: UnidadeSidra[],
   tabela: string,
   pagina: number,
   formato: string,
@@ -421,7 +429,15 @@ function buildSidraResult(
     temMais: page < totalPaginas,
   };
 
-  const structured = { tabela, nome: tabelaNome, totalRegistros, colunas, registros, paginacao };
+  const structured = {
+    tabela,
+    nome: tabelaNome,
+    totalRegistros,
+    colunas,
+    registros,
+    unidades,
+    paginacao,
+  };
 
   if (formato === "json") {
     return { markdown: JSON.stringify(structured, null, 2), structured, provenance };
@@ -440,6 +456,7 @@ function buildSidraResult(
 
   const rows = registros.map((reg) => colunas.map((col) => formatarCelulaSidra(col, reg[col])));
 
+  output += notaUnidadesRemovidas(unidades, colunas);
   output += createMarkdownTable(colunas, rows, { showRowCount: true });
 
   if (paginacao.temMais) {
@@ -476,6 +493,7 @@ function buildSidraStatsResult(
     totalRegistros: dados.totalRegistros,
     colunas: dados.colunas,
     registros: [],
+    unidades: sidraUnidades(data),
     paginacao: {
       pagina: 1,
       porPagina: PAGE_SIZE,

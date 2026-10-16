@@ -437,7 +437,7 @@ async function listarPesquisas(pesquisaId?: string): Promise<StructuredToolResul
 
         const rows = indicadores
           .slice(0, 30)
-          .map((ind) => [String(ind.id), ind.indicador, ind.unidade?.id || "-"]);
+          .map((ind) => [String(ind.id), ind.indicador, unidadeComEscala(ind.unidade)]);
 
         output += createMarkdownTable(["ID", "Indicador", "Unidade"], rows, {
           alignment: ["center", "left", "center"],
@@ -596,4 +596,17 @@ function listarIndicadoresDisponiveis(): StructuredToolResult {
       pesquisa: "Cidades@ — catálogo de indicadores municipais suportados",
     }),
   };
+}
+
+/**
+ * Unit cell of the Pesquisas listing, with the source's multiplier when it is
+ * not 1. Measured on 2026-10-15: the PIB dos Municípios survey (38) publishes
+ * 19 indicators in R$ with `multiplicador: 1000` — showing only "R$" made a
+ * value in thousands read as reais.
+ */
+export function unidadeComEscala(unidade?: { id?: string; multiplicador?: number }): string {
+  const id = unidade?.id || "-";
+  const mult = unidade?.multiplicador;
+  if (typeof mult !== "number" || mult === 1) return id;
+  return `${id} (× ${mult.toLocaleString("pt-BR")})`;
 }
