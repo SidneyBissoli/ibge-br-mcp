@@ -16,7 +16,10 @@ import { CLASSE_DO_ERRO, classeDeclarada, type ErrorClass } from "./call-shape.j
  * undefined" saía `outro` — ou `contrato`, quando o bloco "Parâmetros
  * utilizados" ecoava uma palavra como "inválido".
  */
-export function comClasse(error: unknown): { [CLASSE_DO_ERRO]?: ErrorClass; [CAUSA_DO_ERRO]?: Error } {
+export function comClasse(error: unknown): {
+  [CLASSE_DO_ERRO]?: ErrorClass;
+  [CAUSA_DO_ERRO]?: Error;
+} {
   const classe = classeDeclarada(error) ?? (ehBugNosso(error) ? "defeito" : undefined);
   const causa = error instanceof Error ? { [CAUSA_DO_ERRO]: error } : {};
   return classe ? { [CLASSE_DO_ERRO]: classe, ...causa } : causa;
