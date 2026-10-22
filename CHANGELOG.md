@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Smoke pós-deploy: fonte fora ≠ deploy quebrado.** `scripts/smoke-mcp.mjs`
+  passa a correr sobre `criarSmoke` do `@sbissoli/mcp-live-source` (0.3.0,
+  dev). Medido em 22/10/2026 (run 39853335263): o IBGE recusou conexões de
+  parte das nuvens, o Worker estava no ar na versão certa, a tool degradou como
+  devia (`isError` com explicação) e o smoke saía 1 com "ibge_estados retornou
+  erro", sem o texto — o painel abriu "Deploy FALHOU" para um deploy que não
+  falhou. Agora, tool com `isError` inesperado = SONDA direta na fonte (um GET
+  mínimo em cada API que o roteiro usa: Localidades `estados/33` e Agregados
+  `6579/…/9324`, 8 s, sem retry), veredito pelo `kind` do erro: fonte fora
+  (timeout, rede, 429, 5xx, corpo que não é o esperado) = **aviso**
+  (`::warning title=Fonte indisponível::<verificação>`, saída 0); fonte
+  servindo = **falha**, com o texto da tool no log (antes saía só o rótulo).
+  Cada verificação diz qual sonda a explica (`ibge_estados` → localidades;
+  `ibge_sidra`/`ibge_censo` → agregados; `search`/`fetch` → as duas). Asserção
+  que lança (proveniência, contagem de tools, contrato de sessão) continua
+  vermelha sem sondar; o erro pedagógico (`agruparPor` inválido) é
+  `esperaErro`. Novo `--sonda`: só pergunta ao IBGE se está servindo (sai 0/2;
+  `SMOKE_SONDA_LOCALIDADES`/`SMOKE_SONDA_AGREGADOS` apontam a sonda para outro
+  lugar). O resumo do job (`$GITHUB_STEP_SUMMARY`) ganha a tabela do pacote.
+  Provado contra a produção (10/10, saída 0) e em STDIO (8/8).
 - **Contrato semanal ao vivo: fonte fora ≠ deriva.** Os quatro arquivos de
   `integration.yml` (`catalog`, `malhas`, `malhas-tema`, `sidra-vazio`) passam
   a rodar cada caso em `aoVivo` do `@sbissoli/mcp-live-source/vitest` (0.2.0,

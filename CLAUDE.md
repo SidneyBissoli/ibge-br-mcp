@@ -21,6 +21,16 @@ npm run format         # prettier --write src/
 npm run inspector      # @modelcontextprotocol/inspector against dist/index.js — manual tool testing
 node scripts/smoke-mcp.mjs           # smoke against the hosted Worker (initialize/tools/list/calls incl. estatisticas)
 node scripts/smoke-mcp.mjs --stdio   # same smoke over local STDIO (requires npm run build)
+node scripts/smoke-mcp.mjs --sonda   # only asks the IBGE APIs whether they are serving (exit 0/2) — read a red deploy with it
+```
+
+The smoke runs on `criarSmoke` from `@sbissoli/mcp-live-source` (dev): a tool that answers
+`isError` unexpectedly triggers a direct probe of the source API that check names
+(`sondas: ["localidades"]` / `["agregados"]`); source down = `::warning title=Fonte
+indisponível`, exit 0 (the deploy step stays green); source serving = red with the tool's
+text. A check that throws (assertion, HTTP, JSON-RPC) is a deploy defect and never probes.
+
+```bash
 ```
 
 Run a single test file or test by name:
