@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Contrato semanal ao vivo: fonte fora ≠ deriva.** Os quatro arquivos de
+  `integration.yml` (`catalog`, `malhas`, `malhas-tema`, `sidra-vazio`) passam
+  a rodar cada caso em `aoVivo` do `@sbissoli/mcp-live-source/vitest` (0.2.0,
+  dev): a ida vai pelo `@sbissoli/mcp-upstream` (o erro carrega o `kind`) e,
+  depois de 3 idas, fonte fora (timeout, rede, 429, 5xx) = caso **pulado** e
+  anotado `::warning title=Fonte indisponível::<endpoint>` — job verde, o
+  painel do portfólio conta as noites por endpoint —; só o que a fonte
+  RESPONDEU reprova (asserção = `Deriva de formato`, vermelho). Antes, um blip
+  de uma conexão ou um 502 ficava vermelho igual a deriva (item
+  `mcp:fonte-indisponivel-nao-e-deriva`). O disjuntor de 12/09/2026 (3 casos
+  seguidos sem resposta e nenhuma leitura) é agora o do pacote: os casos
+  seguintes pulam sem ir à rede, anotados `Fonte inalcançável`. Resposta 4xx
+  continua chegando como `Response` (vários casos assertam um 400).
+  Para isso, no servidor: os erros de `retry.ts` (`TimeoutError`,
+  `UpstreamError`, `ErroDaOrigem`) carregam o erro do pacote em `cause`, e o
+  resultado de erro de toda ferramenta leva a exceção numa chave-símbolo ao
+  lado da classe (`CAUSA_DO_ERRO` / `causaAnexada`, `errors.ts`; fora do JSON,
+  o cliente não a vê) — o teste relança a exceção real em vez de ler só
+  `isError`. Mensagens, classes e respostas inalteradas; `@sbissoli/mcp-upstream`
+  ^0.5.1 (a 0.5.x só acrescenta `entregaDaOrigem`). Rodada local de 22/10/2026:
+  catálogo 65/65, malhas 21/21, sidra-vazio 3/3, malhas-tema 15 de 17 — os dois
+  casos do WFS de biomas pularam como `Fonte indisponível` (antes, vermelho).
+
 ## [5.10.0] - 2026-10-15
 
 `ibge_paises` volta a dar os indicadores do país. Desde a primeira versão, o modo `detalhes`

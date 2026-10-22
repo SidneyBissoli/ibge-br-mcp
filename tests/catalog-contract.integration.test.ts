@@ -19,18 +19,27 @@
  *  - a expectativa descreve o RÓTULO (a intenção), nunca copia o nome real
  *    da tabela — senão o teste deixa de ser uma verificação independente.
  *
+ * Fonte fora ≠ deriva: cada caso roda em `aoVivo` (ver integration-fetch.ts).
+ * O disjuntor de 12/09/2026 (a fonte descarta pacotes de alguns endereços de
+ * origem; a rodada das 09:52 UTC travou até o teto de 15 min e a re-rodada 17
+ * min depois passou em 70 s — só mudou o runner) é o do pacote: 3 códigos
+ * seguidos sem resposta e nenhuma leitura, e os demais pulam sem pagar o
+ * orçamento, anotados `Fonte inalcançável`.
+ *
  * Roda apenas com INTEGRATION_TESTS=1 (rede real; ver
  * .github/workflows/integration.yml — cron semanal + dispatch manual).
  */
 import { describe, expect, it } from "vitest";
+import { suiteAoVivo } from "@sbissoli/mcp-live-source/vitest";
 import { SIDRA_TABLES } from "../src/config.js";
 import { INDICADORES_SAUDE } from "../src/tools/datasaude.js";
 import { INDICADORES_CONHECIDOS, ibgeIndicadores } from "../src/tools/indicadores.js";
 import { TEMPLATES_COMPARACAO } from "../src/tools/comparar.js";
 import { TABELAS_COMUNS } from "../src/tools/sidra.js";
-import { fetchIntegracao, FalhaDeTransporte } from "./integration-fetch.js";
+import { CASO_FERRAMENTA, fetchIntegracao, semErro, SUITE_AO_VIVO, TIMEOUT_CASO_MS } from "./integration-fetch.js";
 
 const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TESTS === "true";
+const { aoVivo } = suiteAoVivo(SUITE_AO_VIVO);
 
 /** Expectativa semântica por código: regex sobre o nome real (minúsculo, sem acento). */
 const EXPECTED: Record<string, RegExp> = {
@@ -109,45 +118,17 @@ function normalize(s: string): string {
 }
 
 /**
- * Disjuntor. Medido em 12/09/2026: a fonte descarta pacotes de alguns
- * endereços de origem, e o runner que cai num deles não fala com ela o job
- * inteiro. Aconteceu aqui: a rodada das 09:52 UTC travou e foi cortada pelo
- * teto de 15 min; a re-rodada 17 min depois, mesmo código e mesmo alvo, passou
- * em 70 s — só mudou o runner. Sem disjuntor, cada um dos 33 códigos paga o
- * orçamento inteiro para descobrir a mesma coisa.
- *
- * Só arma enquanto NADA foi lido: depois que o IBGE respondeu uma vez ele está
- * alcançável, e uma falha posterior é daquele código, não da conexão.
+ * O nome da tabela segundo a API. Fonte fora sobe como erro do pacote (o
+ * `aoVivo` decide); resposta recusada (4xx) é o que a fonte DISSE do código,
+ * e reprova pela asserção.
  */
-const LIMITE_TRANSPORTE = 3;
-let leiturasOk = 0;
-let sequenciaTransporte = 0;
-
-function disjuntorAberto(): boolean {
-  return leiturasOk === 0 && sequenciaTransporte >= LIMITE_TRANSPORTE;
-}
-
 async function tableName(code: string): Promise<string> {
   const url = `https://servicodados.ibge.gov.br/api/v3/agregados/${code}/metadados`;
-  try {
-    // `fetchIntegracao` já repete falha de transporte; o que sobra aqui é
-    // decidir o que a resposta significa e alimentar o disjuntor.
-    const res = await fetchIntegracao(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const meta = (await res.json()) as { nome?: string };
-    if (!meta.nome) throw new Error("metadados sem campo nome");
-    leiturasOk++;
-    sequenciaTransporte = 0;
-    return meta.nome;
-  } catch (err) {
-    if (err instanceof FalhaDeTransporte) {
-      sequenciaTransporte++;
-    } else {
-      // Uma resposta CHEGOU e foi recusada: a conexão está de pé.
-      sequenciaTransporte = 0;
-    }
-    throw new Error(`tabela ${code}: falha ao consultar metadados — ${String(err)}`);
-  }
+  const res = await fetchIntegracao(url);
+  expect(res.ok, `tabela ${code}: metadados responderam HTTP ${res.status}`).toBe(true);
+  const meta = (await res.json()) as { nome?: string };
+  expect(meta.nome, `tabela ${code}: metadados sem campo nome`).toBeTruthy();
+  return meta.nome as string;
 }
 
 describe.runIf(LIVE)("contrato do catálogo SIDRA (API real)", () => {
@@ -165,26 +146,19 @@ describe.runIf(LIVE)("contrato do catálogo SIDRA (API real)", () => {
   for (const code of codes) {
     const users = declared.filter((d) => d.code === code);
     const where = users.map((u) => `${u.origin}:${u.label}`).join("; ");
-    it(`tabela ${code} é o que o catálogo promete [${where}]`, async () => {
-      if (disjuntorAberto()) {
-        throw new Error(
-          `IBGE inalcançável deste runner: ${sequenciaTransporte} códigos seguidos ` +
-            `sem nenhuma resposta e nenhuma leitura bem-sucedida. O contrato do ` +
-            `catálogo NÃO foi medido — isto não diz nada sobre o código ${code}. ` +
-            `Re-rodar cai num runner novo, com outro endereço de origem.`
-        );
-      }
-      const nome = await tableName(code);
-      const expected = EXPECTED[code];
-      if (!expected) return; // já reportado no teste de completude
-      expect(
-        expected.test(normalize(nome)),
-        `tabela ${code} na API é "${nome}" — não bate com a expectativa ${expected} declarada para: ${where}`
-      ).toBe(true);
-      // Prazo por teste: 3 tentativas de 20 s mais 1 s + 2 s de espera = 63 s
-      // no pior caso. Era 180 s, herdado de um orçamento de 45 s por
-      // requisição que já não existe.
-    }, 90_000);
+    aoVivo(
+      `tabela ${code} é o que o catálogo promete [${where}]`,
+      async () => {
+        const nome = await tableName(code);
+        const expected = EXPECTED[code];
+        if (!expected) return; // já reportado no teste de completude
+        expect(
+          expected.test(normalize(nome)),
+          `tabela ${code} na API é "${nome}" — não bate com a expectativa ${expected} declarada para: ${where}`
+        ).toBe(true);
+      },
+      { endpoint: `agregados-${code}-metadados`, timeout: TIMEOUT_CASO_MS }
+    );
   }
 });
 
@@ -219,26 +193,30 @@ const EXPECTED_VARIAVEL: Record<string, RegExp> = {
 
 describe.runIf(LIVE)("variável de cada indicador nomeado (API real)", () => {
   it("todo indicador tem expectativa de variável", () => {
-    const faltam = Object.keys(INDICADORES_CONHECIDOS).filter((k) => !(k in EXPECTED_VARIAVEL));
-    expect(faltam, `indicadores sem EXPECTED_VARIAVEL: ${faltam.join(", ")}`).toEqual([]);
+    const missing = Object.keys(INDICADORES_CONHECIDOS).filter((k) => !(k in EXPECTED_VARIAVEL));
+    expect(missing, `indicadores sem entrada em EXPECTED_VARIAVEL: ${missing.join(", ")}`).toEqual([]);
   });
 
   for (const [chave, ind] of Object.entries(INDICADORES_CONHECIDOS)) {
-    it(`${chave}: tabela ${ind.tabela}, variável ${ind.variavel}`, async () => {
-      const res = await fetchIntegracao(
-        `https://servicodados.ibge.gov.br/api/v3/agregados/${ind.tabela}/metadados`
-      );
-      expect(res.ok, `metadados da tabela ${ind.tabela}: HTTP ${res.status}`).toBe(true);
-      const meta = (await res.json()) as { variaveis?: Array<{ id: number; nome: string }> };
-      const v = meta.variaveis?.find((x) => String(x.id) === ind.variavel);
-      expect(v, `variável ${ind.variavel} não existe na tabela ${ind.tabela}`).toBeDefined();
-      const esperado = EXPECTED_VARIAVEL[chave];
-      if (!esperado) return; // já reportado na completude
-      expect(
-        esperado.test(normalize(v!.nome)),
-        `${chave}: a variável ${ind.variavel} é "${v!.nome}" — não bate com ${esperado}`
-      ).toBe(true);
-    }, 90_000);
+    aoVivo(
+      `${chave}: tabela ${ind.tabela}, variável ${ind.variavel}`,
+      async () => {
+        const res = await fetchIntegracao(
+          `https://servicodados.ibge.gov.br/api/v3/agregados/${ind.tabela}/metadados`
+        );
+        expect(res.ok, `metadados da tabela ${ind.tabela}: HTTP ${res.status}`).toBe(true);
+        const meta = (await res.json()) as { variaveis?: Array<{ id: number; nome: string }> };
+        const v = meta.variaveis?.find((x) => String(x.id) === ind.variavel);
+        expect(v, `variável ${ind.variavel} não existe na tabela ${ind.tabela}`).toBeDefined();
+        const esperado = EXPECTED_VARIAVEL[chave];
+        if (!esperado) return; // já reportado na completude
+        expect(
+          esperado.test(normalize(v!.nome)),
+          `${chave}: a variável ${ind.variavel} é "${v!.nome}" — não bate com ${esperado}`
+        ).toBe(true);
+      },
+      { endpoint: `indicador-${chave}-variavel`, timeout: TIMEOUT_CASO_MS }
+    );
   }
 
   // Prova ATIVA: a tool, chamada como um cliente chamaria, devolve número. Os
@@ -246,15 +224,19 @@ describe.runIf(LIVE)("variável de cada indicador nomeado (API real)", () => {
   // `pib_variacao` tinham tabela e variável certas e respondiam só ".." — a
   // classificação sem categoria cai na categoria 0, que não existe.
   for (const chave of Object.keys(INDICADORES_CONHECIDOS)) {
-    it(`${chave}: a tool devolve ao menos um valor numérico nos últimos períodos`, async () => {
-      const r = await ibgeIndicadores({ indicador: chave, periodos: "last 4", formato: "json" });
-      expect(r.isError, r.markdown.slice(0, 300)).toBeFalsy();
-      const registros = (r.structured as { registros?: Array<Record<string, string>> } | undefined)?.registros ?? [];
-      const numericos = registros.filter((x) => /^-?\d+(\.\d+)?$/.test(x["Valor"] ?? ""));
-      expect(
-        numericos.length,
-        `${chave}: ${registros.length} registros e nenhum valor — ${registros.map((x) => x["Valor"]).join(",")}`
-      ).toBeGreaterThan(0);
-    }, 90_000);
+    aoVivo(
+      `${chave}: a tool devolve ao menos um valor numérico nos últimos períodos`,
+      async () => {
+        const r = await ibgeIndicadores({ indicador: chave, periodos: "last 4", formato: "json" });
+        semErro(r);
+        const registros = (r.structured as { registros?: Array<Record<string, string>> } | undefined)?.registros ?? [];
+        const numericos = registros.filter((x) => /^-?\d+(\.\d+)?$/.test(x["Valor"] ?? ""));
+        expect(
+          numericos.length,
+          `${chave}: ${registros.length} registros e nenhum valor — ${registros.map((x) => x["Valor"]).join(",")}`
+        ).toBeGreaterThan(0);
+      },
+      { endpoint: `indicador-${chave}-tool`, ...CASO_FERRAMENTA }
+    );
   }
 });

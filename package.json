@@ -64,13 +64,14 @@
     "@sbissoli/mcp-provenance": "^0.4.0",
     "@sbissoli/mcp-search": "^0.9.0",
     "@sbissoli/mcp-stats": "^0.3.0",
-    "@sbissoli/mcp-upstream": "^0.4.2",
+    "@sbissoli/mcp-upstream": "^0.5.1",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@modelcontextprotocol/client": "^2.0.0",
     "@sbissoli/mcp-evals": "^0.2.1",
+    "@sbissoli/mcp-live-source": "^0.2.0",
     "@sbissoli/mcp-surface": "^0.6.0",
     "@types/node": "^26.5.1",
     "@vitest/coverage-v8": "^5.0.0",
