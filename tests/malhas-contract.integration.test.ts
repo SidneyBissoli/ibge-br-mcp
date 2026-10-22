@@ -19,10 +19,13 @@
  *    inválido faz a v3 enumerar o que aceita) e comparada com a tabela do
  *    código. Assim a tabela não fossiliza o dia em que foi escrita.
  *
+ * Fonte fora ≠ deriva: cada caso roda em `aoVivo` (ver integration-fetch.ts).
+ *
  * Roda apenas com INTEGRATION_TESTS=1 (rede real; ver
  * .github/workflows/integration.yml — cron semanal + dispatch manual).
  */
 import { describe, expect, it } from "vitest";
+import { suiteAoVivo } from "@sbissoli/mcp-live-source/vitest";
 import {
   ibgeMalhas,
   INTRARREGIAO_POR_NIVEL,
@@ -32,13 +35,10 @@ import {
   type Nivel,
 } from "../src/tools/malhas.js";
 import { IBGE_API } from "../src/types.js";
-import {
-  fetchIntegracao,
-  TIMEOUT_CASO_FERRAMENTA_MS,
-  TIMEOUT_CASO_MS,
-} from "./integration-fetch.js";
+import { CASO_FERRAMENTA, fetchIntegracao, semErro, SUITE_AO_VIVO, TIMEOUT_CASO_MS } from "./integration-fetch.js";
 
 const LIVE = process.env.INTEGRATION_TESTS === "1" || process.env.INTEGRATION_TESTS === "true";
+const { aoVivo } = suiteAoVivo(SUITE_AO_VIVO);
 
 /** Um identificador real por nível, para perguntar à API o que ela aceita. */
 const EXEMPLO: Record<Nivel, string> = {
@@ -83,46 +83,66 @@ describe.skipIf(!LIVE)("contrato de malhas contra a API v3 real", () => {
   });
 
   for (const nivel of NIVEIS) {
-    it(`${nivel}: a API confirma as divisões internas que o código promete`, async () => {
-      const daApi = await aceitosSegundoApi(nivel);
-      expect(new Set(daApi)).toEqual(new Set(INTRARREGIAO_POR_NIVEL[nivel]));
-    }, TIMEOUT_CASO_MS);
+    aoVivo(
+      `${nivel}: a API confirma as divisões internas que o código promete`,
+      async () => {
+        const daApi = await aceitosSegundoApi(nivel);
+        expect(new Set(daApi)).toEqual(new Set(INTRARREGIAO_POR_NIVEL[nivel]));
+      },
+      { endpoint: `malhas-${nivel}-intrarregiao`, timeout: TIMEOUT_CASO_MS }
+    );
   }
 
   for (const nivel of NIVEIS) {
-    it(`${nivel}: o endpoint da ferramenta responde 200`, async () => {
-      const url = `${IBGE_API.MALHAS}/${nivel}/${EXEMPLO[nivel]}?formato=${GEOJSON}&qualidade=minima`;
-      const resposta = await fetchIntegracao(url);
-      expect(resposta.status, `${nivel} em ${url}`).toBe(200);
-    }, TIMEOUT_CASO_MS);
+    aoVivo(
+      `${nivel}: o endpoint da ferramenta responde 200`,
+      async () => {
+        const url = `${IBGE_API.MALHAS}/${nivel}/${EXEMPLO[nivel]}?formato=${GEOJSON}&qualidade=minima`;
+        const resposta = await fetchIntegracao(url);
+        expect(resposta.status, `${nivel} em ${url}`).toBe(200);
+      },
+      { endpoint: `malhas-${nivel}`, timeout: TIMEOUT_CASO_MS }
+    );
   }
 
   for (const qualidade of QUALIDADE_V3) {
-    it(`a API aceita qualidade="${qualidade}"`, async () => {
-      const url = `${IBGE_API.MALHAS}/paises/BR?formato=${GEOJSON}&qualidade=${qualidade}`;
-      expect((await fetchIntegracao(url)).status).toBe(200);
-    }, TIMEOUT_CASO_MS);
+    aoVivo(
+      `a API aceita qualidade="${qualidade}"`,
+      async () => {
+        const url = `${IBGE_API.MALHAS}/paises/BR?formato=${GEOJSON}&qualidade=${qualidade}`;
+        expect((await fetchIntegracao(url)).status).toBe(200);
+      },
+      { endpoint: `malhas-qualidade-${qualidade}`, timeout: TIMEOUT_CASO_MS }
+    );
   }
 
-  it("a ferramenta inteira devolve malha, sem erro, no caminho mais comum", async () => {
-    const { markdown, structured, isError } = await ibgeMalhas({
-      localidade: "BR",
-      resolucao: "2",
-      qualidade: "minima",
-    });
+  aoVivo(
+    "a ferramenta inteira devolve malha, sem erro, no caminho mais comum",
+    async () => {
+      const r = await ibgeMalhas({
+        localidade: "BR",
+        resolucao: "2",
+        qualidade: "minima",
+      });
+      semErro(r);
+      const { markdown, structured } = r;
+      expect(markdown).toContain("Número de features");
+      // 27 UFs: o intrarregiao foi aplicado de verdade, não silenciosamente ignorado.
+      expect(markdown).toContain("| **Número de features** | 27 |");
+      expect(String((structured as { url?: string })?.url)).toContain("intrarregiao=UF");
+    },
+    { endpoint: "malhas-tool", ...CASO_FERRAMENTA }
+  );
 
-    expect(isError).toBeFalsy();
-    expect(markdown).toContain("Número de features");
-    // 27 UFs: o intrarregiao foi aplicado de verdade, não silenciosamente ignorado.
-    expect(markdown).toContain("| **Número de features** | 27 |");
-    expect(String((structured as { url?: string })?.url)).toContain("intrarregiao=UF");
-  }, TIMEOUT_CASO_FERRAMENTA_MS);
-
-  it("cada resolucao traduzida é um valor que a API aceita para BR", async () => {
-    const doCodigo = Object.values(RESOLUCAO_PARA_INTRARREGIAO).filter(Boolean) as string[];
-    const daApi = await aceitosSegundoApi("paises");
-    for (const valor of doCodigo) {
-      expect(daApi, `resolucao traduz para "${valor}", que a API de BR não aceita`).toContain(valor);
-    }
-  }, TIMEOUT_CASO_MS);
+  aoVivo(
+    "cada resolucao traduzida é um valor que a API aceita para BR",
+    async () => {
+      const doCodigo = Object.values(RESOLUCAO_PARA_INTRARREGIAO).filter(Boolean) as string[];
+      const daApi = await aceitosSegundoApi("paises");
+      for (const valor of doCodigo) {
+        expect(daApi, `resolucao traduz para "${valor}", que a API de BR não aceita`).toContain(valor);
+      }
+    },
+    { endpoint: "malhas-resolucao", timeout: TIMEOUT_CASO_MS }
+  );
 });

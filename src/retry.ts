@@ -76,8 +76,12 @@ export class TimeoutError extends Error {
   /** Classe pelo TIPO (ver `CLASSE_DO_ERRO` em call-shape.ts). */
   readonly classe: ErrorClass = "fonte";
 
-  constructor(public readonly timeoutMs: number) {
-    super(`Request timeout after ${timeoutMs}ms`);
+  constructor(
+    public readonly timeoutMs: number,
+    /** `cause` = o `UpstreamError` do pacote: é por ele que o teste vivo lê o `kind` da origem. */
+    options?: { cause?: unknown }
+  ) {
+    super(`Request timeout after ${timeoutMs}ms`, options);
     this.name = "TimeoutError";
   }
 }
@@ -113,9 +117,11 @@ export class UpstreamError extends Error {
     public readonly statusText: string,
     /** O que a fonte respondeu no corpo, já limpo e cortado. Vazio quando não há. */
     public readonly detalhe?: string,
-    sufixo = ""
+    sufixo = "",
+    /** `cause` = o `UpstreamError` do pacote: é por ele que o teste vivo lê o `kind` da origem. */
+    options?: { cause?: unknown }
   ) {
-    super(`HTTP ${status}: ${statusText}${sufixo}${detalhe ? ` — ${detalhe}` : ""}`);
+    super(`HTTP ${status}: ${statusText}${sufixo}${detalhe ? ` — ${detalhe}` : ""}`, options);
     this.name = "UpstreamError";
     this.classe = status === 400 ? "contrato" : status === 404 ? "nao_encontrado" : "fonte";
   }
@@ -414,6 +420,13 @@ const STATUS_TEXT: Record<number, string> = {
  * Do erro do pacote (classe + contagem) ao erro que o servidor sempre leu
  * (tipo + mensagem). O sufixo "(after N retries)" continua onde estava: na
  * mensagem de quem esgotou as tentativas.
+ *
+ * O erro do pacote vai em `cause` do erro traduzido (desde a peça 4 do item
+ * `mcp:fonte-indisponivel-nao-e-deriva`, 22/10/2026): é por ele que o teste
+ * de contrato ao vivo (`@sbissoli/mcp-live-source`) lê o `kind` da origem e
+ * separa "a fonte está fora" (teste pulado, aviso) de "a fonte mudou"
+ * (vermelho). Sem o `cause`, toda falha chegava lá como "alheia à origem".
+ * A cadeia continua: o `cause` do erro do pacote é o que o `fetch` lançou.
  */
 async function traduzirErro(erro: unknown, o: Required<RetryOptions>): Promise<Error> {
   if (!(erro instanceof ErroDaIda)) {
@@ -422,7 +435,7 @@ async function traduzirErro(erro: unknown, o: Required<RetryOptions>): Promise<E
   const sufixo = erro.attempts > 1 ? ` (after ${erro.attempts - 1} retries)` : "";
   switch (erro.kind) {
     case "timeout":
-      return new TimeoutError(o.timeoutMs);
+      return new TimeoutError(o.timeoutMs, { cause: erro });
     case "network":
     case "aborted":
       // Rejeição que NÃO é rede (um `Error` de outra camada, que `repetir` já
@@ -435,12 +448,12 @@ async function traduzirErro(erro: unknown, o: Required<RetryOptions>): Promise<E
       return new ErroDaOrigem(
         erro.cause instanceof Error ? erro.cause.message : erro.message,
         "fonte",
-        { cause: erro.cause }
+        { cause: erro }
       );
     case "malformed_body":
       // HTML em 200 é página de erro da borda, não resposta: a fonte falhou.
       return new ErroDaOrigem(`Resposta da API do IBGE não é JSON válido${sufixo}`, "fonte", {
-        cause: erro.cause,
+        cause: erro,
       });
     default: {
       // Um status chegou: http_4xx, http_5xx, rate_limited, not_found. O corpo
@@ -450,7 +463,7 @@ async function traduzirErro(erro: unknown, o: Required<RetryOptions>): Promise<E
         ? await motivoUpstream(erro.response)
         : motivoDoCorpo(erro.body);
       const statusText = erro.response?.statusText || STATUS_TEXT[status] || "";
-      return new UpstreamError(status, statusText, detalhe, sufixo);
+      return new UpstreamError(status, statusText, detalhe, sufixo, { cause: erro });
     }
   }
 }

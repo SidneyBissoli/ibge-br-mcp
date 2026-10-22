@@ -6,7 +6,12 @@ import {
   timeoutError,
   networkError,
   IBGE_ERROR_CODES,
+  causaAnexada,
+  erroDoCatch,
+  erroFonte,
 } from "../src/errors.js";
+import { classeAnexada } from "../src/call-shape.js";
+import { UpstreamError as ErroDaIda, entregaDaOrigem } from "@sbissoli/mcp-upstream";
 import { TimeoutError, UpstreamError, motivoUpstream } from "../src/retry.js";
 
 describe("IBGE_ERROR_CODES", () => {
@@ -261,6 +266,30 @@ describe("networkError", () => {
 // que não diz QUAL parâmetro nem por quê, e só podia tentar outra combinação.
 // Reproduzido ao vivo contra apisidra em 11/09/2026 — toda chamada malformada
 // responde 400 com uma frase que resolve o caso sozinha.
+describe("causaAnexada — a exceção viaja ao lado da classe no resultado de erro", () => {
+  // Peça 4 de `mcp:fonte-indisponivel-nao-e-deriva`: o teste de contrato ao
+  // vivo chama a ferramenta e relança a exceção real; o repórter lê o `kind`
+  // da origem pela cadeia `cause`.
+  it("erroDoCatch anexa a exceção, fora do JSON e da classe", () => {
+    const original = new UpstreamError(502, "Bad Gateway", undefined, "", {
+      cause: new ErroDaIda({ url: "https://x", kind: "http_5xx", status: 502, retryable: true, transport: false, attempts: 1 }),
+    });
+    const r = erroDoCatch(original, "ibge_sidra", { tabela: "6579" });
+    expect(r.isError).toBe(true);
+    expect(causaAnexada(r)).toBe(original);
+    expect(classeAnexada(r)).toBe("fonte");
+    expect(entregaDaOrigem(causaAnexada(r))).toMatchObject({ veredito: "indisponivel", kind: "http_5xx" });
+    expect(JSON.stringify(r)).not.toContain("cause");
+    expect(Object.keys(r)).toEqual(["markdown", "isError"]);
+  });
+
+  it("resultado sem exceção (a ferramenta recusou por conta própria) não tem causa", () => {
+    expect(causaAnexada(erroFonte("vazio onde não pode haver vazio"))).toBeUndefined();
+    expect(causaAnexada(erroDoCatch("string solta", "ibge_sidra"))).toBeUndefined();
+    expect(causaAnexada(undefined)).toBeUndefined();
+  });
+});
+
 describe("UpstreamError — o que a fonte respondeu chega a quem chamou", () => {
   const resposta = (corpo: string, tipo = "text/plain"): Response =>
     new Response(corpo, { status: 400, statusText: "Bad Request", headers: { "content-type": tipo } });

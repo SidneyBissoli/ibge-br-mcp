@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { currentCall } from "@sbissoli/mcp-upstream/als";
-import type { RetryContext } from "@sbissoli/mcp-upstream";
+import { UpstreamError as ErroDaIda, entregaDaOrigem, type RetryContext } from "@sbissoli/mcp-upstream";
 import {
   comColetorDeRede,
   fetchJson,
@@ -211,6 +211,29 @@ describe("fetchJson — repetição, contagem e o erro que o servidor lê", () =
     expect(erro.detalhe).toBe("Tabela 99999: Tabela inválida");
     expect(erro.message).toMatch(/^HTTP 500: Internal Server Error \(after 2 retries\) — Tabela 99999/);
     expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
+
+  // Peça 4 de `mcp:fonte-indisponivel-nao-e-deriva`: o teste de contrato ao
+  // vivo lê o `kind` da origem pela cadeia `cause`. Sem ela, um 502 chegava ao
+  // repórter como "erro que não veio da origem" e o job ficava vermelho por
+  // fonte fora, igual a deriva.
+  it("o erro traduzido leva o erro do pacote em `cause`: o veredito da origem sobrevive à tradução", async () => {
+    global.fetch = sempre(() => new Response("<html>502</html>", { status: 502 }));
+    const erro = await fetchJson(URL, { ...RAPIDO, maxRetries: 0 }).catch((e: unknown) => e as UpstreamError);
+    expect(erro.cause).toBeInstanceOf(ErroDaIda);
+    expect(entregaDaOrigem(erro)).toMatchObject({ veredito: "indisponivel", kind: "http_5xx", status: 502 });
+
+    global.fetch = sempre(() => new Response("[]", { status: 404 }));
+    const ausente = await fetchJson(URL, RAPIDO).catch((e: unknown) => e as UpstreamError);
+    expect(entregaDaOrigem(ausente).veredito).toBe("respondeu");
+
+    global.fetch = sempre(() => new Response("<html>borda</html>", { status: 200 }));
+    const html = await fetchJson(URL, RAPIDO).catch((e: unknown) => e as Error);
+    expect(entregaDaOrigem(html)).toMatchObject({ veredito: "ambiguo", kind: "malformed_body" });
+
+    global.fetch = vi.fn(() => Promise.reject(new TypeError("fetch failed"))) as unknown as typeof fetch;
+    const rede = await fetchJson(URL, { ...RAPIDO, maxRetries: 0 }).catch((e: unknown) => e as Error);
+    expect(entregaDaOrigem(rede)).toMatchObject({ veredito: "indisponivel", kind: "network" });
   });
 
   it("400 não repete e chega com o corpo (é nele que a fonte diz qual parâmetro recusou)", async () => {

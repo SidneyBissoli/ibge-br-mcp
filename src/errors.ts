@@ -16,9 +16,32 @@ import { CLASSE_DO_ERRO, classeDeclarada, type ErrorClass } from "./call-shape.j
  * undefined" saía `outro` — ou `contrato`, quando o bloco "Parâmetros
  * utilizados" ecoava uma palavra como "inválido".
  */
-export function comClasse(error: unknown): { [CLASSE_DO_ERRO]?: ErrorClass } {
+export function comClasse(error: unknown): { [CLASSE_DO_ERRO]?: ErrorClass; [CAUSA_DO_ERRO]?: Error } {
   const classe = classeDeclarada(error) ?? (ehBugNosso(error) ? "defeito" : undefined);
-  return classe ? { [CLASSE_DO_ERRO]: classe } : {};
+  const causa = error instanceof Error ? { [CAUSA_DO_ERRO]: error } : {};
+  return classe ? { [CLASSE_DO_ERRO]: classe, ...causa } : causa;
+}
+
+/**
+ * A EXCEÇÃO por trás de um resultado de erro, ao lado da classe e pelo mesmo
+ * mecanismo (chave-símbolo: `JSON.stringify` a ignora, o cliente não a vê).
+ *
+ * Por que existe. O teste de contrato ao vivo chama a ferramenta como um
+ * cliente chamaria, e a ferramenta ACHATA a exceção em Markdown — quando a
+ * fonte está fora, o teste via `isError: true` e nada mais, e a reprovação
+ * chegava ao painel do portfólio como "a fonte mudou". Com a exceção no
+ * resultado, o teste a relança e o repórter (`@sbissoli/mcp-live-source`) lê o
+ * `kind` da origem pela cadeia `cause` (retry.ts): fonte fora = teste pulado
+ * com aviso; o que a fonte RESPONDEU é que reprova. Peça 4 do item
+ * `mcp:fonte-indisponivel-nao-e-deriva`, 22/10/2026.
+ */
+export const CAUSA_DO_ERRO: unique symbol = Symbol.for("br.com.sidneybissoli.mcp/causa-do-erro");
+
+/** A exceção anexada a um resultado de erro, ou `undefined` quando não há. */
+export function causaAnexada(result: unknown): Error | undefined {
+  if (!result || typeof result !== "object") return undefined;
+  const c = (result as { [CAUSA_DO_ERRO]?: unknown })[CAUSA_DO_ERRO];
+  return c instanceof Error ? c : undefined;
 }
 
 /**
@@ -64,6 +87,7 @@ export interface ResultadoDeErro {
   markdown: string;
   isError: true;
   [CLASSE_DO_ERRO]?: ErrorClass;
+  [CAUSA_DO_ERRO]?: Error;
 }
 
 /** Erro com a classe decidida por quem conhece a situação. */

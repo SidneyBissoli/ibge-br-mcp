@@ -1,5 +1,6 @@
 /**
- * `fetch` com repetição para os testes de integração (rede real).
+ * A ida à rede dos testes de integração (rede real) e o que um resultado de
+ * ferramenta significa para eles.
  *
  * Por que existe: em 12/09/2026 a rodada semanal ficou vermelha porque UMA
  * conexão de UMA requisição não abriu — `UND_ERR_CONNECT_TIMEOUT` contra
@@ -8,26 +9,27 @@
  * sobre o contrato, mas derrubava o job inteiro e chegava ao painel do
  * portfólio como "a fonte mudou".
  *
- * Regra: só repete falha de TRANSPORTE, quando o IBGE não respondeu nada.
- * Resposta que chega é devolvida como está, inclusive 4xx e 5xx — vários
- * testes daqui ASSERTAM um 400, e repetir isso esconderia o que eles medem.
+ * Desde a peça 4 do item `mcp:fonte-indisponivel-nao-e-deriva` (22/10/2026) a
+ * ida é do `@sbissoli/mcp-upstream` — o erro carrega o `kind` — e cada caso
+ * roda em `aoVivo` do `@sbissoli/mcp-live-source/vitest`, que repete (3 idas)
+ * e, se a fonte segue fora (timeout, rede, 429, 5xx), PULA o caso e o anota
+ * como `Fonte indisponível`: job verde, o painel conta as noites. Só o que a
+ * fonte RESPONDEU reprova. O disjuntor (3 casos seguidos sem resposta e nenhuma
+ * leitura) faz os casos seguintes pularem sem ir à rede — é o regime do runner
+ * que a fonte bloqueia por endereço de origem (medido em 12/09/2026: de 20
+ * runners simultâneos, 2 não receberam resposta de TCP nenhuma), e disso cuida
+ * o workflow `Integration retry`, com runner novo.
  *
- * O outro regime, diferente deste, é o runner que não fala com a fonte o job
- * inteiro: a fonte mantém lista de bloqueio por endereço de origem (medido em
- * 12/09/2026 — de 20 runners simultâneos, 2 não receberam nenhuma resposta de
- * TCP em nenhum endereço do alvo, enquanto 18 conectavam). Repetição não cura
- * isso; quem cura é runner novo, e disso cuida o workflow `Integration retry`.
+ * Regra: resposta 4xx que chega é devolvida como está — vários testes daqui
+ * ASSERTAM um 400, e repetir isso esconderia o que eles medem. 5xx e 429 são a
+ * fonte fora: sobem como erro do pacote e viram caso pulado.
  */
 
-import { orcamentoTotalMs } from "../src/retry.js";
-
-/** O IBGE não respondeu: DNS, TCP, TLS, abort. Diferente de um status HTTP. */
-export class FalhaDeTransporte extends Error {
-  constructor(public readonly causa: unknown) {
-    super(String(causa));
-    this.name = "FalhaDeTransporte";
-  }
-}
+import { expect } from "vitest";
+import { createUpstream, UpstreamError } from "@sbissoli/mcp-upstream";
+import { ehAssercao, type OpcoesDaSuite } from "@sbissoli/mcp-live-source";
+import { causaAnexada } from "../src/errors.js";
+import { orcamentoTotalMs, RecursoAusenteError } from "../src/retry.js";
 
 /**
  * Orçamento por requisição. A API responde em ~250 ms quando responde; 20 s é
@@ -36,21 +38,20 @@ export class FalhaDeTransporte extends Error {
  */
 export const ORCAMENTO_REQUISICAO_MS = 20_000;
 
-const TENTATIVAS = 3;
-const ESPERA_BASE_MS = 1000;
+/** As idas são do `aoVivo`: 3, com 2 s e 4 s de espera (padrão do pacote). */
+const IDAS = 3;
+const ESPERAS_MS = 2_000 + 4_000;
 
 /**
- * Pior caso de UMA chamada a `fetchIntegracao`: três tentativas no orçamento
- * inteiro mais as esperas entre elas (1 s + 2 s) = 63 s. Todo caso de teste que
- * faz uma requisição por este helper precisa de timeout MAIOR que isso, senão
- * o vitest derruba o caso enquanto a repetição ainda está cabendo — foi o que
- * aconteceu em 21 e 28/09/2026 (`Test timed out in 30000ms`), e o painel leu
- * lentidão da fonte como contrato quebrado. Casos com N requisições usam N ×.
+ * Pior caso de UM caso de teste com UMA requisição: três idas no orçamento
+ * inteiro mais as esperas entre elas = 66 s. Todo caso que faz uma requisição
+ * por este helper precisa de timeout MAIOR que isso, senão o vitest derruba o
+ * caso enquanto a repetição ainda está cabendo — foi o que aconteceu em 21 e
+ * 28/09/2026 (`Test timed out in 30000ms`), e o painel leu lentidão da fonte
+ * como contrato quebrado. Casos com N requisições usam N × (a repetição é do
+ * caso inteiro).
  */
-export const TIMEOUT_CASO_MS =
-  TENTATIVAS * ORCAMENTO_REQUISICAO_MS +
-  (ESPERA_BASE_MS * (TENTATIVAS * (TENTATIVAS - 1))) / 2 +
-  7_000;
+export const TIMEOUT_CASO_MS = IDAS * ORCAMENTO_REQUISICAO_MS + ESPERAS_MS + 7_000;
 
 /**
  * Caso que chama a FERRAMENTA inteira (`ibgeSidra`, `ibgeMalhas`…) além deste
@@ -60,32 +61,64 @@ export const TIMEOUT_CASO_MS =
  * servidor, não contrato quebrado — e em 29/09/2026 um caso de 60 s caiu por
  * `Test timed out` enquanto os dois irmãos passavam em 13 s. Cobre o helper mais
  * UMA ida completa da ferramenta; ferramenta que faça N idas no pior caso passa
- * disso, e aí é o pior caso do servidor, não lentidão pontual.
+ * disso, e aí é o pior caso do servidor, não lentidão pontual. Esses casos
+ * rodam com `tentativas: 1` no `aoVivo` (`CASO_FERRAMENTA`): o servidor já
+ * repetiu 5 vezes por dentro.
  */
 export const TIMEOUT_CASO_FERRAMENTA_MS = TIMEOUT_CASO_MS + orcamentoTotalMs();
 
-function dorme(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+/** Opções de `aoVivo` para um caso que chama a ferramenta inteira. */
+export const CASO_FERRAMENTA = { tentativas: 1, timeout: TIMEOUT_CASO_FERRAMENTA_MS } as const;
+
+/**
+ * Opções da suíte ao vivo de cada arquivo: o limite do disjuntor medido em
+ * 12/09/2026, e a ausência que a fonte RESPONDEU (`[]` em 200) como deriva,
+ * não como erro alheio.
+ */
+export const SUITE_AO_VIVO: OpcoesDaSuite = {
+  limiteDoDisjuntor: 3,
+  deriva: (e) => ehAssercao(e) || e instanceof RecursoAusenteError,
+};
+
+/** UMA tentativa por ida; quem repete é o `aoVivo`. */
+const upstream = createUpstream({
+  timeoutMs: ORCAMENTO_REQUISICAO_MS,
+  retries: 0,
+  fetchImpl: (input, init) => globalThis.fetch(input, init),
+});
+
+/**
+ * Busca `url` e devolve a `Response` assim que uma chegar com status 4xx ou
+ * 2xx/3xx. Timeout, rede, 429 e 5xx sobem como `UpstreamError` do pacote
+ * (com o `kind`), para o `aoVivo` distinguir "não respondeu" de "respondeu e
+ * foi recusado".
+ */
+export async function fetchIntegracao(url: string | URL, init: RequestInit = {}): Promise<Response> {
+  try {
+    return await upstream.call().response(String(url), { ...init, signal: init.signal ?? undefined });
+  } catch (err) {
+    if (
+      err instanceof UpstreamError &&
+      err.response !== undefined &&
+      (err.kind === "http_4xx" || err.kind === "not_found")
+    ) {
+      return err.response;
+    }
+    throw err;
+  }
 }
 
 /**
- * Busca `url` repetindo só falhas de transporte. Devolve a `Response` assim
- * que uma chegar, seja qual for o status. Esgotadas as tentativas, lança
- * `FalhaDeTransporte`, para quem chama poder distinguir "não respondeu" de
- * "respondeu e foi recusado".
+ * O resultado de uma ferramenta chamada como um cliente chamaria, lido pelo
+ * teste vivo: `isError` com a exceção anexada (`CAUSA_DO_ERRO`, errors.ts)
+ * relança a exceção REAL — o repórter lê o `kind` da origem pela cadeia
+ * `cause` e decide (fonte fora = pulado); `isError` sem exceção é a ferramenta
+ * recusando o que a fonte respondeu, e aí é a asserção que reprova.
  */
-export async function fetchIntegracao(url: string, init: RequestInit = {}): Promise<Response> {
-  let ultima: unknown;
-  for (let tentativa = 0; tentativa < TENTATIVAS; tentativa++) {
-    try {
-      return await fetch(url, {
-        ...init,
-        signal: init.signal ?? AbortSignal.timeout(ORCAMENTO_REQUISICAO_MS),
-      });
-    } catch (err) {
-      ultima = err;
-      if (tentativa < TENTATIVAS - 1) await dorme(ESPERA_BASE_MS * (tentativa + 1));
-    }
+export function semErro(r: { isError?: boolean; markdown: string }): void {
+  if (r.isError) {
+    const causa = causaAnexada(r);
+    if (causa) throw causa;
   }
-  throw new FalhaDeTransporte(ultima);
+  expect(r.isError, r.markdown.slice(0, 300)).toBeFalsy();
 }
