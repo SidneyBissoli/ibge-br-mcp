@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Smoke pós-deploy: tool que falhou com a fonte de pé é chamada de novo antes de ser
+  julgada** (`@sbissoli/mcp-live-source` ^0.4.0, dev; só o lock e esta nota mudam aqui).
+  Decisão do dono em 22/10/2026 sobre uma medição no bcb: a sonda mínima respondia do cache
+  enquanto pedidos pesados caíam por timeout, e checks saíam vermelhos "com a fonte no ar"
+  numa rodada e verdes na seguinte. Agora `verificar` repete a chamada uma vez: passou na 2ª
+  = soluço da origem (aviso `Fonte indisponível`, linha `[AVISO] … passou na 2ª chamada`);
+  falhou de novo = vermelho. Fonte fora na sonda, erro esperado e asserção que lança não
+  repetem.
 - **Smoke pós-deploy: fonte fora ≠ deploy quebrado.** `scripts/smoke-mcp.mjs`
   passa a correr sobre `criarSmoke` do `@sbissoli/mcp-live-source` (0.3.0,
   dev). Medido em 22/10/2026 (run 39853335263): o IBGE recusou conexões de
