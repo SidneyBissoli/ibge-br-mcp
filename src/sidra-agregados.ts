@@ -35,7 +35,12 @@
 
 import { IBGE_API } from "./types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "./cache.js";
-import { RETRY_PRESETS, STATUS_CONEXAO_CLOUDFLARE, UpstreamError, type RetryOptions } from "./retry.js";
+import {
+  RETRY_PRESETS,
+  STATUS_CONEXAO_CLOUDFLARE,
+  UpstreamError,
+  type RetryOptions,
+} from "./retry.js";
 
 /**
  * Retry para a v3: igual ao padrão, MENOS o 500. O apisidra respondia 400 a
