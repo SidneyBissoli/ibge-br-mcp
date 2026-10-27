@@ -231,11 +231,25 @@ export interface RetryOptions {
   timeoutMs?: number;
 }
 
+/**
+ * Cloudflare's "the edge could not get an answer from the origin" statuses
+ * (520 unknown error, 521 refused, 522 connection timed out, 523 unreachable,
+ * 524 timeout after connecting). They only ever reach the Worker, never the
+ * stdio package, and they say nothing about the request: the same URL can
+ * succeed on the next connection. Measured 2026-10-27 in production: 3 of 7
+ * calls answered 522 — agregados AND localidades, calls in the same second
+ * split between 522 and 200 — while the same URLs answered 200 in < 0.6 s
+ * from outside, i.e. per connection, not per endpoint. Until then the list
+ * stopped at 504, so a 522 ended the call on the first attempt (sibling
+ * servers use the package's `defaultRetryOn`, which repeats every 5xx).
+ */
+export const STATUS_CONEXAO_CLOUDFLARE: readonly number[] = [520, 521, 522, 523, 524];
+
 const DEFAULT_OPTIONS: Required<RetryOptions> = {
   maxRetries: 4,
   initialDelayMs: 2000,
   maxDelayMs: 16000,
-  retryableStatusCodes: [429, 500, 502, 503, 504],
+  retryableStatusCodes: [429, 500, 502, 503, 504, ...STATUS_CONEXAO_CLOUDFLARE],
   timeoutMs: REQUEST_TIMEOUT_MS,
 };
 

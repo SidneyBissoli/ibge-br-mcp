@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A falha de conexão da Cloudflare com a origem (520–524) passa a ser repetida.** Medido em
+  produção em 27/10/2026: 3 de 7 chamadas responderam **522**, em agregados e em localidades,
+  com chamadas do mesmo segundo divididas entre 522 e 200, enquanto as mesmas URLs respondiam
+  200 em menos de 0,6 s de fora: é por conexão, não por endpoint, e a próxima ida pode passar.
+  A lista de status repetíveis parava no 504 (`[429, 500, 502, 503, 504]`; no SIDRA,
+  `[408, 429, 502, 503, 504]`), então o 522 encerrava a chamada na primeira tentativa — o
+  ibge era o único servidor do portfólio com lista própria; os irmãos usam o `defaultRetryOn`
+  do `@sbissoli/mcp-upstream`, que repete todo 5xx. Agora as duas listas incluem
+  `STATUS_CONEXAO_CLOUDFLARE` (`src/retry.ts`); o 500 da API de Agregados continua sem
+  repetir. A causa da falha é externa (a rede do IBGE descarta parte das conexões vindas de
+  datacenter — nos runners do GitHub, todas); a repetição só devolve ao usuário a chamada que
+  uma segunda conexão consegue completar.
+
 ### Changed
 
 - **Smoke pós-deploy: tool que falhou com a fonte de pé é chamada de novo antes de ser

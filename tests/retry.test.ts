@@ -15,6 +15,7 @@ import {
   orcamentoTotalMs,
   repetir,
   RETRY_PRESETS,
+  STATUS_CONEXAO_CLOUDFLARE,
   TimeoutError,
   UpstreamError,
   type RetryOptions,
@@ -132,6 +133,24 @@ describe("repetir — o pacote classifica, o servidor decide", () => {
     expect(repetir(ctx({ kind: "http_5xx", status: 503 }), sidra)).toBe(true);
     expect(repetir(ctx({ kind: "rate_limited", status: 429 }), sidra)).toBe(true);
     expect(repetir(ctx({ kind: "http_4xx", status: 408 }), sidra)).toBe(true);
+  });
+
+  // Medido em produção em 27/10/2026: 3 de 7 chamadas responderam 522 (a
+  // Cloudflare não completou a conexão com a origem), em agregados e em
+  // localidades, enquanto as mesmas URLs davam 200 de fora. É por conexão:
+  // a próxima ida pode passar. Até então a lista parava no 504.
+  it("os 52x da Cloudflare repetem na política padrão E na do SIDRA (que segue sem repetir o 500)", () => {
+    const padrao = { ...politica, retryableStatusCodes: [] as number[] };
+    const doPadrao = { ...padrao, ...RETRY_PRESETS.DEFAULT } as Required<RetryOptions>;
+    const sidra = { ...padrao, ...RETRY_SIDRA } as Required<RetryOptions>;
+    expect(STATUS_CONEXAO_CLOUDFLARE).toEqual([520, 521, 522, 523, 524]);
+    for (const status of STATUS_CONEXAO_CLOUDFLARE) {
+      expect(repetir(ctx({ kind: "http_5xx", status }), sidra)).toBe(true);
+    }
+    expect(repetir(ctx({ kind: "http_5xx", status: 500 }), sidra)).toBe(false);
+    // O preset DEFAULT não traz lista: quem decide é a lista padrão do módulo,
+    // que `fetchJson` usa — provado de ponta a ponta no teste do 522 abaixo.
+    expect(doPadrao.retryableStatusCodes).toEqual([]);
   });
 
   // "O fetch lançou" não é sempre rede: os testes deste servidor simulam status
@@ -322,6 +341,24 @@ describe("fetchJson — repetição, contagem e o erro que o servidor lê", () =
       .mockResolvedValueOnce(json([1])) as unknown as typeof fetch;
     expect(await fetchJson(URL, { ...RETRY_SIDRA, ...RAPIDO })).toEqual([1]);
     expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("522 da Cloudflare repete e a ida seguinte responde, na política padrão e na do SIDRA", async () => {
+    for (const opcoes of [RAPIDO, { ...RETRY_SIDRA, ...RAPIDO }]) {
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce(new Response("error code: 522", { status: 522 }))
+        .mockResolvedValueOnce(json([{ id: 33 }])) as unknown as typeof fetch;
+      await comColetorDeRede(async () => {
+        expect(await fetchJson(URL, opcoes)).toEqual([{ id: 33 }]);
+        expect(currentCall()?.retrieval()).toEqual({
+          requests: 1,
+          attempts: 2,
+          anomalies: [{ kind: "http_5xx", count: 1 }],
+        });
+      });
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    }
   });
 });
 
