@@ -35,7 +35,12 @@
 
 import { IBGE_API } from "./types.js";
 import { cacheKey, CACHE_TTL, cachedFetch } from "./cache.js";
-import { RETRY_PRESETS, UpstreamError, type RetryOptions } from "./retry.js";
+import {
+  RETRY_PRESETS,
+  STATUS_CONEXAO_CLOUDFLARE,
+  UpstreamError,
+  type RetryOptions,
+} from "./retry.js";
 
 /**
  * Retry para a v3: igual ao padrão, MENOS o 500. O apisidra respondia 400 a
@@ -44,11 +49,13 @@ import { RETRY_PRESETS, UpstreamError, type RetryOptions } from "./retry.js";
  * (2 s, 4 s, 8 s, 16 s) faria uma tabela digitada errado levar meio minuto
  * para responder. 502/503/504 e 429 continuam sendo o que são: transitórios.
  * Quem chama pode sobrepor (`ibge_vizinhos` usa o preset rápido), e a
- * exclusão do 500 se mantém por baixo.
+ * exclusão do 500 se mantém por baixo. Os 52x da Cloudflare (falha de conexão
+ * com a origem, medida em 27/10/2026) também são transitórios — ver
+ * `STATUS_CONEXAO_CLOUDFLARE`.
  */
 export const RETRY_SIDRA: RetryOptions = {
   ...RETRY_PRESETS.DEFAULT,
-  retryableStatusCodes: [408, 429, 502, 503, 504],
+  retryableStatusCodes: [408, 429, 502, 503, 504, ...STATUS_CONEXAO_CLOUDFLARE],
 };
 
 /** Uma consulta do SIDRA, lida do caminho `/t/…/n…/…/v/…/p/…[/c…/…]`. */
