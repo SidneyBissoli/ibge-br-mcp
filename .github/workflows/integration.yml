@@ -27,8 +27,23 @@ jobs:
     # sem fechar a conexão — descarte silencioso em firewall, medido no
     # senado-br-mcp em 12/09/2026 — e aí cada requisição só morre no timeout
     # dela, o job nunca falha sozinho e vai até as 6 h padrão do GitHub.
-    # Rodada real aqui leva no máximo ~2,5 min.
-    timeout-minutes: 15
+    #
+    # Medido em 27/10/2026 (12 runs): saudável, cada arquivo leva 3–46 s e o job
+    # 60 s (13 s de preparo); bloqueado desde o início, os disjuntores param em
+    # 113/113/198/32 s (job 470 s). O que o teto de 15 min NÃO cobria era a
+    # origem que some NO MEIO: o disjuntor só dispara sem nenhuma captura, e o
+    # catálogo (65 casos × ~66–73 s) passaria de uma hora — cortado de fora,
+    # `cancelled`, sem rótulo. Agora cada arquivo tem orçamento próprio
+    # (`AO_VIVO_ORCAMENTO_S`, abaixo): esgotado, os casos restantes pulam e o
+    # arquivo sai vermelho `Fonte inalcançável`, que o retry pega. O teto do job
+    # cobre o pior caso com os quatro arquivos em sequência, cada um podendo
+    # terminar um caso de FERRAMENTA em curso (253 s = `TIMEOUT_CASO_FERRAMENTA_MS`):
+    # 4 × (120 + 253) + 13 ≈ 1505 s ≈ 25 min → 30 min.
+    timeout-minutes: 30
+    env:
+      # Orçamento de parede de CADA arquivo (@sbissoli/mcp-live-source >= 0.5.0),
+      # em s: 2,6× o arquivo saudável mais lento medido (46 s).
+      AO_VIVO_ORCAMENTO_S: '120'
     steps:
       - uses: actions/checkout@v7
 
