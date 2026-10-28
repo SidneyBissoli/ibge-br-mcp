@@ -146,10 +146,14 @@ export const compararOutputSchema = z.object({
   unidades: unidadesSidraSchema,
   estatisticas: z
     .object({
-      maior: z.number(),
-      menor: z.number(),
-      media: z.number(),
-      variacaoPct: z.number(),
+      maior: z.number().describe("Maior valor entre as localidades com valor"),
+      menor: z.number().describe("Menor valor entre as localidades com valor"),
+      media: z.number().describe("Média aritmética dos valores das localidades"),
+      variacaoPct: z
+        .number()
+        .describe(
+          "Quanto o maior supera o menor, em % ((maior/menor - 1) x 100; 0 se o menor for 0)"
+        ),
     })
     .optional()
     .describe("Estatísticas agregadas (quando há ao menos 2 valores positivos)"),

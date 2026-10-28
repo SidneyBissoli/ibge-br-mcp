@@ -7,8 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.10.1] - 2026-10-27
+
 ### Fixed
 
+- **Todo campo do `outputSchema` passa a ter descrição.** O mcpscore 1.29 criou a regra
+  `tools_output_properties_documented`, e a produção caiu para 206/207: 36 campos sem
+  `description` — a paginação do `ibge_sidra` (`pagina`, `porPagina`, `totalPaginas`,
+  `temMais`), a distribuição do bloco `estatisticas` compartilhado por `ibge_sidra`,
+  `ibge_censo`, `ibge_indicadores` e `ibge_datasaude` (`soma`, `minimo`, `maximo`, `media`,
+  `mediana`, `desvioPadrao`, `percentis`) e as estatísticas do `ibge_comparar` (`maior`,
+  `menor`, `media`, `variacaoPct`). A distribuição é descrita uma vez só, em `src/stats.ts`.
+  Só descrições: nenhum campo, tipo ou valor muda. stdio 173/176 → 174/176 com a regra
+  passando; `surface.lock.json`, `server.json` e `lhm.plugin.json` regenerados.
 - **A falha de conexão da Cloudflare com a origem (520–524) passa a ser repetida.** Medido em
   produção em 27/10/2026: 3 de 7 chamadas responderam **522**, em agregados e em localidades,
   com chamadas do mesmo segundo divididas entre 522 e 200, enquanto as mesmas URLs respondiam

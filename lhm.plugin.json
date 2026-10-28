@@ -1,7 +1,7 @@
 {
   "identifier": "sidneybissoli-ibge-br-mcp",
   "name": "IBGE Brasil MCP",
-  "version": "5.10.0",
+  "version": "5.10.1",
   "description": "MCP server giving AI assistants live, sourced access to Brazilian public data — geography, census, economy and health — from the official IBGE APIs. Exact figures with provenance, not approximations.",
   "author": "Sidney da Silva Pereira Bissoli",
   "authorUrl": "https://github.com/SidneyBissoli",
@@ -808,18 +808,23 @@
                 "description": "Distribuição do conjunto inteiro (sem agruparPor)",
                 "properties": {
                   "desvioPadrao": {
+                    "description": "Desvio-padrão populacional (divide por n: os dados são censitários, não amostra)",
                     "type": "number"
                   },
                   "maximo": {
+                    "description": "Maior valor",
                     "type": "number"
                   },
                   "media": {
+                    "description": "Média aritmética",
                     "type": "number"
                   },
                   "mediana": {
+                    "description": "Mediana (percentil 50, interpolação linear)",
                     "type": "number"
                   },
                   "minimo": {
+                    "description": "Menor valor",
                     "type": "number"
                   },
                   "n": {
@@ -827,6 +832,7 @@
                     "type": "number"
                   },
                   "percentis": {
+                    "description": "Percentis 25, 50, 75, 90, 95 e 99, cada um com o enunciado por extenso em rotulo",
                     "items": {
                       "additionalProperties": false,
                       "properties": {
@@ -852,6 +858,7 @@
                     "type": "array"
                   },
                   "soma": {
+                    "description": "Soma dos valores considerados",
                     "type": "number"
                   }
                 },
@@ -873,21 +880,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "desvioPadrao": {
+                      "description": "Desvio-padrão populacional (divide por n: os dados são censitários, não amostra)",
                       "type": "number"
                     },
                     "grupo": {
                       "type": "string"
                     },
                     "maximo": {
+                      "description": "Maior valor",
                       "type": "number"
                     },
                     "media": {
+                      "description": "Média aritmética",
                       "type": "number"
                     },
                     "mediana": {
+                      "description": "Mediana (percentil 50, interpolação linear)",
                       "type": "number"
                     },
                     "minimo": {
+                      "description": "Menor valor",
                       "type": "number"
                     },
                     "n": {
@@ -895,6 +907,7 @@
                       "type": "number"
                     },
                     "percentis": {
+                      "description": "Percentis 25, 50, 75, 90, 95 e 99, cada um com o enunciado por extenso em rotulo",
                       "items": {
                         "additionalProperties": false,
                         "properties": {
@@ -920,6 +933,7 @@
                       "type": "array"
                     },
                     "soma": {
+                      "description": "Soma dos valores considerados",
                       "type": "number"
                     }
                   },
@@ -2098,15 +2112,19 @@
             "description": "Estatísticas agregadas (quando há ao menos 2 valores positivos)",
             "properties": {
               "maior": {
+                "description": "Maior valor entre as localidades com valor",
                 "type": "number"
               },
               "media": {
+                "description": "Média aritmética dos valores das localidades",
                 "type": "number"
               },
               "menor": {
+                "description": "Menor valor entre as localidades com valor",
                 "type": "number"
               },
               "variacaoPct": {
+                "description": "Quanto o maior supera o menor, em % ((maior/menor - 1) x 100; 0 se o menor for 0)",
                 "type": "number"
               }
             },
@@ -2553,18 +2571,23 @@
                 "description": "Distribuição do conjunto inteiro (sem agruparPor)",
                 "properties": {
                   "desvioPadrao": {
+                    "description": "Desvio-padrão populacional (divide por n: os dados são censitários, não amostra)",
                     "type": "number"
                   },
                   "maximo": {
+                    "description": "Maior valor",
                     "type": "number"
                   },
                   "media": {
+                    "description": "Média aritmética",
                     "type": "number"
                   },
                   "mediana": {
+                    "description": "Mediana (percentil 50, interpolação linear)",
                     "type": "number"
                   },
                   "minimo": {
+                    "description": "Menor valor",
                     "type": "number"
                   },
                   "n": {
@@ -2572,6 +2595,7 @@
                     "type": "number"
                   },
                   "percentis": {
+                    "description": "Percentis 25, 50, 75, 90, 95 e 99, cada um com o enunciado por extenso em rotulo",
                     "items": {
                       "additionalProperties": false,
                       "properties": {
@@ -2597,6 +2621,7 @@
                     "type": "array"
                   },
                   "soma": {
+                    "description": "Soma dos valores considerados",
                     "type": "number"
                   }
                 },
@@ -2618,21 +2643,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "desvioPadrao": {
+                      "description": "Desvio-padrão populacional (divide por n: os dados são censitários, não amostra)",
                       "type": "number"
                     },
                     "grupo": {
                       "type": "string"
                     },
                     "maximo": {
+                      "description": "Maior valor",
                       "type": "number"
                     },
                     "media": {
+                      "description": "Média aritmética",
                       "type": "number"
                     },
                     "mediana": {
+                      "description": "Mediana (percentil 50, interpolação linear)",
                       "type": "number"
                     },
                     "minimo": {
+                      "description": "Menor valor",
                       "type": "number"
                     },
                     "n": {
@@ -2640,6 +2670,7 @@
                       "type": "number"
                     },
                     "percentis": {
+                      "description": "Percentis 25, 50, 75, 90, 95 e 99, cada um com o enunciado por extenso em rotulo",
                       "items": {
                         "additionalProperties": false,
                         "properties": {
@@ -2665,6 +2696,7 @@
                       "type": "array"
                     },
                     "soma": {
+                      "description": "Soma dos valores considerados",
                       "type": "number"
                     }
                   },
@@ -3833,18 +3865,23 @@
                 "description": "Distribuição do conjunto inteiro (sem agruparPor)",
                 "properties": {
                   "desvioPadrao": {
+                    "description": "Desvio-padrão populacional (divide por n: os dados são censitários, não amostra)",
                     "type": "number"
                   },
                   "maximo": {
+                    "description": "Maior valor",
                     "type": "number"
                   },
                   "media": {
+                    "description": "Média aritmética",
                     "type": "number"
                   },
                   "mediana": {
+                    "description": "Mediana (percentil 50, interpolação linear)",
                     "type": "number"
                   },
                   "minimo": {
+                    "description": "Menor valor",
                     "type": "number"
                   },
                   "n": {
@@ -3852,6 +3889,7 @@
                     "type": "number"
                   },
                   "percentis": {
+                    "description": "Percentis 25, 50, 75, 90, 95 e 99, cada um com o enunciado por extenso em rotulo",
                     "items": {
                       "additionalProperties": false,
                       "properties": {
@@ -3877,6 +3915,7 @@
                     "type": "array"
                   },
                   "soma": {
+                    "description": "Soma dos valores considerados",
                     "type": "number"
                   }
                 },
@@ -3898,21 +3937,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "desvioPadrao": {
+                      "description": "Desvio-padrão populacional (divide por n: os dados são censitários, não amostra)",
                       "type": "number"
                     },
                     "grupo": {
                       "type": "string"
                     },
                     "maximo": {
+                      "description": "Maior valor",
                       "type": "number"
                     },
                     "media": {
+                      "description": "Média aritmética",
                       "type": "number"
                     },
                     "mediana": {
+                      "description": "Mediana (percentil 50, interpolação linear)",
                       "type": "number"
                     },
                     "minimo": {
+                      "description": "Menor valor",
                       "type": "number"
                     },
                     "n": {
@@ -3920,6 +3964,7 @@
                       "type": "number"
                     },
                     "percentis": {
+                      "description": "Percentis 25, 50, 75, 90, 95 e 99, cada um com o enunciado por extenso em rotulo",
                       "items": {
                         "additionalProperties": false,
                         "properties": {
@@ -3945,6 +3990,7 @@
                       "type": "array"
                     },
                     "soma": {
+                      "description": "Soma dos valores considerados",
                       "type": "number"
                     }
                   },
@@ -7496,18 +7542,23 @@
                 "description": "Distribuição do conjunto inteiro (sem agruparPor)",
                 "properties": {
                   "desvioPadrao": {
+                    "description": "Desvio-padrão populacional (divide por n: os dados são censitários, não amostra)",
                     "type": "number"
                   },
                   "maximo": {
+                    "description": "Maior valor",
                     "type": "number"
                   },
                   "media": {
+                    "description": "Média aritmética",
                     "type": "number"
                   },
                   "mediana": {
+                    "description": "Mediana (percentil 50, interpolação linear)",
                     "type": "number"
                   },
                   "minimo": {
+                    "description": "Menor valor",
                     "type": "number"
                   },
                   "n": {
@@ -7515,6 +7566,7 @@
                     "type": "number"
                   },
                   "percentis": {
+                    "description": "Percentis 25, 50, 75, 90, 95 e 99, cada um com o enunciado por extenso em rotulo",
                     "items": {
                       "additionalProperties": false,
                       "properties": {
@@ -7540,6 +7592,7 @@
                     "type": "array"
                   },
                   "soma": {
+                    "description": "Soma dos valores considerados",
                     "type": "number"
                   }
                 },
@@ -7561,21 +7614,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "desvioPadrao": {
+                      "description": "Desvio-padrão populacional (divide por n: os dados são censitários, não amostra)",
                       "type": "number"
                     },
                     "grupo": {
                       "type": "string"
                     },
                     "maximo": {
+                      "description": "Maior valor",
                       "type": "number"
                     },
                     "media": {
+                      "description": "Média aritmética",
                       "type": "number"
                     },
                     "mediana": {
+                      "description": "Mediana (percentil 50, interpolação linear)",
                       "type": "number"
                     },
                     "minimo": {
+                      "description": "Menor valor",
                       "type": "number"
                     },
                     "n": {
@@ -7583,6 +7641,7 @@
                       "type": "number"
                     },
                     "percentis": {
+                      "description": "Percentis 25, 50, 75, 90, 95 e 99, cada um com o enunciado por extenso em rotulo",
                       "items": {
                         "additionalProperties": false,
                         "properties": {
@@ -7608,6 +7667,7 @@
                       "type": "array"
                     },
                     "soma": {
+                      "description": "Soma dos valores considerados",
                       "type": "number"
                     }
                   },
@@ -7666,15 +7726,19 @@
             "description": "Metadados de paginação para continuação",
             "properties": {
               "pagina": {
+                "description": "Página devolvida (o pedido é ajustado ao intervalo 1..totalPaginas)",
                 "type": "number"
               },
               "porPagina": {
+                "description": "Registros por página (fixo em 100)",
                 "type": "number"
               },
               "temMais": {
+                "description": "true quando há página seguinte (use pagina+1); sempre false com estatisticas=true",
                 "type": "boolean"
               },
               "totalPaginas": {
+                "description": "Total de páginas disponíveis",
                 "type": "number"
               }
             },
