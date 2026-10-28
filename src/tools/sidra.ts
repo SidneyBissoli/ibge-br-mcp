@@ -114,10 +114,16 @@ export const sidraOutputSchema = z.object({
   unidades: unidadesSidraSchema,
   paginacao: z
     .object({
-      pagina: z.number(),
-      porPagina: z.number(),
-      totalPaginas: z.number(),
-      temMais: z.boolean(),
+      pagina: z
+        .number()
+        .describe("Página devolvida (o pedido é ajustado ao intervalo 1..totalPaginas)"),
+      porPagina: z.number().describe(`Registros por página (fixo em ${PAGE_SIZE})`),
+      totalPaginas: z.number().describe("Total de páginas disponíveis"),
+      temMais: z
+        .boolean()
+        .describe(
+          "true quando há página seguinte (use pagina+1); sempre false com estatisticas=true"
+        ),
     })
     .describe("Metadados de paginação para continuação"),
   estatisticas: estatisticasBlocoSchema.optional(),

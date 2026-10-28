@@ -80,13 +80,17 @@ const percentilRotuladoSchema = z.object({
 
 const distribuicaoSchema = z.object({
   n: z.number().describe("Registros com valor numérico considerados"),
-  soma: z.number(),
-  minimo: z.number(),
-  maximo: z.number(),
-  media: z.number(),
-  mediana: z.number(),
-  desvioPadrao: z.number(),
-  percentis: z.array(percentilRotuladoSchema),
+  soma: z.number().describe("Soma dos valores considerados"),
+  minimo: z.number().describe("Menor valor"),
+  maximo: z.number().describe("Maior valor"),
+  media: z.number().describe("Média aritmética"),
+  mediana: z.number().describe("Mediana (percentil 50, interpolação linear)"),
+  desvioPadrao: z
+    .number()
+    .describe("Desvio-padrão populacional (divide por n: os dados são censitários, não amostra)"),
+  percentis: z
+    .array(percentilRotuladoSchema)
+    .describe("Percentis 25, 50, 75, 90, 95 e 99, cada um com o enunciado por extenso em rotulo"),
 });
 
 export const estatisticasBlocoSchema = z
