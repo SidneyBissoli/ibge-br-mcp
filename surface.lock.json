@@ -1,7 +1,7 @@
 {
   "$comentario": "Impressão digital da superfície (@sbissoli/mcp-surface). Não editar à mão: `npm run surface:lock` regrava, e só aceita superfície nova sob versão nova.",
   "declarada": {
-    "versao": "5.10.1",
+    "versao": "5.11.0",
     "sha256": "ab61544c6d9e8e000d17ce430fef2fefea98c9767ed425f32ed8c7f9a3bdd605",
     "conteudo": {
       "initialize": {
