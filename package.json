@@ -95,5 +95,8 @@
   "homepage": "https://github.com/SidneyBissoli/ibge-br-mcp#readme",
   "bugs": {
     "url": "https://github.com/SidneyBissoli/ibge-br-mcp/issues"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
   }
 }
