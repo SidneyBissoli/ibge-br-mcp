@@ -5,7 +5,7 @@
 [![node](https://img.shields.io/node/v/ibge-br-mcp)](https://www.npmjs.com/package/ibge-br-mcp)
 [![MCP Registry](https://img.shields.io/badge/MCP-Registry-blue)](https://registry.modelcontextprotocol.io)
 [![LobeHub](https://lobehub.com/badge/mcp/sidneybissoli-ibge-br-mcp)](https://lobehub.com/mcp/sidneybissoli-ibge-br-mcp)
-[![smithery badge](https://smithery.ai/badge/sidneybissoli/ibge-br-mcp)](https://smithery.ai/server/sidneybissoli/ibge-br-mcp)
+[![LightNow capabilities](https://lightnow.ai/badge/io.github.SidneyBissoli/ibge-br-mcp)](https://lightnow.ai/servers/io.github.SidneyBissoli/ibge-br-mcp)
 [![ibge-br-mcp MCP server](https://glama.ai/mcp/servers/@SidneyBissoli/ibge-br-mcp/badges/score.svg)](https://glama.ai/mcp/servers/@SidneyBissoli/ibge-br-mcp)
 [![CI](https://github.com/SidneyBissoli/ibge-br-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/SidneyBissoli/ibge-br-mcp/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-%E2%89%A588%25-brightgreen.svg)](https://github.com/SidneyBissoli/ibge-br-mcp/blob/main/vitest.config.ts)
