@@ -14,6 +14,15 @@ on:
   # segunda 08:00 UTC = 05:00 BRT, antes da rodada semanal do monitor (09:00 BRT)
   schedule:
     - cron: '0 8 * * 1'
+    # terça 08:00 UTC: segundo disparo, defesa contra FALHA DE PARTIDA do
+    # GitHub. Medido em 19/10 e 09/11/2026: o run agendado de segunda terminou
+    # sem criar NENHUM job (nada foi testado), e o `Integration retry` não
+    # cobre esse caso porque depende da mesma partida e cai junto (09/11: os
+    # dois falharam com zero jobs no mesmo minuto). Um disparo independente no
+    # dia seguinte verifica o contrato de verdade; o monitor lê o run mais
+    # recente, então o alerta fecha sozinho. Workflow quebrado de fato segue
+    # acusando: falha nos dois dias. Custo: ~1 min por semana no executor.
+    - cron: '0 8 * * 2'
   workflow_dispatch:
 
 concurrency:
