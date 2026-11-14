@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A remoção de tags HTML do texto das notícias (`decodeHtmlEntities`) repete até estabilizar: uma passada só deixava uma tag inteira para trás quando ela vinha partida por outra (`<scr<b>ipt>`). Achado pelo code scanning (`js/incomplete-multi-character-sanitization`).
+
+### Security
+
+- Os workflows `ci`, `integration`, `mcpscore` e `publish` declaram `permissions: contents: read` no topo (code scanning, `actions/missing-workflow-permissions`).
+
 ## [5.11.0] - 2026-10-27
 
 Renumerada de 5.10.1 (nunca publicada) para 5.11.0: a superfície publicada mudou (descrições no `outputSchema`), e pela convenção do repositório isso é versão minor.

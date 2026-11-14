@@ -57,11 +57,10 @@ describe("provenienciaIbge", () => {
       url: URL_EXEMPLO,
       pesquisa: "API de Localidades (estados)",
     });
-    expect(p.citation).toMatch(
-      new RegExp(
-        `^Fonte: IBGE — API de Localidades \\(estados\\), ${URL_EXEMPLO.replace(/[/.]/g, "\\$&")}, extraído em \\d{2}/\\d{2}/\\d{4}\\.$`
-      )
-    );
+    // Literal prefix + regex only for the date: the URL never enters a regular expression.
+    const prefixo = `Fonte: IBGE — API de Localidades (estados), ${URL_EXEMPLO}, extraído em `;
+    expect(p.citation.startsWith(prefixo)).toBe(true);
+    expect(p.citation.slice(prefixo.length)).toMatch(/^\d{2}\/\d{2}\/\d{4}\.$/);
   });
 
   it("timestamps are serialized in Brasília time (-03:00), no milliseconds", () => {
