@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main, master]
 
+# Menor privilégio: sem este bloco o token herda o padrão do repositório
+# (actions/missing-workflow-permissions). Um bloco no nível do job substitui este.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest

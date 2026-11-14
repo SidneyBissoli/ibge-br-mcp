@@ -290,8 +290,13 @@ export function decodeHtmlEntities(text: string): string {
   // Replace numeric entities (&#123;)
   decoded = decoded.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)));
 
-  // Remove HTML tags
-  decoded = decoded.replace(/<[^>]*>/g, "");
+  // Remove HTML tags. Repeat until stable: one pass over `<scr<b>ipt>` would
+  // leave `<script>` behind.
+  let previous: string;
+  do {
+    previous = decoded;
+    decoded = decoded.replace(/<[^>]*>/g, "");
+  } while (decoded !== previous);
 
   return decoded.trim();
 }
