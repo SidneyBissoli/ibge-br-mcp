@@ -81,6 +81,12 @@ export const RATE_LIMIT = {
  */
 export const LANDING = {
   lang: "pt-BR" as "pt-BR" | "en",
+  /**
+   * `<title>` e `og:title` da landing: o nome do produto (`SERVER_CONFIG.title`,
+   * que não muda) mais o que ele entrega, em 50-60 caracteres. O Bing Webmaster
+   * acusou o título curto ("IBGE Brasil MCP", 15) em 18/11/2026.
+   */
+  pageTitle: "IBGE Brasil MCP — dados do IBGE (SIDRA, Censo) para IA",
   resumo:
     "Servidor MCP com 23 ferramentas de dados oficiais do IBGE — geografia, censo, " +
     "economia e saúde — com valor exato e a fonte citada em cada resposta.",
